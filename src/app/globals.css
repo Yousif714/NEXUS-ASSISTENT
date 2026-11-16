@@ -1838,3 +1838,15 @@ a.task-body:active {
 .takeover-share { padding: 4px 16px 0; }
 .takeover-share .member-actions { margin: 10px 0 0; }
 .takeover-share .confirm-line { margin: 8px 0 12px; }
+
+/* Links zum Verschicken (Sammelseite Umstellung) */
+.share-links { scroll-margin-top: 16px; margin: 0 0 8px; }
+.share-card { padding: 12px 16px 4px; }
+.share-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.share-card-name { font-size: 17px; font-weight: 600; }
+.share-card-date { color: var(--label-2); font-size: 13px; }
+.share-card .member-actions { margin: 10px 0 0; }
+.share-card .confirm-line { margin: 8px 0 8px; }
+.share-card-empty { margin: 0; padding: 12px 16px; color: var(--label-2); }
+.share-sent { padding: 0; margin: 0 0 16px; }
+.share-sent summary { padding: 0 16px; }

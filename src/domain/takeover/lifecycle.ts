@@ -56,6 +56,15 @@ export function markTakeoverPlanChanged(s: AppState, takeoverId: string, payment
   return { state: replaceTakeover(s, changed), takeover: changed };
 }
 
+/** Link von Hand verschickt: `sharedAt` einmalig setzen bzw. mit `shared: false` löschen. Nur `link_sent`; keine Änderung → undefined. */
+export function markTakeoverShared(s: AppState, takeoverId: string, shared: boolean, at: Date): Changed | undefined {
+  const t = s.takeovers.find((x) => x.id === takeoverId);
+  if (!t || t.status !== 'link_sent' || !!t.sharedAt === shared) return undefined;
+  const { sharedAt: _drop, ...rest } = t;
+  const next: StripeTakeover = shared ? { ...rest, sharedAt: at.toISOString() } : rest;
+  return { state: replaceTakeover(s, next), takeover: next };
+}
+
 /** „Zurückziehen“ einer verschickten Umstellung: Token wird ungültig. Ab `set_up` nicht möglich (Zeitplan besteht). */
 export function withdrawSentTakeover(s: AppState, contractId: string, at: Date): Changed | { blocked: 'schedule' } | undefined {
   const t = currentTakeover(s, contractId);

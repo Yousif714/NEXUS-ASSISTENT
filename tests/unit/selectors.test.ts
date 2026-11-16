@@ -180,11 +180,28 @@ describe('Umstellungs-Selektoren', () => {
     // Vorbereitet: Status 'prepared'.
     const prepared = applyAt(fresh, [{ type: 'prepareTakeover', contractId: 'c1', mode: 'first_rate' }]);
     expect(takeoverRows(prepared, T).map((r) => [r.status, r.blockReason])).toEqual([['prepared', null]]);
-    // Link verschickt: gesperrt mit Grund.
+    // Link bereit: gesperrt mit Grund.
     expect(takeoverRows(linkSentState(), T).map((r) => [r.status, r.blockReason])).toEqual([['link_sent', 'Umstellung läuft bereits.']]);
     // Bank nicht verbunden: Sperrgrund.
     const noBank = { ...fresh, connections: fresh.connections.map((c) => (c.id === 'bank_qonto' ? { ...c, status: 'missing' as const, lastSuccessAt: null } : c)) };
     expect(takeoverRows(noBank, T)[0].blockReason).toMatch(/^Bank nicht verbunden: /);
+  });
+
+  test('linksToShare: offene Links mit Name, Telefon, Text; gesendete getrennt, nach Name', async () => {
+    const { linkSentState, applyAt } = await import('../fixtures/takeover-state');
+    const { linksToShare } = await import('@/data/selectors');
+    const base0 = linkSentState();
+    const withPhone = { ...base0, contacts: base0.contacts.map((c) => (c.id === 'm1' ? { ...c, phones: ['0151 2345678'] } : c)) };
+    const l = linksToShare(withPhone);
+    expect(l.open).toHaveLength(1);
+    expect(l.sent).toEqual([]);
+    expect(l.open[0]).toMatchObject({ takeoverId: 'stripe-takeover-c1-1', name: 'Erika Muster', phone: '0151 2345678', link: base0.takeovers[0].link });
+    expect(l.open[0].rates).toEqual(base0.takeovers[0].rates);
+    const done = applyAt(withPhone, [{ type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1' }]);
+    const l2 = linksToShare(done);
+    expect(l2.open).toEqual([]);
+    expect(l2.sent.map((x) => [x.name, x.sharedAt])).toEqual([['Erika Muster', '2026-11-13T09:00:00.000Z']]);
+    expect(linksToShare(base0).open[0].phone).toBeNull();
   });
 
   test('switchableTakeovers: wie „Alle umstellen“, auch nach Zurückziehen', async () => {

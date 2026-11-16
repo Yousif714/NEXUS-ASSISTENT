@@ -5,11 +5,12 @@ import { useState } from 'react';
 import { ActionSheet } from '@/components/ActionSheet';
 import { BackLink } from '@/components/BackLink';
 import { DemoBadge } from '@/components/DemoBadge';
+import { LinksToShare } from '@/components/LinksToShare';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { PageHeader } from '@/components/PageHeader';
 import { absolutizeDemoLinks, useOrigin } from '@/components/TakeoverCard';
-import { openTakeoverDrafts, openUpcomingReminders, switchableTakeovers, takeoverRows } from '@/data/selectors';
+import { linksToShare, openTakeoverDrafts, openUpcomingReminders, switchableTakeovers, takeoverRows } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { now, todayBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
@@ -28,6 +29,7 @@ export default function UmstellungPage() {
   const { state, dispatch, mode } = useAppStore();
   const today = todayBerlin(now());
   const rows = takeoverRows(state, today);
+  const links = linksToShare(state);
   const drafts = openTakeoverDrafts(state);
   const reminders = openUpcomingReminders(state);
   const [later, setLater] = useState<string[]>([]);
@@ -48,6 +50,8 @@ export default function UmstellungPage() {
           {`Alle freigeben (${drafts.length})`}
         </button>
       </div>
+
+      <LinksToShare open={links.open} sent={links.sent} onShared={(takeoverId, shared) => dispatch({ type: 'takeoverShared', takeoverId, shared })} />
 
       <ListGroup title="Mitglieder" testId="takeover-rows">
         {rows.length === 0 && <ListRow key="empty" title="Niemand auf Überweisung." />}

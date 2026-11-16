@@ -188,7 +188,7 @@ describe('Zustands-Dienst', () => {
   });
 
   test('isClientEvent: nur erlaubte Ereignisse mit Grundform', () => {
-    expect(CLIENT_EVENTS.size).toBe(30);
+    expect(CLIENT_EVENTS.size).toBe(31);
     expect(isClientEvent({ type: 'approveAction', id: 'a-1', version: 1, via: 'app' })).toBe(true);
     expect(isClientEvent({ type: 'dismissInsight', key: 'reply:m-1' })).toBe(true);
     for (const type of ['actionExecuted', 'actionStarted', 'actionReconciled', 'resetDemo', 'simulateTransfer', 'importBatch', 'syncFailed', 'setConnectionStatus', 'assistantInbound', 'assistantOutbound', 'assistantButton', 'takeoverSetUp', 'takeoverPlanChanged', 'takeoverScheduleCanceled', 'takeoverCustomerMismatch', 'unbekannt']) {
@@ -271,6 +271,11 @@ describe('Zustands-Dienst', () => {
     expect(isClientEvent({ type: 'prepareAllTakeovers' })).toBe(true);
     expect(isClientEvent({ type: 'withdrawTakeover', contractId: 'c1' })).toBe(true);
     expect(isClientEvent({ type: 'withdrawTakeover' })).toBe(false);
+    expect(isClientEvent({ type: 'takeoverShared', takeoverId: 't1' })).toBe(true);
+    expect(isClientEvent({ type: 'takeoverShared', takeoverId: 't1', shared: false })).toBe(true);
+    expect(isClientEvent({ type: 'takeoverShared', takeoverId: 't1', shared: 'nein' })).toBe(false);
+    expect(isClientEvent({ type: 'takeoverShared', takeoverId: '' })).toBe(false);
+    expect(isClientEvent({ type: 'takeoverShared' })).toBe(false);
     expect(isClientEvent({ type: 'simulateTakeoverSetUp', contractId: 'c1' })).toBe(true);
     expect(isClientEvent({ type: 'simulateTakeoverSetUp' })).toBe(false);
     const items = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `a-${i}`, version: 1 }));

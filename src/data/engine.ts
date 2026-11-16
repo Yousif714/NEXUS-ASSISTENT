@@ -22,7 +22,7 @@ import { deriveProposals, findContactFor, type ContractProposal } from '@/domain
 import { portalProposal, portalViews } from '@/domain/portal';
 import { coveringContract, invoiceAllocatableCents, splitPaymentOverInvoices } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
-import { markTakeoverPlanChanged, recordTakeover, setUpTakeover, withdrawSentTakeover } from '@/domain/takeover/lifecycle';
+import { markTakeoverPlanChanged, markTakeoverShared, recordTakeover, setUpTakeover, withdrawSentTakeover } from '@/domain/takeover/lifecycle';
 import { ensureTakeoverDrafts } from '@/domain/takeover/drafts';
 import { cancelTakeoverDraft, syncTakeoverDraft, takeoverCandidates } from '@/domain/takeover/prepare';
 import { contractLockedReason, currentTakeover } from '@/domain/takeover/status';
@@ -402,6 +402,13 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       const r = setUpTakeover(s, t.id, { scheduleId: 'demo', paymentMethodId: 'demo' }, at);
       if (!r) return { state: s };
       return owner({ state: r.state, text: setUpText(contactName(s, t.contactId), t.rates.length, 'demo') }, t.actionId);
+    }
+    case 'takeoverShared': {
+      const shared = e.shared !== false;
+      const r = markTakeoverShared(s, e.takeoverId, shared, at);
+      if (!r) return { state: s };
+      const name = contactName(s, r.takeover.contactId);
+      return owner({ state: r.state, text: shared ? `Link gesendet: ${name}` : `Link wieder als nicht gesendet markiert: ${name}` }, r.takeover.actionId);
     }
     case 'takeoverSetUp': {
       const r = setUpTakeover(s, e.takeoverId, e, at);
