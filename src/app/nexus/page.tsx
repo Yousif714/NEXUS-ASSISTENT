@@ -8,7 +8,7 @@ import { MoneyCard } from '@/components/MoneyCard';
 import { PageHeader } from '@/components/PageHeader';
 import { Segmented } from '@/components/Segmented';
 import { TrafficDot } from '@/components/TrafficDot';
-import { memberRows, portalRows, switchableTakeovers, nexusForecast, stripeLexCases, unallocatedBankPayments } from '@/data/selectors';
+import { linksToShare, memberRows, portalRows, switchableTakeovers, nexusForecast, stripeLexCases, unallocatedBankPayments } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlin, formatBerlinDe, now, todayBerlin } from '@/domain/clock';
@@ -33,6 +33,7 @@ export default function NexusPage() {
   const receivables = nexusReceivables(state, today);
   const toMatch = unallocatedBankPayments(state).length + stripeLexCases(state).length;
   const switchable = switchableTakeovers(state, at);
+  const unsentLinks = linksToShare(state).open.length;
   const openProposals = deriveProposals(state).length;
   const portal = portalSummary(portalRows(state, today));
   const calls = [...state.calls].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -53,7 +54,8 @@ export default function NexusPage() {
         <ListRow key="open" href="/nexus/offen" title={`Offen (${formatEuro(receivables.totalCents)})`} testId="open-link" />
         <ListRow key="portal" href="/nexus/mitglieder" testId="portal-link" title={`Portal-Mitglieder (${portal.total})`}
           value={portal.total === 0 ? 'Liste einfügen' : `${portal.noInvoice} ohne Rechnung`} />
-        <ListRow key="takeover" href="/nexus/umstellung" testId="takeover-link" title="Umstellung auf Stripe"
+        <ListRow key="takeover" href={unsentLinks > 0 ? '/nexus/umstellung#links' : '/nexus/umstellung'} testId="takeover-link" title="Umstellung auf Stripe"
+          subtitle={unsentLinks > 0 ? (unsentLinks === 1 ? '1 Link noch nicht gesendet' : `${unsentLinks} Links noch nicht gesendet`) : undefined}
           value={switchable === 0 ? undefined : `${switchable} umstellbar`} />
       </ListGroup>
 

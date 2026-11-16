@@ -10,7 +10,7 @@ import { customerOpenInvoices, invoiceOpenCents, invoicePaidCents, paymentRestCe
 import { formatEuro } from '@/domain/money';
 import { portalViews, type PortalView } from '@/domain/portal';
 import { monthForecast } from '@/domain/ledger/forecast';
-import type { Action, AppState, Company, Invoice, IsoDate, MemberContract, Payment, StoredInsight, TakeoverStatus } from '@/domain/types';
+import type { Action, AppState, Company, Installment, Invoice, IsoDate, MemberContract, Payment, StoredInsight, TakeoverStatus } from '@/domain/types';
 import type { MemberStatus } from '@/domain/ledger/status';
 import { contractKindLabel, contractOnHold, isMembershipContract } from '@/domain/ledger/contracts';
 import { takeoverCandidates } from '@/domain/takeover/prepare';
@@ -207,3 +207,20 @@ export const openTakeoverDrafts = (s: AppState): Action[] => s.actions.filter((a
 /** Erinnerungen vor Fälligkeit und Link-Nachfragen, die noch auf die Freigabe warten. */
 export const openUpcomingReminders = (s: AppState): Action[] =>
   s.actions.filter((a) => a.type === 'send_reminder' && a.status === 'draft' && (a.id.startsWith('upcoming-') || a.id.startsWith('link-nudge-')));
+
+export type LinkToShare = { takeoverId: string; contractId: string; name: string; phone: string | null; link: string; rates: Installment[]; sharedAt: string | null; sharedOn: IsoDate | null; isDemo: boolean };
+
+/** Umstellungen mit bereitem Link, nach Name: noch zu verschicken (`open`) und von Hand als gesendet markiert (`sent`, jüngste zuerst). */
+export function linksToShare(s: AppState): { open: LinkToShare[]; sent: LinkToShare[] } {
+  const rows = s.takeovers
+    .filter((t) => t.status === 'link_sent' && currentTakeover(s, t.contractId)?.id === t.id)
+    .map((t): LinkToShare => {
+      const c = s.contacts.find((x) => x.id === t.contactId);
+      return { takeoverId: t.id, contractId: t.contractId, name: c?.name ?? 'Unbekannt', phone: c?.phones[0] ?? null, link: t.link, rates: t.rates, sharedAt: t.sharedAt ?? null, sharedOn: t.sharedAt ? todayBerlin(new Date(t.sharedAt)) : null, isDemo: t.isDemo };
+    });
+  const byName = (a: LinkToShare, b: LinkToShare) => a.name.localeCompare(b.name, 'de');
+  return {
+    open: rows.filter((r) => !r.sharedAt).sort(byName),
+    sent: rows.filter((r) => r.sharedAt).sort((a, b) => (b.sharedAt! < a.sharedAt! ? -1 : b.sharedAt! > a.sharedAt! ? 1 : byName(a, b))),
+  };
+}

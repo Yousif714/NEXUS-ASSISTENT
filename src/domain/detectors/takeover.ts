@@ -34,7 +34,7 @@ export function upcomingRates(s: AppState, today: IsoDate): { contractId: string
 
 /** Verschickte Links, die seit mindestens `takeoverLinkNudgeDays` Tagen nicht genutzt wurden. */
 export function unusedLinks(s: AppState, today: IsoDate): StripeTakeover[] {
-  return currentTakeovers(s).filter((t) => t.status === 'link_sent' && daysBetween(berlinDay(t.linkSentAt), today) >= s.settings.takeoverLinkNudgeDays);
+  return currentTakeovers(s).filter((t) => t.status === 'link_sent' && daysBetween(berlinDay(t.sharedAt ?? t.linkSentAt), today) >= s.settings.takeoverLinkNudgeDays);
 }
 
 /** Hinweise rund um die Umstellung auf Stripe: Doppelzahlung, ungenutzter Link, Plan geändert, Rate steht an, verwaistes Abo. */
@@ -70,14 +70,14 @@ export function detectTakeover(s: AppState, now: Date): Insight[] {
 
   for (const t of unusedLinks(s, today)) {
     const name = nameOf(s, t.contactId);
-    const sent = berlinDay(t.linkSentAt);
+    const sent = berlinDay(t.sharedAt ?? t.linkSentAt);
     out.push({
       dedupeKey: `takeover-link:${t.id}`,
       type: 'takeover_link_unused',
       company: 'nexus',
       priority: 'info',
       title: `${name}: Stripe-Link seit ${daysBetween(sent, today)} Tagen nicht genutzt`,
-      body: `Link verschickt am ${formatIsoDe(sent)}. Es ist noch kein Zahlungsmittel hinterlegt.`,
+      body: `${t.sharedAt ? 'Link gesendet' : 'Link erzeugt'} am ${formatIsoDe(sent)}. Es ist noch kein Zahlungsmittel hinterlegt.`,
       refs: [memberRef(t.contractId, name), takeoverRef('Umstellung')],
       nextStep: 'Erinnerung an den Link freigeben',
       needsSources: ['stripe_nexus'],

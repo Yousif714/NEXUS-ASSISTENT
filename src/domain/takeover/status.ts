@@ -5,7 +5,7 @@ import type { Action, ActionStatus, AppState, IsoDate, MemberContract, StripeTak
 
 export const TAKEOVER_STATUS_LABEL: Record<TakeoverStatus, string> = {
   prepared: 'vorbereitet',
-  link_sent: 'Link verschickt',
+  link_sent: 'Link bereit',
   set_up: 'eingerichtet',
   active: 'aktiv',
   plan_changed: 'Plan geändert',

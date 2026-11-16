@@ -24,7 +24,7 @@ function tk(p: Partial<StripeTakeover> = {}): StripeTakeover {
 describe('Umstellungs-Status', () => {
   test('Labels exakt', () => {
     expect(TAKEOVER_STATUS_LABEL).toEqual({
-      prepared: 'vorbereitet', link_sent: 'Link verschickt', set_up: 'eingerichtet', active: 'aktiv',
+      prepared: 'vorbereitet', link_sent: 'Link bereit', set_up: 'eingerichtet', active: 'aktiv',
       plan_changed: 'Plan geändert', withdrawn: 'zurückgezogen', aborted: 'abgebrochen',
     });
   });

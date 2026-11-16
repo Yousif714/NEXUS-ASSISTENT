@@ -69,6 +69,6 @@ export interface StripeTakeover {
   status: Exclude<TakeoverStatus, 'prepared'>;
   token: string; link: string; mode: MemberContract['catchUpMode']; rates: Installment[]; openCents: number;
   stripeCustomerId: string | null; paymentMethodId: string | null; scheduleId: string | null; subscriptionExternalId: string | null;
-  isDemo: boolean; linkSentAt: string; setUpAt?: string; activeAt?: string; endedAt?: string;
+  isDemo: boolean; linkSentAt: string; sharedAt?: string; /* vom Inhaber als verschickt markiert (ISO) */ setUpAt?: string; activeAt?: string; endedAt?: string;
 }
 export interface AppState { connections: Connection[]; contacts: Contact[]; contracts: MemberContract[]; exceptions: Record<string, ContractException[]>; payments: Payment[]; allocations: Allocation[]; ibanLinks: IbanLink[]; invoices: Invoice[]; messages: Message[]; commitments: Commitment[]; events: CalendarEvent[]; calls: Call[]; content: ContentItem[]; vehicles: Vehicle[]; jobs: Job[]; insights: StoredInsight[]; actions: Action[]; audit: AuditEntry[]; assistantChat: AssistantMessage[]; subscriptions: Subscription[]; dismissedProposals: string[]; portalMembers: PortalMember[]; ignoredPortalMembers: string[]; orderConfirmations: OrderConfirmation[]; invoiceReadings: InvoiceReading[]; takeovers: StripeTakeover[]; settings: Settings }

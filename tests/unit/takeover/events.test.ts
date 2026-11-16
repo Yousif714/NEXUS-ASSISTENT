@@ -302,6 +302,34 @@ describe('Sammelfreigabe und Alle umstellen', () => {
   });
 });
 
+describe('Link als gesendet markieren', () => {
+  const shared = (s: AppState, extra: Partial<StoreEvent> = {}) => run(s, [{ type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1', ...extra } as StoreEvent]);
+  test('setzt sharedAt einmalig, Audit „Link gesendet: <Name>“', () => {
+    const r = applyEvent(linkSent(), { type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1' }, mkCtx());
+    expect(r.state.takeovers[0].sharedAt).toBe('2026-11-13T09:00:00.000Z');
+    expect(lastAudit(r.state)).toMatchObject({ actor: 'owner', text: 'Link gesendet: Erika Muster', actionId: 'stripe-takeover-c1-1' });
+  });
+  test('idempotent: zweites Mal ändert weder sharedAt noch Protokoll', () => {
+    const once = run(linkSent(), [{ type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1' }]);
+    const twice = applyEvent(once, { type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1' }, { ...mkCtx(), at: new Date('2026-11-14T09:00:00Z') });
+    expect(twice.state.takeovers[0].sharedAt).toBe('2026-11-13T09:00:00.000Z');
+    expect(twice.state.audit).toHaveLength(once.audit.length);
+  });
+  test('nur bei link_sent; unbekannte ID ignoriert', () => {
+    const setUp = run(linkSent(), [{ type: 'takeoverSetUp', takeoverId: 'stripe-takeover-c1-1', scheduleId: 'sub_sched_test_1', paymentMethodId: 'pm_test_1' }]);
+    expect(shared(setUp).takeovers[0].sharedAt).toBeUndefined();
+    expect(run(linkSent(), [{ type: 'takeoverShared', takeoverId: 'nope' }]).takeovers[0].sharedAt).toBeUndefined();
+  });
+  test('shared:false nimmt die Markierung zurück (mit Audit), ohne Markierung nichts', () => {
+    const marked = shared(linkSent());
+    const undone = applyEvent(marked, { type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1', shared: false }, mkCtx());
+    expect(undone.state.takeovers[0].sharedAt).toBeUndefined();
+    expect(lastAudit(undone.state).text).toBe('Link wieder als nicht gesendet markiert: Erika Muster');
+    const again = applyEvent(undone.state, { type: 'takeoverShared', takeoverId: 'stripe-takeover-c1-1', shared: false }, mkCtx());
+    expect(again.state.audit).toHaveLength(undone.state.audit.length);
+  });
+});
+
 describe('Zurückziehen und Demo-Einrichtung', () => {
   test('withdrawTakeover: offener Entwurf → abgebrochen', () => {
     const s = run(initial(), [{ type: 'prepareTakeover', contractId: 'c1', mode: 'first_rate' }, { type: 'withdrawTakeover', contractId: 'c1' }]);

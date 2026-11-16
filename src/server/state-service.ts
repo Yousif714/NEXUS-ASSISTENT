@@ -19,7 +19,7 @@ export const CLIENT_EVENTS: ReadonlySet<StoreEvent['type']> = new Set<StoreEvent
   'retryAction', 'checkAction', 'dismissInsight', 'snoozeInsight', 'suppressCoach', 'setSlides', 'updateSettings',
   'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'createPortalContract', 'ignorePortalMember', 'unignorePortalMember',
   // Umstellung auf Stripe; takeoverSetUp/takeoverPlanChanged kommen nur vom Webhook.
-  'prepareTakeover', 'prepareAllTakeovers', 'withdrawTakeover', 'approveActions', 'simulateTakeoverSetUp',
+  'prepareTakeover', 'prepareAllTakeovers', 'withdrawTakeover', 'approveActions', 'simulateTakeoverSetUp', 'takeoverShared',
 ]);
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -126,6 +126,7 @@ const SHAPE: Record<string, (e: Record<string, unknown>) => boolean> = {
   prepareTakeover: (e) => isStr(e.contractId) && isCatchUp(e.mode),
   prepareAllTakeovers: () => true,
   withdrawTakeover: (e) => isStr(e.contractId),
+  takeoverShared: (e) => isStr(e.takeoverId) && (e.shared === undefined || typeof e.shared === 'boolean'),
   approveActions: (e) => isApproveItems(e.items),
   simulateTakeoverSetUp: (e) => isStr(e.contractId),
   importPortalList: (e) => Array.isArray(e.entries) && e.entries.length >= 1 && e.entries.length <= 2000 && e.entries.every(isPortalEntry),

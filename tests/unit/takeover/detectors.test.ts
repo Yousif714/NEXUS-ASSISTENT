@@ -84,6 +84,18 @@ describe('Link nicht genutzt', () => {
     expect(detectTakeover(s, at('2026-11-11T10:00:00Z')).filter((x) => x.type === 'takeover_link_unused')).toEqual([]);
     expect(unusedLinks(s, '2026-11-11')).toEqual([]);
   });
+  test('Text: „Link erzeugt am“', () => {
+    const i = detectTakeover(s, at('2026-11-12T10:00:00Z')).find((x) => x.type === 'takeover_link_unused')!;
+    expect(i.body).toBe('Link erzeugt am 05.11.2026. Es ist noch kein Zahlungsmittel hinterlegt.');
+  });
+  test('Frist zählt ab sharedAt, sobald gesendet', () => {
+    const shared = world({ takeovers: [takeover({ sharedAt: '2026-11-10T08:00:00Z' })] });
+    expect(unusedLinks(shared, '2026-11-12')).toEqual([]);
+    expect(unusedLinks(shared, '2026-11-17').map((t) => t.id)).toEqual(['stripe-takeover-c1-1']);
+    const i = detectTakeover(shared, at('2026-11-17T10:00:00Z')).find((x) => x.type === 'takeover_link_unused')!;
+    expect(i.title).toBe('Lena Kaya: Stripe-Link seit 7 Tagen nicht genutzt');
+    expect(i.body).toBe('Link gesendet am 10.11.2026. Es ist noch kein Zahlungsmittel hinterlegt.');
+  });
   test('Einstellung 3 → schon nach 3 Tagen', () =>
     expect(unusedLinks({ ...s, settings: { ...s.settings, takeoverLinkNudgeDays: 3 } }, '2026-11-08').map((t) => t.id)).toEqual(['stripe-takeover-c1-1']));
   test('nach dem Einrichten kein Hinweis mehr', () =>

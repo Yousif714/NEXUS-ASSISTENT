@@ -74,4 +74,6 @@ export type StoreEvent =
   | { type: 'takeoverScheduleCanceled'; takeoverId: string; scheduleId: string }
   /** Nur Server (Webhook): Checkout-Sitzung mit anderem Stripe-Kunden als die Umstellung, ignoriert (nur Audit). */
   | { type: 'takeoverCustomerMismatch'; takeoverId: string; customerId: string | null }
+  /** „Als gesendet markieren“ (Link wurde von Hand verschickt); `shared: false` nimmt es zurück. Nur bei `link_sent`, idempotent. */
+  | { type: 'takeoverShared'; takeoverId: string; shared?: boolean }
   | { type: 'resetDemo' };

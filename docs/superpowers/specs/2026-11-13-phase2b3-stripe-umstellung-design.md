@@ -54,7 +54,7 @@ Die Bestandsmitglieder haben in Lexware eine **einzige Gesamtrechnung** und übe
 6. **Verknüpfen:** Schon beim Anlegen des Zeitplans (Schritt 5) speichert der Server die Zeitplan-ID am Vertrag. Der Vertrag wechselt sofort auf `billing: 'stripe'`, Status `eingerichtet`. Grund: Ein Zeitplan mit Start in der Zukunft hat bis zum Starttag kein Abo-Objekt. Der Import sähe wochenlang nichts, und das Mitglied bekäme sonst Erinnerungen für Raten, die Stripe abbucht *(Call)*. Sobald der Import das Abo mit `metadata.contractId` sieht, wird es **automatisch** mit dem bestehenden Vertrag verknüpft, ohne Vorschlag und ohne neuen Vertrag. Bestätigt gelten Raten und Enddatum des freigegebenen Plans.
    - Stripe-Produkt: ein eigenes Produkt **„NEXUS-Mitgliedschaft (Ratenplan)“** für alle Umstellungs-Preise (`price_data`). Abos mit `metadata.contractId` erzeugen nie einen Vertragsvorschlag (`proposals.ts`) *(Call)*.
 7. **Umstellungs-Status je Vertrag** (sichtbar auf Übernahme-Seite und Mitgliedsseite):
-   `vorbereitet` (Aktion offen) → `Link verschickt` (ausgeführt) → `eingerichtet` (Zahlungsmittel hinterlegt, Zeitplan angelegt, `billing: 'stripe'`) → `aktiv` (Abo verknüpft) · Nebenzweige `Plan geändert`, `zurückgezogen` und `abgebrochen` (siehe 7a).
+   `vorbereitet` (Aktion offen) → `Link bereit` (ausgeführt) → `eingerichtet` (Zahlungsmittel hinterlegt, Zeitplan angelegt, `billing: 'stripe'`) → `aktiv` (Abo verknüpft) · Nebenzweige `Plan geändert`, `zurückgezogen` und `abgebrochen` (siehe 7a).
    „Zurückziehen“ macht den Token ungültig, solange noch kein Abo existiert.
 8. **Fälligkeiten in der Vergangenheit:** Wird der Link erst nach dem Fälligkeitstag der ersten Plan-Rate genutzt, ist diese Rate zum Rückstand geworden. Der Restplan wird beim Abschluss neu gerechnet. Ändern sich dabei nur die Daten, nicht Summe und Ratenzahl, beginnt das Abo mit der nächsten Fälligkeit, und die überfällige Rate wird sofort beim Start eingezogen. Ändert sich mehr → „Plan geändert“ (Punkt 5). *(Call des Bauenden: so wenig Neu-Freigaben wie möglich, ohne Beträge zu ändern.)*
 
@@ -63,7 +63,7 @@ Die Bestandsmitglieder haben in Lexware eine **einzige Gesamtrechnung** und übe
   - Inhalt: Betrag, Fälligkeit, Hinweis auf bequeme Abbuchung mit dem Stripe-Link (falls schon erzeugt).
   - Freigabe einzeln oder gesammelt. Versand bis 2e als Demo bzw. „Kopieren“.
 - Überfällige Raten: bestehender Hinweis „Mitglied im Rückstand“ (`detectMemberOverdue`), keine zweite Logik.
-- **Link 7 Tage nicht genutzt** (Status `Link verschickt`): Hinweis an den Inhaber mit Entwurf „Erinnerung an den Link“.
+- **Link 7 Tage nicht genutzt** (Status `Link bereit`): Hinweis an den Inhaber mit Entwurf „Erinnerung an den Link“.
 - Ab Status `eingerichtet` gibt es keine Erinnerungen mehr (Anti-Ziel Doppelzahlung).
 - Die Werte 3 und 7 Tage sind Vorschläge des Bauenden und stehen als Einstellung bereit.
 

@@ -64,7 +64,7 @@ test('Umstellung im Demo-Modus: vorbereiten, freigeben, Link kopieren, einrichte
   const chip = page.getByTestId('takeover-status');
   await expect(chip).toHaveText('vorbereitet');
   await page.getByRole('button', { name: 'Freigeben' }).click();
-  await expect(chip).toHaveText('Link verschickt');
+  await expect(chip).toHaveText('Link bereit');
   const share = page.getByRole('textbox', { name: 'Nachricht an das Mitglied' });
   await expect(share).toHaveValue(/\/zahlung\/demo-/);
   await expect(share).toHaveValue(/^Hallo Mehmet, [\s\S]*Dauerauftrag/);
@@ -91,15 +91,46 @@ test('Alle umstellen und Sammelfreigabe', async ({ page }) => {
   await all.click();
   await expect(page.getByTestId('takeover-rows').getByText('vorbereitet', { exact: true })).toHaveCount(n);
   await page.getByRole('button', { name: `Alle freigeben (${n})`, exact: true }).first().click();
-  await expect(page.getByTestId('takeover-rows').getByText('Link verschickt', { exact: true })).toHaveCount(n);
+  await expect(page.getByTestId('takeover-rows').getByText('Link bereit', { exact: true })).toHaveCount(n);
   await expect(page.getByTestId('takeover-rows').getByText('vorbereitet', { exact: true })).toHaveCount(0);
+});
+
+test('Links zum Verschicken: Sammelseite, Kopieren, als gesendet markieren', async ({ page }) => {
+  await page.goto('/nexus/umstellung?reset=1');
+  await page.getByRole('button', { name: /^Alle umstellen \(\d+\)$/ }).click();
+  const drafts = page.getByRole('button', { name: /^Alle freigeben \(\d+\)$/ }).first();
+  const n = Number(/\((\d+)\)/.exec((await drafts.textContent()) ?? '')![1]);
+  await drafts.click();
+  const links = page.locator('#links');
+  await expect(links.getByRole('heading', { name: `Links zum Verschicken (${n} offen)` })).toBeVisible();
+  const cards = links.getByTestId('links-open').locator('.share-card');
+  await expect(cards).toHaveCount(n);
+  const first = cards.first();
+  await expect(first.getByRole('textbox')).toHaveValue(/\/zahlung\/demo-/);
+  // Demo-Kontakte mit Telefonnummer: WhatsApp-Knopf zeigt auf wa.me.
+  const wa = links.getByRole('link', { name: 'In WhatsApp öffnen' }).first();
+  await expect(wa).toHaveAttribute('href', /^https:\/\/wa\.me\/\d+\?text=/);
+  await expect(wa).toHaveAttribute('target', '_blank');
+  await first.getByRole('button', { name: 'Kopieren' }).click();
+  await expect(first.getByText('Kopiert', { exact: true })).toBeVisible();
+  await first.getByRole('button', { name: 'Als gesendet markieren' }).click();
+  await expect(links.getByRole('heading', { name: `Links zum Verschicken (${n - 1} offen)` })).toBeVisible();
+  await expect(cards).toHaveCount(n - 1);
+  await links.getByText('Schon gesendet (1)').click();
+  await expect(links.getByTestId('links-sent').locator('.share-card')).toHaveCount(1);
+  await expect(links.getByTestId('links-sent').getByText(/^gesendet \d{2}\.\d{2}\.\d{4}$/)).toBeVisible();
+  // Startseite: Hinweis auf noch nicht gesendete Links, Link springt zum Abschnitt.
+  await page.goto('/nexus');
+  const row = page.getByTestId('takeover-link');
+  await expect(row).toContainText(`${n - 1} Links noch nicht gesendet`);
+  await expect(row).toHaveAttribute('href', '/nexus/umstellung#links');
 });
 
 test('Zurückziehen macht den Link ungültig', async ({ page }) => {
   await page.goto(`/nexus/mitglieder/${KAYA}/uebernahme?reset=1`);
   await page.getByRole('button', { name: 'Auf Stripe umstellen' }).click();
   await page.getByRole('button', { name: 'Freigeben' }).click();
-  await expect(page.getByTestId('takeover-status')).toHaveText('Link verschickt');
+  await expect(page.getByTestId('takeover-status')).toHaveText('Link bereit');
   await page.getByRole('button', { name: 'Zurückziehen' }).click();
   await expect(page.getByTestId('takeover-status')).toHaveText('zurückgezogen');
   await expect(page.getByRole('textbox', { name: 'Nachricht an das Mitglied' })).toHaveCount(0);
