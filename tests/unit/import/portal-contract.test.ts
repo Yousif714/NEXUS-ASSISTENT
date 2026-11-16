@@ -114,3 +114,21 @@ test('Wieder einblenden: entfernt aus der Ausblendeliste, idempotent', () => {
   const again = applyEvent(r.state, u, ctx());
   expect(again.state.audit).toHaveLength(r.state.audit.length);
 });
+
+test('linkPortalMember: verknüpft Mitglied mit Kontakt, Status Vertrag, idempotent', () => {
+  const s = { ...withContact(portalState, { name: 'Neu Consulting - Paula Neu' }), contracts: [{ id: 'v1', contactId: 'k1', ...draft, billing: 'legacy' as const }] };
+  const l = { type: 'linkPortalMember', externalId: 'neu@example.de', contactId: 'k1' } as const;
+  const r = applyEvents(s, [l, l], ctx());
+  expect(r.state.contacts.find((c) => c.id === 'k1')!.externalRefs).toEqual([{ connectionId: 'portal_nexus', externalId: 'neu@example.de' }]);
+  expect(portalViews(r.state).find((v) => v.member.externalId === 'neu@example.de')!).toMatchObject({ status: 'contract', contractId: 'v1' });
+  expect(r.state.audit.filter((a) => a.text.startsWith('Portal-Mitglied verknüpft'))).toHaveLength(1);
+  expect(r.state.contracts).toHaveLength(1);
+});
+
+test('linkPortalMember: unbekanntes Mitglied oder Kontakt ohne NEXUS → nichts', () => {
+  const s = withContact(portalState, { company: 'zulassung' });
+  for (const l of [{ type: 'linkPortalMember', externalId: 'x@nirgends.de', contactId: 'k1' }, { type: 'linkPortalMember', externalId: 'neu@example.de', contactId: 'k1' }] as const) {
+    const r = applyEvent(s, l, ctx());
+    expect(r.state.contacts).toEqual(s.contacts);
+  }
+});

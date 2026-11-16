@@ -183,12 +183,14 @@ describe('Zustands-Dienst', () => {
     expect(isClientEvent({ type: 'ignorePortalMember' })).toBe(false);
     expect(isClientEvent({ type: 'unignorePortalMember', externalId: 'a@b.de' })).toBe(true);
     expect(isClientEvent({ type: 'unignorePortalMember' })).toBe(false);
+    expect(isClientEvent({ type: 'linkPortalMember', externalId: 'a@b.de', contactId: 'k1' })).toBe(true);
+    expect(isClientEvent({ type: 'linkPortalMember', externalId: 'a@b.de' })).toBe(false);
     expect(isClientEvent({ type: 'createPortalContract', externalId: 'a@b.de', draft, contactId: null })).toBe(true);
     expect(isClientEvent({ type: 'createPortalContract', externalId: 'a@b.de', draft: { ...draft, dueDay: 'x' }, contactId: null })).toBe(false);
   });
 
   test('isClientEvent: nur erlaubte Ereignisse mit Grundform', () => {
-    expect(CLIENT_EVENTS.size).toBe(31);
+    expect(CLIENT_EVENTS.size).toBe(32);
     expect(isClientEvent({ type: 'approveAction', id: 'a-1', version: 1, via: 'app' })).toBe(true);
     expect(isClientEvent({ type: 'dismissInsight', key: 'reply:m-1' })).toBe(true);
     for (const type of ['actionExecuted', 'actionStarted', 'actionReconciled', 'resetDemo', 'simulateTransfer', 'importBatch', 'syncFailed', 'setConnectionStatus', 'assistantInbound', 'assistantOutbound', 'assistantButton', 'takeoverSetUp', 'takeoverPlanChanged', 'takeoverScheduleCanceled', 'takeoverCustomerMismatch', 'unbekannt']) {

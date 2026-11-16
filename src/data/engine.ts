@@ -597,6 +597,15 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       const contract: MemberContract = { ...e.draft, id: contractId, contactId, billing: 'legacy', origin: p.sources };
       return owner({ state: { ...s, contacts, contracts: [...s.contracts, contract] }, text: `Vertrag angelegt (Portal): ${view.member.name}, ${e.draft.installments} × ${formatEuro(e.draft.installmentCents)}` });
     }
+    case 'linkPortalMember': {
+      const m = s.portalMembers.find((x) => x.externalId === e.externalId);
+      const c = s.contacts.find((x) => x.id === e.contactId && x.company === 'nexus');
+      if (!m || !c) return { state: s, audit: { actor: 'owner', text: 'Verknüpfung nicht möglich: Mitglied oder Kontakt nicht gefunden' } };
+      const refs = c.externalRefs ?? [];
+      if (refs.some((r) => r.connectionId === 'portal_nexus' && r.externalId === e.externalId)) return { state: s };
+      const contacts = s.contacts.map((x) => (x.id === c.id ? { ...x, externalRefs: [...refs, { connectionId: 'portal_nexus' as const, externalId: e.externalId }] } : x));
+      return owner({ state: { ...s, contacts }, text: `Portal-Mitglied verknüpft: ${m.name} → ${c.name}` });
+    }
     case 'ignorePortalMember': {
       if (s.ignoredPortalMembers.includes(e.externalId)) return { state: s };
       const m = s.portalMembers.find((x) => x.externalId === e.externalId);

@@ -170,6 +170,10 @@ export default function PortalMembersPage() {
                     )} />
                   {actionable && (
                     <div className="member-actions">
+                      {r.nameMatch && r.nameMatchContractId && (
+                        <button type="button" className="btn btn-primary" aria-label={`Mit Vertrag von ${r.nameMatch.name} verknüpfen: ${m.name}`}
+                          onClick={() => { void dispatch({ type: 'linkPortalMember', externalId: m.externalId, contactId: r.nameMatch!.contactId }); }}>{`Mit Vertrag von ${r.nameMatch.name} verknüpfen`}</button>
+                      )}
                       <button type="button" className="btn btn-secondary" aria-label={`Vertrag anlegen für ${m.name}`} onClick={() => setCreating(creating === m.externalId ? null : m.externalId)}>Vertrag anlegen</button>
                       <button type="button" className="btn btn-secondary" aria-label={`Kein zahlendes Mitglied: ${m.name}`} onClick={() => { void dispatch({ type: 'ignorePortalMember', externalId: m.externalId }); }}>Kein zahlendes Mitglied</button>
                     </div>

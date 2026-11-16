@@ -151,3 +151,26 @@ test('mehrere ABs: Nummern nach Datum', () => {
   const two = { ...s, orderConfirmations: [...s.orderConfirmations, { ...lisa, id: 'x2', externalId: 'oc-x2', number: 'AB-1990', issuedOn: '2026-06-20' }] };
   expect(view(two, 'lisa@example.de').abHint).toBe('AB AB-1990, AB-2002 vorhanden, Rechnung fehlt');
 });
+
+test('Namenstreffer auch bei Firmenzusatz, Zweitnamen und Ansprechpartner', () => {
+  const contacts = [
+    contact({ id: 'k1', name: 'Bohm Consulting - Paul Bohm' }),
+    contact({ id: 'k2', name: 'Jana Maria Kurz' }),
+    contact({ id: 'k3', name: 'Lang Personal', contactPersons: ['Tom Lang'] }),
+  ];
+  expect(linkPortalMember(pm('p@example.de', 'Paul Bohm'), contacts).nameMatch).toEqual({ contactId: 'k1', name: 'Bohm Consulting - Paul Bohm' });
+  expect(linkPortalMember(pm('j@example.de', 'Jana Kurz'), contacts).nameMatch).toEqual({ contactId: 'k2', name: 'Jana Maria Kurz' });
+  expect(linkPortalMember(pm('t@example.de', 'Tom Lang'), contacts).nameMatch).toEqual({ contactId: 'k3', name: 'Lang Personal' });
+});
+
+test('Namenstreffer: mehrdeutig → keiner, exakter Name hat Vorrang', () => {
+  const two = [contact({ id: 'k1', name: 'Paul Bohm GmbH' }), contact({ id: 'k2', name: 'Paul Bohm Consulting' })];
+  expect(linkPortalMember(pm('p@example.de', 'Paul Bohm'), two).nameMatch).toBeNull();
+  const exact = [...two, contact({ id: 'k3', name: 'Paul Bohm' })];
+  expect(linkPortalMember(pm('p@example.de', 'Paul Bohm'), exact).nameMatch).toEqual({ contactId: 'k3', name: 'Paul Bohm' });
+});
+
+test('Namenstreffer mit Mitgliedsvertrag: nameMatchContractId gesetzt', () => {
+  const s = { ...stateWith({ contacts: [contact({ id: 'k1', name: 'Neu Consulting - Paula Neu' })], contracts: [contract('v1', 'k1')] }), portalMembers: [pm('neu@example.de', 'Paula Neu')] };
+  expect(portalViews(s)[0]).toMatchObject({ status: 'no_invoice', nameMatch: { contactId: 'k1' }, nameMatchContractId: 'v1' });
+});
