@@ -15,7 +15,8 @@ import { getRepos, resetTestRepos, setTestStripeWriter } from '@/server/registry
 import { stripeWriteRoutes } from '../fixtures/stripe-write';
 import { linkSentState, seed } from './takeover/setup';
 
-const render = async (token: string) => renderToStaticMarkup(await PlanPage({ params: Promise.resolve({ token }) }));
+const render = async (token: string, fehler?: string) =>
+  renderToStaticMarkup(await PlanPage({ params: Promise.resolve({ token }), searchParams: Promise.resolve(fehler ? { fehler } : {}) }));
 const withStatus = (s: AppState, status: 'set_up' | 'withdrawn'): AppState => ({ ...s, takeovers: s.takeovers.map((t) => ({ ...t, status })) });
 const token = () => linkSentState().takeovers[0].token;
 
@@ -40,6 +41,13 @@ describe('Seite /zahlung/[token]', () => {
     expect(html).toContain('2 Raten');
     expect(html).not.toContain('Erika');
     expect(requests).toEqual([]);
+  });
+  test('?fehler=1 → Hinweis über dem Plan, Knopf bleibt', async () => {
+    await seed(getRepos(), linkSentState());
+    const html = await render(token(), '1');
+    expect(html).toContain('Stripe ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.');
+    expect(html).toContain('Weiter zu Stripe');
+    expect(await render(token())).not.toContain('nicht erreichbar');
   });
   test('21. Aufruf je Minute und IP → Text zu vielen Aufrufen, ohne Plandaten', async () => {
     await seed(getRepos(), linkSentState());

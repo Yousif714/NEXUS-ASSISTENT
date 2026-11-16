@@ -37,6 +37,18 @@ describe('POST /zahlung/[token]/weiter', () => {
     expect(sessions()).toHaveLength(1);
     expect(sessions()[0].body).toContain('mode=setup');
   });
+  test('Stripe-Fehler beim Anlegen → 303 zurück auf die Seite mit ?fehler=1 (kein 500), Schlüssel nicht in der Antwort', async () => {
+    setTestStripeWriter(createStripeWriter({ key: 'sk_test_SECRET', fetch: fixtureFetch({}, { requests }), sleep: async () => {}, now: () => 0 }));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const t = token();
+    const res = await POST(...call(t));
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe(`/zahlung/${t}?fehler=1`);
+    expect(await res.text()).not.toContain('sk_test_SECRET');
+    expect(errSpy).toHaveBeenCalled();
+    expect(JSON.stringify(errSpy.mock.calls)).not.toContain('sk_test_SECRET');
+    errSpy.mockRestore();
+  });
   test('GET weiter → 405, keine Sitzung', async () => {
     expect(GET).toBeTypeOf('function');
     const res = await GET();
