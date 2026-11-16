@@ -53,6 +53,8 @@ export type StoreEvent =
   | { type: 'importBankStatement'; connectionId: 'bank_sparkasse'; payments: ImportedPayment[]; statementTo: IsoDate }
   /** Vertrag für ein Portal-Mitglied ohne Vertrag; `created[0]` ist die Vertrags-ID. `contactId`: bestätigter Namenstreffer, sonst null. */
   | { type: 'createPortalContract'; externalId: string; draft: ContractDraft; contactId: string | null }
+  /** „Mit Vertrag verknüpfen“: Portal-Mitglied per Ref an einen bestehenden NEXUS-Kontakt hängen (idempotent). */
+  | { type: 'linkPortalMember'; externalId: string; contactId: string }
   /** „Kein zahlendes Mitglied“: Mitglied aus der Arbeitsliste ausblenden (idempotent). */
   | { type: 'ignorePortalMember'; externalId: string }
   /** „Wieder einblenden“: macht „Kein zahlendes Mitglied“ rückgängig (idempotent). */

@@ -17,7 +17,7 @@ const MAX_ATTEMPTS = 3;
 export const CLIENT_EVENTS: ReadonlySet<StoreEvent['type']> = new Set<StoreEvent['type']>([
   'confirmPaymentMatch', 'dismissPayment', 'settleInvoice', 'linkInvoiceToJob', 'setJobStatus', 'createAction', 'editAction', 'approveAction',
   'retryAction', 'checkAction', 'dismissInsight', 'snoozeInsight', 'suppressCoach', 'setSlides', 'updateSettings',
-  'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'createPortalContract', 'ignorePortalMember', 'unignorePortalMember',
+  'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'createPortalContract', 'linkPortalMember', 'ignorePortalMember', 'unignorePortalMember',
   // Umstellung auf Stripe; takeoverSetUp/takeoverPlanChanged kommen nur vom Webhook.
   'prepareTakeover', 'prepareAllTakeovers', 'withdrawTakeover', 'approveActions', 'simulateTakeoverSetUp', 'takeoverShared',
 ]);
@@ -120,6 +120,7 @@ const SHAPE: Record<string, (e: Record<string, unknown>) => boolean> = {
   correctContract: (e) => isStr(e.contractId) && isContractDraft(e.draft),
   deleteReadContract: (e) => isStr(e.contractId),
   createPortalContract: (e) => isStr(e.externalId) && isContractDraft(e.draft) && (e.contactId === null || isStr(e.contactId)),
+  linkPortalMember: (e) => isStr(e.externalId) && isStr(e.contactId),
   ignorePortalMember: (e) => isStr(e.externalId),
   unignorePortalMember: (e) => isStr(e.externalId),
   importBankStatement: (e) => e.connectionId === 'bank_sparkasse' && Array.isArray(e.payments) && e.payments.length <= 5000 && e.payments.every(isSparkassePayment) && isBookingDate(e.statementTo),

@@ -1,5 +1,5 @@
-import { normalizeNameStrict } from './matching/payments';
-import { isMembershipContract } from './ledger/contracts';
+import { nameMatches, normalizeNameStrict } from './matching/payments';
+import { isMembershipContract, membershipContractOf } from './ledger/contracts';
 import { deriveProposals, findContactFor, type ContractProposal } from './import/proposals';
 import { isMembership } from './import/membership';
 import { formatEuro } from './money';
@@ -17,11 +17,16 @@ export interface PortalView {
   abHint: string | null;
   /** IDs der anderen Portal-Mitglieder, die denselben Kontakt treffen. */
   sharedWith: string[];
+  /** Mitgliedsvertrag des Namenstreffers: „Mit Vertrag verknüpfen“ statt neuem Vertrag. */
+  nameMatchContractId: string | null;
 }
 
 const memberEmails = (m: PortalMember): string[] => [...new Set((m.emails ?? [m.email]).map((e) => e.trim().toLowerCase()).filter((e) => e !== ''))];
 
-/** Zuordnung: 1. externalRef `portal_nexus:<id>`, 2. alle NEXUS-Kontakte mit gleicher E-Mail, 3. nur Namensvorschlag. */
+/**
+ * Zuordnung: 1. externalRef `portal_nexus:<id>`, 2. alle NEXUS-Kontakte mit gleicher E-Mail, 3. nur Namensvorschlag:
+ * exakter Name, sonst eindeutiger Treffer mit Vor- und Nachname im Kontaktnamen (Firmenzusatz, Zweitname) oder Ansprechpartner.
+ */
 export function linkPortalMember(m: PortalMember, contacts: Contact[]): { contactIds: string[]; nameMatch: { contactId: string; name: string } | null } {
   const byRef = contacts.filter((c) => c.company === 'nexus' && (c.externalRefs ?? []).some((r) => r.connectionId === 'portal_nexus' && r.externalId === m.externalId));
   if (byRef.length > 0) return { contactIds: byRef.map((c) => c.id), nameMatch: null };
@@ -30,7 +35,9 @@ export function linkPortalMember(m: PortalMember, contacts: Contact[]): { contac
   const byEmail = nexus.filter((c) => c.emails.some((e) => mails.has(e.trim().toLowerCase())));
   if (byEmail.length > 0) return { contactIds: byEmail.map((c) => c.id), nameMatch: null };
   const n = normalizeNameStrict(m.name);
-  const byName = n === '' ? undefined : nexus.find((c) => normalizeNameStrict(c.name) === n);
+  const exact = n === '' ? undefined : nexus.find((c) => normalizeNameStrict(c.name) === n);
+  const loose = nexus.filter((c) => nameMatches(m.name, c.name) || (c.contactPersons ?? []).some((p) => nameMatches(m.name, p)));
+  const byName = exact ?? (loose.length === 1 ? loose[0] : undefined);
   return { contactIds: [], nameMatch: byName ? { contactId: byName.id, name: byName.name } : null };
 }
 
@@ -59,7 +66,8 @@ export function portalViews(s: AppState): PortalView[] {
       .sort((a, b) => a.issuedOn.localeCompare(b.issuedOn) || a.number.localeCompare(b.number));
     const abHint = orderConfirmations.length > 0 && !anyInvoice ? `AB ${orderConfirmations.map((x) => x.number).join(', ')} vorhanden, Rechnung fehlt` : null;
     const status: PortalStatus = contract ? 'contract' : hidden.has(member.externalId) ? 'ignored' : proposal ? 'proposal' : invoices.length > 0 ? 'invoice_only' : 'no_invoice';
-    return { member, status, inLatestList: member.lastSeenInListAt === latest, contactIds, nameMatch, contractId: contract?.id ?? null, proposalId: proposal?.id ?? null, invoices, orderConfirmations, abHint, sharedWith: [] };
+    return { member, status, inLatestList: member.lastSeenInListAt === latest, contactIds, nameMatch, contractId: contract?.id ?? null, proposalId: proposal?.id ?? null, invoices, orderConfirmations, abHint, sharedWith: [],
+      nameMatchContractId: nameMatch ? (membershipContractOf(s, nameMatch.contactId)?.id ?? null) : null };
   });
   for (const v of views) v.sharedWith = views.filter((o) => o !== v && o.contactIds.some((id) => v.contactIds.includes(id))).map((o) => o.member.id);
   return views.sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || a.member.name.localeCompare(b.member.name, 'de'));
