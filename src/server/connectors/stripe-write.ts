@@ -117,7 +117,9 @@ export function createStripeWriter(o: { key: string; fetch: typeof fetch; sleep:
     },
     async createSetupCheckout(i) {
       const s = await post('/v1/checkout/sessions', {
-        mode: 'setup', customer: i.customerId, payment_method_types: ['card', 'sepa_debit'], locale: 'de',
+        // Keine festen payment_method_types: Stripe zeigt die im Konto aktiven Zahlungsarten (Setup-Modus braucht dann `currency`).
+        // Feste Typen ließen Live scheitern, wenn eine davon (z. B. SEPA) im Konto nicht aktiviert ist.
+        mode: 'setup', customer: i.customerId, currency: 'eur', locale: 'de',
         success_url: `${trimBase(i.base)}/zahlung/danke`, cancel_url: `${trimBase(i.base)}/zahlung/abbruch?t=${encodeURIComponent(i.token)}`,
         metadata: { takeoverId: i.takeoverId, contractId: i.contractId },
         setup_intent_data: { metadata: { takeoverId: i.takeoverId } },

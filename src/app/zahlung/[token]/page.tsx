@@ -13,8 +13,9 @@ import '../zahlung.css';
 export const metadata: Metadata = { title: 'NEXUS – Ratenplan', robots: { index: false, follow: false } };
 
 /** Öffentlich, ohne Login: zeigt nur den Plan (kein Name, keine E-Mail). GET legt nie eine Checkout-Sitzung an. */
-export default async function PlanPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function PlanPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams?: Promise<{ fehler?: string | string[] }> }) {
   const { token } = await params;
+  const fehler = (await searchParams)?.fehler === '1';
   await connection();
   const env = readEnv();
   const repos = getRepos();
@@ -30,6 +31,7 @@ export default async function PlanPage({ params }: { params: Promise<{ token: st
   return (
     <main className="pay-page">
       <h1>NEXUS – Ratenplan{t.isDemo && <span className="pay-demo"> Demo</span>}</h1>
+      {fehler && <p role="alert">Stripe ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten noch einmal.</p>}
       <p>{view.count} Raten</p>
       <ul>
         {view.rates.map((r, i) => <li key={i}>{r.label}: {formatEuro(r.amountCents)}</li>)}

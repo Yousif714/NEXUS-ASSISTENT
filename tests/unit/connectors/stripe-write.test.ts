@@ -56,13 +56,15 @@ describe('createStripeWriter', () => {
     expect(requests[1]).toMatchObject({ method: 'POST', path: '/v1/customers', idempotencyKey: 'stripe-takeover-c1-1:1:customer' });
     expect(decodeURIComponent(requests[1].body)).toBe('name=Erika Muster&metadata[contractId]=c1');
   });
-  test('createSetupCheckout: mode setup, card + sepa_debit, Danke-/Abbruch-URL', async () => {
+  test('createSetupCheckout: mode setup, im Konto aktive Zahlungsarten (currency eur), Danke-/Abbruch-URL', async () => {
     const requests: FixtureRequest[] = [];
     const r = await writer(undefined, requests).createSetupCheckout({ customerId: 'cus_test_1', takeoverId: 'tk1', contractId: 'c1', token: 'tok123', base: 'https://nexus.example' });
     expect(r).toEqual({ id: 'cs_test_1', url: 'https://checkout.stripe.test/c/pay/cs_test_1' });
     const body = decodeURIComponent(requests[0].body);
     expect(body).toContain('mode=setup');
-    expect(body).toContain('payment_method_types[0]=card&payment_method_types[1]=sepa_debit');
+    // Keine festen Zahlungsarten: Live lehnt die Sitzung ab, wenn eine davon (z. B. SEPA) im Konto nicht aktiv ist.
+    expect(body).not.toContain('payment_method_types');
+    expect(body).toContain('currency=eur');
     expect(body).toContain('success_url=https://nexus.example/zahlung/danke');
     expect(body).toContain('cancel_url=https://nexus.example/zahlung/abbruch?t=tok123');
     expect(body).toContain('setup_intent_data[metadata][takeoverId]=tk1');
