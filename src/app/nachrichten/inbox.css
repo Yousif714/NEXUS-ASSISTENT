@@ -1,0 +1,146 @@
+/* WhatsApp-Chatliste: eine Glasliste, Avatar, Name + Zeit, Vorschau + Zähler. */
+.inbox-tools {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.inbox-search {
+  margin: 0;
+}
+
+.inbox-list {
+  margin: 0 0 26px;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border-radius: var(--radius-group);
+}
+
+.inbox-list > li + li .inbox-main {
+  box-shadow: inset 0 0.5px 0 var(--separator);
+}
+
+.inbox-row {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding-left: 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 150ms var(--ease-out);
+}
+
+.inbox-row:hover {
+  background: rgba(120, 120, 128, 0.06);
+}
+
+.inbox-row:active {
+  background: var(--bg-pressed);
+}
+
+.inbox-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 11px 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8a8f9c, #626673);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inbox-row[data-waiting="true"] .inbox-avatar {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--tint-graphic);
+}
+
+.inbox-row[data-overdue="true"] .inbox-avatar {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--red);
+}
+
+.inbox-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 11px 14px 11px 0;
+}
+
+.inbox-top,
+.inbox-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.inbox-line {
+  align-items: center;
+}
+
+.inbox-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.inbox-time {
+  flex: none;
+  color: var(--label-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-row[data-waiting="true"] .inbox-time {
+  color: var(--tint);
+  font-weight: 600;
+}
+
+.inbox-preview {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--label-2);
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.inbox-you {
+  color: var(--label-2);
+  font-weight: 500;
+}
+
+.inbox-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--tint-fill);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.inbox-row[data-overdue="true"] .inbox-badge {
+  background: var(--red);
+}
+
+@media (prefers-color-scheme: dark) {
+  .inbox-row[data-overdue="true"] .inbox-badge {
+    background: #d70015;
+  }
+}

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('mobil: drei Tabs unten', async ({ page, isMobile }) => {
   test.skip(!isMobile);
   await page.goto('/');
-  for (const t of ['Heute', 'NEXUS', 'Zulassungsdienst']) await expect(page.getByTestId('tab-bar').getByText(t, { exact: true })).toBeVisible();
+  for (const t of ['Heute', 'Nachrichten', 'NEXUS', 'Zulassung']) await expect(page.getByTestId('tab-bar').getByText(t, { exact: true })).toBeVisible();
   await expect(page.getByTestId('assistant-button')).toBeVisible();
 });
 

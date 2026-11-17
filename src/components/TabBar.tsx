@@ -5,16 +5,16 @@ import { usePathname } from 'next/navigation';
 
 import { PRIMARY_NAV, isActive } from './nav';
 
-/** Mobile Tab-Leiste (< 768px): genau Heute · NEXUS · Zulassungsdienst. */
+/** Mobile Tab-Leiste (< 768px): Heute · Nachrichten · NEXUS · Zulassung. */
 export function TabBar() {
   const pathname = usePathname();
   return (
     <nav className="tabbar" data-testid="tab-bar" aria-label="Hauptbereiche">
-      {PRIMARY_NAV.map(({ key, href, label, Icon }) => (
+      {PRIMARY_NAV.map(({ key, href, label, short, Icon }) => (
         <Link key={key} href={href} className="tabbar-item" data-testid={`tab-${key}`}
           aria-current={isActive(href, pathname) ? 'page' : undefined}>
           <Icon size={26} />
-          <span>{label}</span>
+          <span>{short ?? label}</span>
         </Link>
       ))}
     </nav>
