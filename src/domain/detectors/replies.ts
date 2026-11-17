@@ -1,11 +1,12 @@
 import { emailsIn } from '../import/mail';
+import { showMessage } from '../features';
 import { openReplies, phoneKey } from '../matching/messages';
 import type { AppState, Insight, Message } from '../types';
 import { threadRef } from './refs';
 
 /** Eine Person, ein Hinweis. Die älteste unbeantwortete Nachricht bleibt der Schlüssel (Abhaken gilt für sie). */
 export function detectReplies(s: AppState, now: Date): Insight[] {
-  const open = openReplies(s.messages, now, s.settings.replyThresholdHours, s.contacts);
+  const open = openReplies(s.messages.filter(showMessage), now, s.settings.replyThresholdHours, s.contacts);
   const groups = new Map<string, typeof open>();
   for (const item of open) {
     const key = replyGroup(item.message);

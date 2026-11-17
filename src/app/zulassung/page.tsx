@@ -20,6 +20,7 @@ import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable, messageStand } from '@/domain/freshness';
 import { jobBilling } from '@/domain/billing';
 import { jobContactLabel, jobPortalSource } from '@/domain/import/portal';
+import { WHATSAPP_IN_APP } from '@/domain/features';
 import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
 import { formatBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
@@ -130,7 +131,7 @@ export default function ZulassungPage() {
       </div>
 
       <aside className="zl-side">
-        {newOrders.length > 0 && (
+        {WHATSAPP_IN_APP && newOrders.length > 0 && (
           <ListGroup title="Neu aus WhatsApp" testId="zulassung-new-orders" sectionId="zulassung-neu-whatsapp">
             {newOrders.slice(0, 6).map((e) => (
               <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`zl-new-order-${e.messageId}`}

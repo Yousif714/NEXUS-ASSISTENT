@@ -9,6 +9,9 @@ import { GET, POST } from '@/app/api/webhooks/whatsapp/route';
 import { POST as mcpPost } from '@/app/api/mcp/route';
 import { getRepos, resetTestRepos } from '@/server/registry';
 import { seed } from './takeover/setup';
+// WhatsApp-Verhalten bei eingeschaltetem Schalter (in der App derzeit aus, siehe src/domain/features.ts).
+vi.mock('@/domain/features', async (orig) => ({ ...(await orig<typeof import('@/domain/features')>()), WHATSAPP_IN_APP: true, showMessage: () => true, visibleState: <S,>(s: S) => s }));
+
 
 const SECRET = 'app-secret-test';
 const VERIFY = 'verify-token-test';

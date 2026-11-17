@@ -1,5 +1,6 @@
 import { NextResponse, connection } from 'next/server';
 import { realNow } from '@/domain/clock';
+import { WHATSAPP_IN_APP } from '@/domain/features';
 import { applyIntakeHints } from '@/domain/intake/hint';
 import { WHATSAPP_KUNDEN, parseWhatsAppWebhook } from '@/domain/import/whatsapp';
 import { verifyWhatsAppSignature, verifyWhatsAppToken } from '@/server/connectors/whatsapp-signature';
@@ -38,6 +39,8 @@ export async function POST(req: Request) {
   if (raw.length > MAX_BODY) return NextResponse.json({ error: 'Zu groß' }, { status: 413 });
   const sig = verifyWhatsAppSignature(raw, req.headers.get('x-hub-signature-256'), env.whatsappAppSecret);
   if (!sig.ok) return NextResponse.json({ error: 'Signatur ungültig' }, { status: 401 });
+  // WhatsApp ist in der App aus: Meta bekommt 200 (sonst wiederholt es), gespeichert wird nichts.
+  if (!WHATSAPP_IN_APP) return NextResponse.json({ received: true, ignored: true });
   let payload: unknown;
   try {
     payload = JSON.parse(raw);

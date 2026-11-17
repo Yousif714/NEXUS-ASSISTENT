@@ -2,9 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('Kacheln führen weiter: Heute, NEXUS, Zulassung', async ({ page }) => {
   await page.goto('/?reset=1');
-  await page.getByRole('link', { name: 'Kunde wartet öffnen' }).click();
-  await expect(page).toHaveURL(/\/nachrichten\?filter=waiting$/);
-  await expect(page.getByRole('button', { name: 'Wartet', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('link', { name: 'Termine heute öffnen' }).click();
+  await expect(page.getByTestId('events-today')).toBeVisible();
 
   await page.goto('/');
   await page.getByRole('link', { name: 'Überfällig öffnen' }).click();

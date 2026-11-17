@@ -11,6 +11,7 @@ import { filterPortalJobs, jobPortalBadge, portalJobSubtitle, PortalSourceFilter
 import { CONTACT_KIND_LABEL, INVOICE_STATUS_LABEL, JOB_STATUS_LABEL } from '@/components/zulassung-labels';
 import { customerInvoiceRows, customerPayments } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
+import { showMessage } from '@/domain/features';
 import { formatBerlin, formatIsoDe } from '@/domain/clock';
 import { formatAddress } from '@/domain/import/mydigitalcar';
 import { formatEuro } from '@/domain/money';
@@ -40,7 +41,7 @@ export default function CustomerPage() {
   const payments = customerPayments(state, id);
   // Je Unterhaltung die jüngste Nachricht, neueste Unterhaltung zuerst.
   const latestByThread = new Map<string, Message>();
-  for (const m of state.messages.filter((x) => x.contactId === id)) {
+  for (const m of state.messages.filter((x) => x.contactId === id && showMessage(x))) {
     const prev = latestByThread.get(m.threadId);
     if (!prev || m.sentAt > prev.sentAt) latestByThread.set(m.threadId, m);
   }

@@ -6,6 +6,9 @@ import type { AppState, Invoice } from '@/domain/types';
 import type { Action } from '@/domain/types';
 import { openReplies } from '@/domain/matching/messages';
 import { NOW_0930 as NOW, contractOf, isOpen } from './helpers';
+// WhatsApp-Verhalten bei eingeschaltetem Schalter (in der App derzeit aus, siehe src/domain/features.ts).
+vi.mock('@/domain/features', async (orig) => ({ ...(await orig<typeof import('@/domain/features')>()), WHATSAPP_IN_APP: true, showMessage: () => true, visibleState: <S,>(s: S) => s }));
+
 
 // Ohne automatisch angelegte Erinnerungsentwürfe: die Tests prüfen nur ihre eigenen Aktionen.
 const s: AppState = { ...refresh(createDemoState(), NOW), actions: [] };
