@@ -92,7 +92,7 @@ function appendNote(prev: string | undefined, text: string, at: Date): { notes?:
   return { notes };
 }
 
-const contactName = (s: AppState, id: string | undefined) => s.contacts.find((c) => c.id === id)?.name ?? id ?? 'unbekannt';
+const contactName = (s: AppState, id: string | null | undefined) => s.contacts.find((c) => c.id === id)?.name ?? id ?? 'unbekannt';
 
 /** Wendet eine MCP-Änderung an. `error` = abgelehnt, `unchanged` = nichts zu speichern. */
 export function applyMcpChange(s: AppState, change: McpChange, ctx: { newId: () => string; at: Date }): McpApply {

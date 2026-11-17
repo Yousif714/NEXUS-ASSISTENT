@@ -151,7 +151,7 @@ export function invoiceCandidates(s: AppState, jobId: string): Invoice[] {
   const linked = new Set(s.jobs.flatMap((j) => j.invoiceIds));
   const hasPlate = (i: Invoice) => (plate && plateInText(plate, (i.text ?? '').toUpperCase()) ? 1 : 0);
   return s.invoices
-    .filter((i) => i.contactId === job.contactId && i.company === 'zulassung' && i.status !== 'void' && !linked.has(i.id) && i.totalCents <= rest)
+    .filter((i) => job.contactId !== null && i.contactId === job.contactId && i.company === 'zulassung' && i.status !== 'void' && !linked.has(i.id) && i.totalCents <= rest)
     .sort((a, b) => hasPlate(b) - hasPlate(a) || b.issuedOn.localeCompare(a.issuedOn));
 }
 

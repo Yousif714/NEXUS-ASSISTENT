@@ -179,15 +179,31 @@ describe('myDigitalCar-CSV', () => {
     expect(again.state.jobs[0]).toMatchObject({ status: 'invoiced', priceCents: 8900, invoiceIds: ['i-1'], notes: 'bleibt', location: 'bottrop', portalStatus: 'Genehmigt' });
   });
 
-  test('Fehler ohne Halter oder Fahrzeug wird gezählt, der Rest kommt an', () => {
-    const r = applyMydigitalcarImport(createEmptyState(), csv([
-      line({ ...person, Halter_Np_Vorname: '', Halter_Np_Nachname: '', Halter_Unternehmen: '' }),
-      line({ ...person, Ex_Vorgangsnummer: '9003', FIN: '', Kennzeichen_Neu: '', Kennzeichen_Alt: '' }),
-      line({ ...person, Ex_Vorgangsnummer: '9004', Status: 'Fehler' }),
+  test('ohne Halter wird Fahrzeug und Auftrag angelegt, ohne Kontakt', () => {
+    const noName = { ...person, Ex_Vorgangsnummer: '9003', artDesVorfalls: 'AB', Status: 'Genehmigt', Halter_Np_Vorname: '', Halter_Np_Nachname: '', Halter_Unternehmen: '', FIN: 'WVWZZZ1KZAW000003', Kennzeichen_Neu: 'MD CI 300' };
+    const first = applyMydigitalcarImport(createEmptyState(), csv([
+      line(person),
+      line(noName),
+      line({ ...person, Ex_Vorgangsnummer: '9004', FIN: '', Kennzeichen_Neu: '', Kennzeichen_Alt: '' }),
     ]), seq(), at);
-    expect(r.errors.map((e) => e.message)).toEqual(['Halter fehlt', 'Weder FIN noch Kennzeichen']);
-    expect(r.state.jobs).toHaveLength(1);
-    expect(r.state.jobs[0]).toMatchObject({ portalStatus: 'Fehler', portalProblem: true, status: 'open' });
+    expect(first.errors.map((e) => e.message)).toEqual(['Weder FIN noch Kennzeichen']);
+    expect(first.contacts.created).toBe(1);
+    expect(first.jobs.created).toBe(2);
+    const bare = first.state.jobs.find((j) => mdcVorgang(j) === '9003');
+    expect(bare).toMatchObject({ contactId: null, service: 'Abmeldung', status: 'done', portalStatus: 'Genehmigt' });
+    expect(first.state.vehicles.find((v) => v.vin === 'WVWZZZ1KZAW000003')).toMatchObject({ contactId: null, plate: 'MD CI 300' });
+    const namedVehicle = first.state.vehicles.find((v) => v.vin === 'WVWZZZ1KZAW000001')!;
+    const again = applyMydigitalcarImport(first.state, csv([
+      line(person),
+      line(noName),
+      line({ ...noName, Ex_Vorgangsnummer: '9005', FIN: 'WVWZZZ1KZAW000001', Kennzeichen_Neu: '' }),
+    ]), seq(), at);
+    expect(again.jobs).toMatchObject({ created: 1, updated: 0, skipped: 2 });
+    expect(again.state.jobs.filter((j) => j.contactId === null)).toHaveLength(2);
+    expect(again.state.vehicles.find((v) => v.id === namedVehicle.id)?.contactId).toBe(namedVehicle.contactId);
+    const third = applyMydigitalcarImport(again.state, csv([line(person), line(noName)]), seq(), at);
+    expect(third.jobs.created).toBe(0);
+    expect(third.state.jobs).toHaveLength(again.state.jobs.length);
   });
 
   test('Portionen und gleicher Vorgang eines anderen Portals bleiben getrennt', () => {
