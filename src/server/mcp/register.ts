@@ -5,7 +5,9 @@ import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
 import { applyPortalImport, isPortalSource, PORTAL_LABEL, type PortalSource } from '@/domain/import/portal';
 import { deriveProposals } from '@/domain/import/proposals';
 import { applyMcpChange, MCP_ACTION_TYPES, type McpChange } from '@/domain/mcp-changes';
-import { getActionProvider, getRepos } from '@/server/registry';
+import { isFetchableMailbox } from '@/domain/connections';
+import { syncMailboxes } from '@/server/mail-sync';
+import { getActionProvider, getMailDeps, getRepos } from '@/server/registry';
 import { dispatchEvents, loadState } from '@/server/state-service';
 import { logMcpTool } from './log';
 import { contactName, matches, overview, pageOf, scrub, shapeContact, shapeContract, shapeInvoice, shapeJob, shapeMessage } from './view';
@@ -336,7 +338,7 @@ export function registerNexusTools(server: McpServer): void {
 
   server.registerTool('import_portal_csv', {
     title: 'Portal-CSV importieren',
-    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz ist registriert, die Spaltenzuordnung fehlt noch und es wird nichts geschrieben. Antwort nur Zähler, keine Rohdaten.',
+    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. Antwort nur Zähler, keine Rohdaten. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz: Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr (Anträge-Liste von dashboard.nextoz.de). Idempotent über Auftragsnummer ohne führendes #. Nr ist die Listenposition und keine ID. Kennzeichen Zufällig gilt als kein Kennzeichen. Fehlen FIN und Kennzeichen, wird der Vorgang trotzdem angelegt, ein Fahrzeug nur bei FIN oder echtem Kennzeichen. Halter fehlt in der Datei, der Auftrag bleibt ohne Kontakt. Fahrzeuge werden über FIN oder Kennzeichen mit bestehenden zusammengeführt, auch aus mydigitalcar.',
     inputSchema: z.object({
       source: z.enum(['mydigitalcar', 'nextoz']),
       csv: z.string().min(1).max(MDC_CSV_MAX_CHARS),
@@ -371,5 +373,29 @@ export function registerNexusTools(server: McpServer): void {
       errors: planned.errors.slice(0, 50),
       errorCount: planned.errors.length,
     });
+  });
+
+  server.registerTool('sync_mail', {
+    title: 'Postfach abrufen',
+    description: 'Ruft ein IMAP-Postfach ab oder alle eingerichteten (info@, privates Gmail und weitere). id optional: info_mail, gmail, icloud oder mail_<name>. Antwort: Anzahl neuer Nachrichten und Fehler je Postfach. Kein Mailinhalt, keine Passwörter.',
+    inputSchema: z.object({ id: z.string().min(1).max(48).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args) => {
+    if (args.id !== undefined && !isFetchableMailbox(args.id)) {
+      await logMcpTool('sync_mail', 'unbekanntes Postfach');
+      return jsonResult({ error: 'Unbekanntes Postfach' }, true);
+    }
+    try {
+      const repos = getRepos();
+      const result = await syncMailboxes(repos, getMailDeps(args.id ? { only: [args.id] } : {}));
+      await logMcpTool('sync_mail', `${result.added} neu`);
+      return jsonResult({
+        added: result.added,
+        mailboxes: result.mailboxes.map((m) => ({ id: m.id, outcome: m.outcome, added: m.added, ...(m.error ? { error: m.error } : {}) })),
+      });
+    } catch {
+      await logMcpTool('sync_mail', 'Abruf fehlgeschlagen');
+      return jsonResult({ error: 'Abruf fehlgeschlagen' }, true);
+    }
   });
 }

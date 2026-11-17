@@ -2,7 +2,7 @@ import type { ImportBatch, ImportedPayment } from './import/batch';
 import type { ContractDraft } from './import/contract-draft';
 import type { PortalListEntry } from './import/portal-list';
 import type { McpChange } from './mcp-changes';
-import type { Action, AssistantMessage, Call, Connection, ConnectionId, InvoiceReading, IsoDate, Job, MemberContract, Settings } from './types';
+import type { Action, AssistantMessage, Call, Company, Connection, ConnectionId, InvoiceReading, IsoDate, Job, MemberContract, Settings } from './types';
 import type { ActionOutput } from './actions/machine';
 
 /** Neue Lesung vom Server; `error` gesetzt = Fehlversuch. Ergebnis und Vertrag bestimmt der Reducer. */
@@ -43,6 +43,8 @@ export type StoreEvent =
   /** Nur Server: Ergebnis eines Abrufs (Stripe, Lexware). */
   | { type: 'importBatch'; connectionId: ConnectionId; batch: ImportBatch; cursor: string | null; complete: boolean; warning?: string }
   | { type: 'syncFailed'; connectionId: ConnectionId; error: string }
+  /** Nur Server: Postfach im Verbindungsstand anlegen oder beschriften. `error` gesetzt = Konfigurationsfehler, `null` hebt ihn auf. */
+  | { type: 'ensureMailbox'; id: ConnectionId; label: string; company: Company | null; error?: string | null }
   /** `contactId`: „Ja“ auf „Ist das … ?“ (Name-Treffer); sonst null. */
   | { type: 'confirmProposal'; proposalId: string; draft: ContractDraft; contactId: string | null }
   | { type: 'dismissProposal'; proposalId: string }

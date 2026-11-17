@@ -7,7 +7,8 @@ import { allowRequest, clientKey } from '@/server/rate-limit';
 import { readEnv } from '@/server/env';
 import { getRepos } from '@/server/registry';
 
-export const maxDuration = 60;
+// sync_mail wartet auf den Postfach-Abruf und teilt sich deshalb die 300-Sekunden-Grenze.
+export const maxDuration = 300;
 
 async function handle(req: Request): Promise<Response> {
   const env = readEnv();

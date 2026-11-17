@@ -1,10 +1,10 @@
 import type { AppState, Job } from '../types';
 import { applyMydigitalcarImport, mdcResultText, type MdcImportResult } from './mydigitalcar';
+import { applyNextozImport } from './nextoz';
 
 /**
- * Zulassungsportale als getrennte Quellen. Die CSV-Zuordnung hängt am Portal:
- * myDigitalCar ist hinterlegt, nextOZ ist registriert und wartet auf die eigene Zuordnung.
- * Nichts wird zwischen den Portalen zusammengeworfen.
+ * Zulassungsportale als getrennte Quellen. Jedes Portal hat seine eigene CSV-Zuordnung.
+ * Nichts wird zwischen den Portalen zusammengeworfen; Fahrzeuge treffen sich nur über FIN oder Kennzeichen.
  */
 
 export const PORTAL_SOURCES = ['mydigitalcar', 'nextoz'] as const;
@@ -19,25 +19,13 @@ export function isPortalSource(v: unknown): v is PortalSource {
   return v === 'mydigitalcar' || v === 'nextoz';
 }
 
-/** nextOZ-Importer kommt hier dazu, sobald die Spalten feststehen. Bis dahin `null`. */
-const IMPORTERS: Record<PortalSource, ((state: AppState, csv: string, newId: () => string, at: string) => MdcImportResult) | null> = {
+const IMPORTERS: Record<PortalSource, (state: AppState, csv: string, newId: () => string, at: string) => MdcImportResult> = {
   mydigitalcar: applyMydigitalcarImport,
-  nextoz: null,
+  nextoz: applyNextozImport,
 };
 
-export const NEXTOZ_UNMAPPED = 'Die Spaltenzuordnung für nextOZ ist noch nicht hinterlegt. Es wird nichts übernommen und nichts mit myDigitalCar vermischt.';
-
-const zero = () => ({ created: 0, updated: 0, skipped: 0 });
-
 export function applyPortalImport(state: AppState, source: PortalSource, csv: string, newId: () => string, at: string): MdcImportResult {
-  const run = IMPORTERS[source];
-  if (!run) {
-    return {
-      state, rows: 0, duplicates: 0, contacts: zero(), vehicles: zero(), jobs: zero(), errors: [],
-      error: source === 'nextoz' ? NEXTOZ_UNMAPPED : `Für ${PORTAL_LABEL[source]} ist keine Zuordnung hinterlegt.`,
-    };
-  }
-  return run(state, csv, newId, at);
+  return IMPORTERS[source](state, csv, newId, at);
 }
 
 export function portalResultText(source: PortalSource, r: MdcImportResult): string {

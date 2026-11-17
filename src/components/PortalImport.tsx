@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { useAppStore } from '@/data/store';
-import { now } from '@/domain/clock';
+import { formatIsoDe, now } from '@/domain/clock';
 import { decodeListFile } from '@/domain/import/portal-list';
 import { MDC_CSV_MAX_CHARS, MDC_PORTAL_STATUSES, matchesPortalFilter, mdcResultText, mdcVorgang } from '@/domain/import/mydigitalcar';
 import { applyPortalImport, matchesPortalSource, PORTAL_LABEL, PORTAL_SOURCES, type PortalSource } from '@/domain/import/portal';
@@ -25,9 +25,17 @@ export function jobPortalBadge(job: Job) {
   return job.portalSource ? <PortalBadge source={job.portalSource} /> : null;
 }
 
+export function portalVehicleTitle(v: { model: string; plate: string; vin: string }): string {
+  const plate = v.plate.trim();
+  if (plate) return `${v.model} · ${plate}`;
+  if (v.vin.trim()) return `${v.model} · FIN ${v.vin.trim()}`;
+  return v.model || 'Fahrzeug';
+}
+
 export function portalJobSubtitle(name: string, job: Job): string {
   const vorgang = mdcVorgang(job);
-  return [name, job.service, job.portalStatus, vorgang].filter(Boolean).join(' · ');
+  const date = job.requestedOn ? formatIsoDe(job.requestedOn) : '';
+  return [name, job.service, job.portalStatus, date, vorgang].filter(Boolean).join(' · ');
 }
 
 /** Filter: alle Portale, nur myDigitalCar oder nur nextOZ. */
@@ -62,7 +70,7 @@ export function filterPortalJobs(jobs: Job[], source: string, status: string): J
   return jobs.filter((j) => matchesPortalSource(j, source) && matchesPortalFilter(j, status));
 }
 
-/** CSV eines Portals wählen, prüfen und übernehmen. nextOZ bleibt sichtbar, solange die Zuordnung fehlt. */
+/** CSV eines Portals wählen, prüfen und übernehmen. myDigitalCar und nextOZ bleiben getrennte Quellen. */
 export function PortalCsvUpload({ source }: { source: PortalSource }) {
   const { state, dispatch } = useAppStore();
   const label = PORTAL_LABEL[source];
@@ -107,7 +115,7 @@ export function PortalCsvUpload({ source }: { source: PortalSource }) {
         <p className="list-row-subtitle">
           {source === 'mydigitalcar'
             ? 'Export von web.mydigitalcar.de (Semikolon, UTF-8). Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.'
-            : 'Eigene Quelle neben myDigitalCar. Sobald die Spaltenzuordnung feststeht, wird der Export hier übernommen.'}
+            : 'Anträge-Liste von dashboard.nextoz.de (Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr). Nr ist nur die Listenposition. Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.'}
         </p>
         <label className="field">{label}-Datei
           <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />

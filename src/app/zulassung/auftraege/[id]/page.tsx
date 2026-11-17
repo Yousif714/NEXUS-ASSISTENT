@@ -8,7 +8,7 @@ import { Figure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { PageHeader } from '@/components/PageHeader';
-import { PortalBadge } from '@/components/PortalImport';
+import { PortalBadge, portalVehicleTitle } from '@/components/PortalImport';
 import { Segmented } from '@/components/Segmented';
 import { INVOICE_STATUS_LABEL, JOB_STATUS_LABEL, LOCATION_LABEL } from '@/components/zulassung-labels';
 import { invoiceCandidates } from '@/data/selectors';
@@ -18,9 +18,9 @@ import { jobBilling } from '@/domain/billing';
 import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
 import { mdcVorgang } from '@/domain/import/mydigitalcar';
 import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
-import type { JobReceipt } from '@/domain/types';
+import { DOC_LABEL, jobActivity } from '@/domain/matching/job-messages';
 import { formatEuro } from '@/domain/money';
-import type { Job } from '@/domain/types';
+import type { Job, JobReceipt } from '@/domain/types';
 
 type Switchable = 'open' | 'waiting_customer' | 'done';
 const SWITCH_OPTIONS: { value: Switchable; label: string }[] = [
@@ -62,6 +62,8 @@ export default function JobPage() {
   const lastMessage = [...state.messages]
     .filter((m) => m.jobId === job.id || (job.contactId !== null && m.contactId === job.contactId && !m.jobId))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
+  const activity = jobActivity(job, state);
+  const docsReceived = [...new Set(activity.filter((e) => e.direction === 'in').flatMap((e) => e.docs))];
 
   const draftId = jobInvoiceDraftId(job.id);
   const draft = state.actions.find((a) => a.id === draftId);
@@ -73,10 +75,10 @@ export default function JobPage() {
 
   return (
     <>
-      <PageHeader title={job.service} subtitle={<>{name}{vehicle && <> · {vehicle.plate}</>}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
+      <PageHeader title={job.service} subtitle={<>{name}{vehicle?.plate.trim() ? <> · {vehicle.plate}</> : null}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
 
       <ListGroup title="Auftrag" testId="job-details">
-        <ListRow key="vehicle" title="Fahrzeug" value={vehicle ? `${vehicle.model} · ${vehicle.plate}` : '–'} />
+        <ListRow key="vehicle" title="Fahrzeug" testId="job-vehicle" value={vehicle ? portalVehicleTitle(vehicle) : '–'} />
         <ListRow key="service" title="Leistung" value={job.service} />
         <ListRow key="location" title="Standort" value={LOCATION_LABEL[job.location]} />
         <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
@@ -108,9 +110,11 @@ export default function JobPage() {
           <ListRow key="source" title="Portal" value={<span data-testid="job-portal-source">{PORTAL_LABEL[job.portalSource]}</span>} />
           <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(job) ?? '–'}</span>} />
           <ListRow key="pstatus" title="Portalstatus" value={<span data-testid="job-portal-status" className={job.portalProblem ? 'arrears-value' : undefined}>{job.portalStatus || '–'}</span>} />
+          {job.requestedOn ? <ListRow key="datum" title="Vorgangsdatum" testId="job-portal-date" value={formatIsoDe(job.requestedOn)} /> : null}
+          {job.portalData?.Fehler ? <ListRow key="fehler" title="Fehlertext" testId="job-portal-error" value={job.portalData.Fehler} /> : null}
           {job.portalProblem ? <ListRow key="problem" title="Problem" testId="job-portal-problem" value="Portal meldet Fehler oder Ablehnung" /> : null}
           {Object.entries(job.portalData ?? {})
-            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status')
+            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status' && k !== 'Auftragsnummer' && !(k === 'Datum' && job.requestedOn) && !(k === 'Fehler' && job.portalData?.Fehler))
             .map(([k, v]) => <ListRow key={k} title={k.replace(/_/g, ' ')} value={v} testId={`portal-field-${k}`} />)}
         </ListGroup>
       )}
@@ -125,6 +129,24 @@ export default function JobPage() {
         )}
         {job.doneAt && <p className="confirm-line">Erledigt am {formatBerlin(new Date(job.doneAt), 'dd.MM.yyyy, HH:mm')} Uhr</p>}
       </section>
+
+      {activity.length > 0 && (
+        <ListGroup title="WhatsApp zu diesem Auftrag" testId="job-whatsapp">
+          {docsReceived.length > 0 ? (
+            <ListRow key="docs" testId="job-docs-received" title="Erhaltene Unterlagen"
+              subtitle={<span className="wrap-text">{docsReceived.map((d) => DOC_LABEL[d]).join(' · ')}</span>} />
+          ) : null}
+          {activity.map((e) => (
+            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`job-msg-${e.messageId}`}
+              title={<span className="wrap-text">{e.body}</span>}
+              subtitle={<>
+                {e.kind === 'auftrag' ? 'Auftrag · ' : e.kind === 'nachweis' ? 'Nachweis · ' : ''}
+                {e.senderName ?? 'Unbekannt'}{e.senderPhone ? ` · ${e.senderPhone}` : ''}
+              </>}
+              value={formatBerlin(new Date(e.sentAt), 'dd.MM. HH:mm')} />
+          ))}
+        </ListGroup>
+      )}
 
       <ListGroup title="Letzte Kommunikation">
         {lastMessage ? (

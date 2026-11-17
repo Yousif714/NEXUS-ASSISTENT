@@ -64,6 +64,7 @@ function addressOf(m: Message): { phone?: string; email?: string } {
 }
 
 function displayName(m: Message, holder: string | null): string {
+  if (m.fromName?.trim()) return m.fromName.trim().slice(0, 200);
   if (m.profileName?.trim()) return m.profileName.trim().slice(0, 200);
   if (holder) return holder;
   if (m.channel === 'email') {
@@ -268,7 +269,7 @@ export function assignThread(state: AppState, threadId: string, contactId: strin
   let jobs = state.jobs;
   if (job) {
     const latest = messages.filter((m) => m.threadId === threadId).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
-    const name = (contactId && state.contacts.find((c) => c.id === contactId)?.name) || latest?.profileName || latest?.from || 'Unbekannt';
+    const name = (contactId && state.contacts.find((c) => c.id === contactId)?.name) || latest?.fromName || latest?.profileName || latest?.from || 'Unbekannt';
     let next = withActivity(job, {
       id: newId(), at, actor: 'owner', text: `Zuordnung geändert: ${name} (${latest ? channelLabel(latest.channel) : 'Nachricht'}).`,
       ...(latest ? { messageId: latest.id } : {}),

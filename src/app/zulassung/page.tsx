@@ -8,7 +8,7 @@ import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
 import { PageHeader } from '@/components/PageHeader';
 import { peopleSummary } from '@/components/people-summary';
-import { filterPortalJobs, jobPortalBadge, PORTAL_LIST_CAP, portalJobSubtitle, PortalCsvUpload, PortalSourceFilter, PortalStatusFilter } from '@/components/PortalImport';
+import { filterPortalJobs, jobPortalBadge, PORTAL_LIST_CAP, portalJobSubtitle, portalVehicleTitle, PortalCsvUpload, PortalSourceFilter, PortalStatusFilter } from '@/components/PortalImport';
 import { JOB_STATUS_LABEL, JOB_STATUS_ORDER } from '@/components/zulassung-labels';
 import { unallocatedBankPayments, zulassungCustomers, zulassungKpis } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
@@ -84,7 +84,7 @@ export default function ZulassungPage() {
               const v = state.vehicles.find((x) => x.id === j.vehicleId);
               return (
                 <ListRow key={j.id} href={`/zulassung/auftraege/${j.id}`} testId={`job-row-${j.id}`}
-                  title={<>{v ? `${v.model} · ${v.plate}` : j.service} {jobPortalBadge(j)}{j.draft && <span className="draft-badge">Entwurf</span>}</>}
+                  title={<>{v ? portalVehicleTitle(v) : j.service} {jobPortalBadge(j)}{j.draft && <span className="draft-badge">Entwurf</span>}</>}
                   subtitle={portalJobSubtitle(contactName(j), j)}
                   value={<span className="amount">{jobAmount(j)}</span>} />
               );

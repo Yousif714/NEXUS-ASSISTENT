@@ -115,9 +115,11 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
       const linked = contactIdForMail(counterpart, contacts) ?? matched.contactId;
       const done = old?.doneManually === true;
       const subject = next.subject || old?.subject;
-      const profileName = next.profileName || old?.profileName;
+      const fromName = next.fromName || old?.fromName || next.profileName || old?.profileName;
+      const profileName = next.profileName || old?.profileName || fromName;
       const attachments = next.attachments?.length ? next.attachments : old?.attachments;
       return {
+        ...(fromName ? { fromName } : {}),
         channel: next.channel,
         connectionId: next.connectionId,
         externalId: next.externalId,

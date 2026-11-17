@@ -5,7 +5,7 @@ import { detectJobsNotInvoiced } from '@/domain/detectors/jobs';
 import {
   MDC_COLUMNS, applyMydigitalcarImport, mapMdcStatus, mdcVorgang, parseMydigitalcarCsv, serviceName,
 } from '@/domain/import/mydigitalcar';
-import { NEXTOZ_UNMAPPED, applyPortalImport } from '@/domain/import/portal';
+import { applyPortalImport } from '@/domain/import/portal';
 import type { AppState, Job } from '@/domain/types';
 import { NOW_0930 } from '../helpers';
 
@@ -221,10 +221,10 @@ describe('myDigitalCar-CSV', () => {
     expect(mixed.state.jobs.filter((j) => j.externalRefs?.some((r) => r.connectionId === 'mydigitalcar' && r.externalId === '9001'))).toHaveLength(1);
   });
 
-  test('nextOZ ist eine eigene Quelle ohne Spaltenzuordnung und ohne Daten', () => {
+  test('nextOZ-Datei mit myDigitalCar-Kopfzeile schreibt nichts', () => {
     const s = createEmptyState();
     const r = applyPortalImport(s, 'nextoz', csv([line(person)]), seq(), at);
-    expect(r.error).toBe(NEXTOZ_UNMAPPED);
+    expect(r.error).toMatch(/Kopfzeile/);
     expect(r.state).toBe(s);
     expect(s.jobs).toHaveLength(0);
     expect(s.connections.find((c) => c.id === 'nextoz')).toMatchObject({ status: 'missing', label: 'nextOZ' });

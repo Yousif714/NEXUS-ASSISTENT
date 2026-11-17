@@ -85,7 +85,7 @@ export function mapMdcStatus(raw: string): { status: Job['status']; problem: boo
 export function isPortalProblem(job: { portalStatus?: string; portalProblem?: boolean }): boolean {
   if (job.portalProblem) return true;
   const norm = (job.portalStatus ?? '').trim().toLowerCase();
-  return norm === 'abgelehnt' || norm.startsWith('fehler');
+  return norm === 'abgelehnt' || norm.startsWith('fehler') || norm === 'signaturfehler' || norm === 'signatur abgelehnt';
 }
 
 /** `all` zeigt alles, `problem` nur Fehler und Abgelehnt, sonst exakter Rohstatus. */
@@ -96,6 +96,8 @@ export function matchesPortalFilter(job: { portalStatus?: string; portalProblem?
 }
 
 export function mdcVorgang(job: Pick<Job, 'externalRefs' | 'portalData' | 'portalSource'>): string | null {
+  const original = job.portalData?.Auftragsnummer?.trim();
+  if (job.portalSource === 'nextoz' && original) return original;
   const source = job.portalSource ?? CONNECTION;
   const id = job.externalRefs?.find((r) => r.connectionId === source)?.externalId;
   if (id && !id.startsWith('row:')) return id;
@@ -135,8 +137,8 @@ function fnv(s: string): string {
   return (h1 >>> 0).toString(16).padStart(8, '0') + (h2 >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Semikolon-CSV mit Anführungszeichen und Zeilenumbrüchen in Feldern. */
-function parseSemicolon(text: string): { rows: string[][]; columns: string[] } | { error: string } {
+/** Semikolon-CSV mit Anführungszeichen und Zeilenumbrüchen in Feldern. BOM wird entfernt. */
+export function parseSemicolonCsv(text: string): { rows: string[][]; columns: string[] } | { error: string } {
   const s = text.replace(/^\uFEFF/, '');
   const table: string[][] = [];
   let row: string[] = [];
@@ -173,7 +175,7 @@ export function parseMydigitalcarCsv(csv: string): MdcParseResult {
   if (csv.length > MDC_CSV_MAX_CHARS) {
     return { ok: false, error: 'Die Datei ist zu groß. Bitte in mehreren Portionen mit derselben Kopfzeile importieren.' };
   }
-  const table = parseSemicolon(csv);
+  const table = parseSemicolonCsv(csv);
   if ('error' in table) return { ok: false, error: table.error };
   const missing = MDC_COLUMNS.filter((c) => !table.columns.includes(c));
   if (missing.length > 0) return { ok: false, error: `Kopfzeile unvollständig, es fehlen: ${missing.join(', ')}` };

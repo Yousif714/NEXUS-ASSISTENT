@@ -111,7 +111,7 @@ describe('/api/mcp Werkzeuge', () => {
     expect(res.status, res.text).toBe(200);
     expect(res.cache).toContain('no-store');
     const names = ((res.json as { result?: { tools?: { name: string }[] } }).result?.tools ?? []).map((t) => t.name);
-    expect(names).toEqual(expect.arrayContaining(['list_contacts', 'overview', 'create_contact', 'complete_commitment', 'dismiss_proposal']));
+    expect(names).toEqual(expect.arrayContaining(['list_contacts', 'overview', 'create_contact', 'complete_commitment', 'dismiss_proposal', 'sync_mail']));
     expect(names.some((n) => n.includes('stripe') || n.includes('refund') || n.includes('passkey'))).toBe(false);
   });
 
@@ -137,6 +137,16 @@ describe('/api/mcp Werkzeuge', () => {
     expect(audits.some((a) => a.text === 'MCP create_contact')).toBe(true);
     expect(audits.some((a) => a.text.startsWith('MCP list_contacts'))).toBe(true);
     expect(state.contacts).toHaveLength(1);
+  });
+
+  test('sync_mail ohne Postfach meldet null neue Nachrichten und kein Geheimnis', async () => {
+    const res = await rpc('tools/call', { name: 'sync_mail', arguments: {} });
+    expect(res.status, res.text).toBe(200);
+    const body = JSON.parse(toolText(res.json)) as { added: number; mailboxes: unknown[]; error?: string };
+    expect(body.error).toBeUndefined();
+    expect(body.added).toBe(0);
+    expect(body.mailboxes).toEqual([]);
+    expect(res.text).not.toMatch(/password|passwort/i);
   });
 
   test('overview antwortet und ein unbekannter Kontakt wird abgelehnt', async () => {
