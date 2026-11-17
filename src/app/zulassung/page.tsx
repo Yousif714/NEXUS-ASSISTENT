@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import './zulassung.css';
 
+import { EmailFolder } from '@/components/EmailFolder';
 import { CountFigure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
@@ -121,6 +122,8 @@ export default function ZulassungPage() {
             ))}
           </ListGroup>
         )}
+
+        <EmailFolder />
 
         <section className="list-group zl-portals" aria-label="Portale und Import">
           <h2 className="list-group-title">Portale &amp; Import</h2>
