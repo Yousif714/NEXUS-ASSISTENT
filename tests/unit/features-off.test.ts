@@ -6,7 +6,7 @@ vi.mock('next/server', async (orig) => ({ ...(await orig<typeof import('next/ser
 import { POST } from '@/app/api/webhooks/whatsapp/route';
 import { createEmptyState } from '@/data/empty-state';
 import { detectReplies } from '@/domain/detectors/replies';
-import { WHATSAPP_IN_APP, visibleState } from '@/domain/features';
+import { PORTALS_IN_APP, WHATSAPP_IN_APP, visibleState } from '@/domain/features';
 import { getRepos, resetTestRepos } from '@/server/registry';
 import type { Message } from '@/domain/types';
 import { seed } from './takeover/setup';
@@ -22,7 +22,7 @@ describe('WhatsApp aus der App entfernt', () => {
   test('Schalter ist aus', () => expect(WHATSAPP_IN_APP).toBe(false));
 
   test('Anzeige-Zustand ohne WhatsApp, E-Mails bleiben', () => {
-    const s = { messages: [msg({ id: 'w1' }), msg({ id: 'e1', channel: 'email', connectionId: 'info_mail', from: 'kunde@example.de' })] };
+    const s = { ...createEmptyState(), messages: [msg({ id: 'w1' }), msg({ id: 'e1', channel: 'email', connectionId: 'info_mail', from: 'kunde@example.de' })] };
     expect(visibleState(s).messages.map((m) => m.id)).toEqual(['e1']);
   });
 
@@ -30,6 +30,34 @@ describe('WhatsApp aus der App entfernt', () => {
     const s = { ...createEmptyState(), messages: [msg({ id: 'w1' }), msg({ id: 'e1', channel: 'email', connectionId: 'info_mail', from: 'kunde@example.de', threadId: 'mail-1' })] };
     const out = detectReplies(s, new Date('2026-11-17T12:00:00.000Z'));
     expect(out.map((i) => i.dedupeKey)).toEqual(['reply:e1']);
+  });
+
+  test('Portale aus: Portal-Aufträge, -Fahrzeuge, reine Portal-Kunden und Portal-Verbindungen verschwinden; Rest bleibt', () => {
+    expect(PORTALS_IN_APP).toBe(false);
+    const base = createEmptyState();
+    const s = {
+      ...base,
+      contacts: [
+        { id: 'c-portal', company: 'zulassung' as const, kind: 'private' as const, name: 'Nur Portal', phones: [], emails: [], externalRefs: [{ connectionId: 'mydigitalcar' as const, externalId: 'h1' }] },
+        { id: 'c-lex', company: 'zulassung' as const, kind: 'dealer' as const, name: 'Lexware-Kunde', phones: [], emails: [], externalRefs: [{ connectionId: 'lexware_zulassung' as const, externalId: 'l1' }] },
+      ],
+      vehicles: [
+        { id: 'v-portal', contactId: 'c-portal', vin: 'WVWZZZ1KZAW000001', plate: 'BOT-A 1', model: 'Golf', externalRefs: [{ connectionId: 'nextoz' as const, externalId: 'n1' }] },
+        { id: 'v-own', contactId: 'c-lex', vin: 'WVWZZZ1KZAW000002', plate: 'BOT-A 2', model: 'Polo' },
+      ],
+      jobs: [
+        { id: 'j-portal', vehicleId: 'v-portal', contactId: 'c-portal', service: 'Ummeldung', location: 'online' as const, priceCents: 0, status: 'open' as const, doneAt: null, invoiceIds: [], portalSource: 'mydigitalcar' as const },
+        { id: 'j-own', vehicleId: 'v-own', contactId: 'c-lex', service: 'Zulassung', location: 'bottrop' as const, priceCents: 8900, status: 'open' as const, doneAt: null, invoiceIds: [] },
+      ],
+    };
+    const v = visibleState(s);
+    expect(v.jobs.map((j) => j.id)).toEqual(['j-own']);
+    expect(v.vehicles.map((x) => x.id)).toEqual(['v-own']);
+    expect(v.contacts.map((c) => c.id)).toEqual(['c-lex']);
+    expect(v.connections.map((c) => c.id)).not.toContain('mydigitalcar');
+    expect(v.connections.map((c) => c.id)).not.toContain('nextoz');
+    expect(v.connections.map((c) => c.id)).not.toContain('whatsapp_kunden');
+    expect(v.connections.map((c) => c.id)).toContain('lexware_zulassung');
   });
 
   describe('Webhook', () => {

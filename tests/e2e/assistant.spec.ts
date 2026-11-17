@@ -41,8 +41,8 @@ test('Alle Hinweise: nach Priorität gruppiert, Zahl stimmt mit Heute überein',
   await expect(page).toHaveURL(/\/hinweise/);
   // Next behält die vorige Seite versteckt im DOM: nur die Gruppen dieser Seite zählen.
   await expect(page.locator('[data-testid^="insights-"] [data-testid="insight-row"]')).toHaveCount(n);
-  await expect(page.getByTestId('insights-now').getByTestId('insight-row').first()).toBeVisible();
-  await expect(page.getByTestId('insights-today').locator('[data-key="commit:c-demir"]')).toBeVisible();
+  // Die Demo-Zusage an Herrn Demir stammt aus WhatsApp; WhatsApp ist aus.
+  await expect(page.locator('[data-key="commit:c-demir"]')).toHaveCount(0);
 });
 
 test('Abnahme 10: WhatsApp-Assistent', async ({ page }) => {
@@ -86,7 +86,8 @@ test('Verbindungen: Anleitung für Phase 2 je Verbindung', async ({ page }) => {
   await expect(bank).toContainText('Stand vor 10 Min.');
   await page.getByTestId('conn-help-bank_qonto').getByText('So verbindest du das (Phase 2)').click();
   await expect(page.getByTestId('conn-help-bank_qonto')).toContainText('QONTO_LOGIN');
-  await expect(page.getByText('So verbindest du das (Phase 2)')).toHaveCount(15);
+  // WhatsApp, myDigitalCar und nextOZ sind ausgeschaltet und erscheinen nicht.
+  await expect(page.getByText('So verbindest du das (Phase 2)')).toHaveCount(12);
 });
 
 test('Protokoll: jeder Eintrag, neueste zuerst, mit Demo-Etikett', async ({ page }) => {

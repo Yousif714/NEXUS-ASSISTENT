@@ -20,7 +20,7 @@ import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable, messageStand } from '@/domain/freshness';
 import { jobBilling } from '@/domain/billing';
 import { jobContactLabel, jobPortalSource } from '@/domain/import/portal';
-import { WHATSAPP_IN_APP } from '@/domain/features';
+import { PORTALS_IN_APP, WHATSAPP_IN_APP } from '@/domain/features';
 import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
 import { formatBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
@@ -73,14 +73,14 @@ export default function ZulassungPage() {
       <div className="zl-main">
       <div className="zl-jobs-head" id="auftraege">
         <h2 className="list-group-title">Aufträge</h2>
-        <section className="zl-filters" aria-label="Portalfilter" data-testid="portal-filters">
+        {PORTALS_IN_APP && <section className="zl-filters" aria-label="Portalfilter" data-testid="portal-filters">
           <PortalSourceFilter value={portal} onChange={setPortal} />
           <PortalStatusFilter value={portalStatus} onChange={setPortalStatus}
             statuses={[...new Set(state.jobs.map((j) => j.portalStatus).filter((s): s is string => !!s))]} />
-        </section>
+        </section>}
       </div>
 
-      {unbilled && (
+      {PORTALS_IN_APP && unbilled && (
         <p className="empty-card" data-testid="portal-unbilled-filter">
           Nur Portal-Aufträge, die erledigt und nicht abgerechnet sind. <a href="/zulassung">Alle Aufträge</a>
         </p>
@@ -144,13 +144,13 @@ export default function ZulassungPage() {
 
         <EmailFolder />
 
-        <section className="list-group zl-portals" aria-label="Portale und Import">
+        {PORTALS_IN_APP && <section className="list-group zl-portals" aria-label="Portale und Import">
           <h2 className="list-group-title">Portale &amp; Import</h2>
           <div className="zl-portal-list">
             <PortalCsvUpload source="mydigitalcar" />
             <PortalCsvUpload source="nextoz" />
           </div>
-        </section>
+        </section>}
       </aside>
       </div>
     </>

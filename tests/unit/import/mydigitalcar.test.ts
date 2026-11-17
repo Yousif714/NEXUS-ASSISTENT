@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { vi, describe, expect, test } from 'vitest';
 import { createEmptyState } from '@/data/empty-state';
 import { applyEvent } from '@/data/engine';
 import { detectJobsNotInvoiced } from '@/domain/detectors/jobs';
@@ -8,6 +8,9 @@ import {
 import { applyPortalImport } from '@/domain/import/portal';
 import type { AppState, Job } from '@/domain/types';
 import { NOW_0930 } from '../helpers';
+// Portal-Verhalten bei eingeschaltetem Schalter (in der App derzeit aus, siehe src/domain/features.ts).
+vi.mock('@/domain/features', async (orig) => ({ ...(await orig<typeof import('@/domain/features')>()), PORTALS_IN_APP: true }));
+
 
 const at = '2026-11-17T08:00:00.000Z';
 const seq = () => { let n = 0; return () => `id-${++n}`; };
