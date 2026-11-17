@@ -20,7 +20,7 @@ import { mdcVorgang } from '@/domain/import/mydigitalcar';
 import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
 import { DOC_LABEL, jobActivity } from '@/domain/matching/job-messages';
 import { formatEuro } from '@/domain/money';
-import type { Job } from '@/domain/types';
+import type { Job, JobReceipt } from '@/domain/types';
 
 type Switchable = 'open' | 'waiting_customer' | 'done';
 const SWITCH_OPTIONS: { value: Switchable; label: string }[] = [
@@ -29,6 +29,13 @@ const SWITCH_OPTIONS: { value: Switchable; label: string }[] = [
   { value: 'done', label: JOB_STATUS_LABEL.done },
 ];
 const isSwitchable = (s: Job['status']): s is Switchable => s === 'open' || s === 'waiting_customer' || s === 'done';
+
+function receiptLine(r: JobReceipt): string {
+  const who = r.phone || r.email || '';
+  const channel = r.channel === 'whatsapp' ? 'WhatsApp' : 'E-Mail';
+  const files = r.attachments.map((a) => a.filename || (a.kind === 'image' ? 'Bild' : 'Datei'));
+  return [channel, who, files.join(', ')].filter(Boolean).join(' · ');
+}
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,8 +86,27 @@ export default function JobPage() {
         {job.notes ? <ListRow key="notes" title="Notiz" subtitle={job.notes} /> : null}
       </ListGroup>
 
+      <ListGroup title="Absender" testId="job-sender" sectionId="job-sender" defaultOpen>
+        {(job.receipts ?? []).length === 0
+          ? <ListRow key="none" title="Noch kein erkannter Eingang." />
+          : job.receipts!.map((r) => (
+            <ListRow key={r.messageId} href={`/nachrichten/${encodeURIComponent(state.messages.find((m) => m.id === r.messageId)?.threadId ?? '')}`} testId={`job-receipt-${r.messageId}`}
+              title={<>{r.senderName} · {r.kind === 'order' ? 'Auftrag' : 'Nachweis'}</>}
+              subtitle={receiptLine(r)} />
+          ))}
+      </ListGroup>
+
+      <ListGroup title="Verlauf" testId="job-activity" sectionId="job-activity" defaultOpen>
+        {(job.activities ?? []).length === 0
+          ? <ListRow key="none" title="Noch kein Verlauf." />
+          : [...job.activities!].reverse().map((a) => (
+            <ListRow key={a.id} testId={`job-activity-${a.id}`} title={<span className="wrap-text">{a.text}</span>}
+              subtitle={`${a.actor === 'owner' ? 'Inhaber' : 'System'} · ${formatBerlin(new Date(a.at), 'dd.MM.yyyy, HH:mm')}`} />
+          ))}
+      </ListGroup>
+
       {job.portalSource && (
-        <ListGroup title={PORTAL_LABEL[job.portalSource]} testId="job-portal">
+        <ListGroup title={PORTAL_LABEL[job.portalSource]} testId="job-portal" sectionId="job-portal" defaultOpen={false}>
           <ListRow key="source" title="Portal" value={<span data-testid="job-portal-source">{PORTAL_LABEL[job.portalSource]}</span>} />
           <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(job) ?? '–'}</span>} />
           <ListRow key="pstatus" title="Portalstatus" value={<span data-testid="job-portal-status" className={job.portalProblem ? 'arrears-value' : undefined}>{job.portalStatus || '–'}</span>} />

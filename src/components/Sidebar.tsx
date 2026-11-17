@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { PRIMARY_NAV, SECONDARY_NAV, isActive, type NavItem } from './nav';
+import { CollapsibleSection } from './CollapsibleSection';
+import { NAV_GROUPS, isActive, type NavItem } from './nav';
 
 function Item({ item, pathname }: { item: NavItem; pathname: string }) {
   const { key, href, label, Icon } = item;
@@ -15,15 +16,19 @@ function Item({ item, pathname }: { item: NavItem; pathname: string }) {
   );
 }
 
-/** Seitenleiste ab 768px: Hauptbereiche plus Chat, Assistent, Verbindungen, Protokoll, Einstellungen. */
+/** Seitenleiste ab 768px. Gruppen lassen sich einklappen, der Zustand bleibt. */
 export function Sidebar() {
   const pathname = usePathname();
   return (
     <nav className="sidebar" data-testid="sidebar" aria-label="Navigation">
       <div className="sidebar-title">Nexus</div>
-      {PRIMARY_NAV.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
-      <div className="sidebar-section">Weitere</div>
-      {SECONDARY_NAV.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
+      {NAV_GROUPS.map((group) => (
+        <CollapsibleSection key={group.id} id={`nav-${group.id}`} title={group.label} count={group.items.length}
+          defaultOpen={group.defaultOpen || group.items.some((item) => isActive(item.href, pathname))}
+          testId={`nav-group-${group.id}`} variant="nav">
+          {group.items.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
+        </CollapsibleSection>
+      ))}
     </nav>
   );
 }

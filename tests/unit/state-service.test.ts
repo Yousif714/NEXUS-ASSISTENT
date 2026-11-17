@@ -201,7 +201,7 @@ describe('Zustands-Dienst', () => {
   });
 
   test('isClientEvent: nur erlaubte Ereignisse mit Grundform', () => {
-    expect(CLIENT_EVENTS.size).toBe(33);
+    expect(CLIENT_EVENTS.size).toBe(34);
     expect(isClientEvent({ type: 'approveAction', id: 'a-1', version: 1, via: 'app' })).toBe(true);
     expect(isClientEvent({ type: 'dismissInsight', key: 'reply:m-1' })).toBe(true);
     for (const type of ['actionExecuted', 'actionStarted', 'actionReconciled', 'resetDemo', 'simulateTransfer', 'importBatch', 'syncFailed', 'setConnectionStatus', 'assistantInbound', 'assistantOutbound', 'assistantButton', 'takeoverSetUp', 'takeoverPlanChanged', 'takeoverScheduleCanceled', 'takeoverCustomerMismatch', 'unbekannt']) {

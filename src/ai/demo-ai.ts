@@ -125,4 +125,14 @@ export const demoAI: AIProvider = {
   async detectCommitment(text, sentAt) {
     return detectCommitment(text, sentAt);
   },
+
+  async classifyIntake(text) {
+    const t = norm(text);
+    const proof = /nachweis|bescheinigung|bestaetigung|nextoz|mydigitalcar|wurde zugelassen/.test(t);
+    const order = /\bevb\b|\bzb\b|abmeld|ummeld|umschreib|bitte/.test(t);
+    if (proof && !order) return 'proof';
+    if (order && !proof) return 'order';
+    if (proof && order) return /nachweis|wurde zugelassen|bestaetigung der zulassungsstelle/.test(t) ? 'proof' : 'order';
+    return 'none';
+  },
 };

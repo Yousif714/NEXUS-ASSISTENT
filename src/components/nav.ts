@@ -21,7 +21,19 @@ export const SECONDARY_NAV: NavItem[] = [
   { key: 'einstellungen', href: '/einstellungen', label: 'Einstellungen', Icon: IconGear },
 ];
 
-/** Aktiver Bereich für einen Pfad: Heute umfasst Startseite und Hinweise. */
+export type NavGroup = { id: string; label: string; items: NavItem[]; defaultOpen: boolean };
+
+const byKey = (key: string) => SECONDARY_NAV.find((item) => item.key === key)!;
+
+/** Gruppen für die Seitenleiste und das Menü „Mehr“. Heute und Arbeit starten offen. */
+export const NAV_GROUPS: NavGroup[] = [
+  { id: 'heute', label: 'Heute', defaultOpen: true, items: [PRIMARY_NAV[0]] },
+  { id: 'arbeit', label: 'Arbeit', defaultOpen: true, items: [PRIMARY_NAV[1], PRIMARY_NAV[2], PRIMARY_NAV[3]] },
+  { id: 'assistent', label: 'Assistent', defaultOpen: false, items: [byKey('chat'), byKey('assistent')] },
+  { id: 'system', label: 'System', defaultOpen: false, items: [byKey('verbindungen'), byKey('protokoll'), byKey('einstellungen')] },
+];
+
+/** Aktiver Bereich für einen Pfad: Heute umfasst Startseite und Hinweise, Nachrichten die Unterhaltungen. */
 export function isActive(href: string, pathname: string): boolean {
   if (href === '/') return pathname === '/' || pathname.startsWith('/hinweise');
   return pathname === href || pathname.startsWith(`${href}/`);

@@ -1,3 +1,4 @@
+import { activityForNote } from './intake/apply';
 import { validPhone } from './matching/messages';
 import type { Action, ActionType, AppState, Commitment, Company, Contact } from './types';
 
@@ -179,7 +180,7 @@ export function applyMcpChange(s: AppState, change: McpChange, ctx: { newId: () 
         if (change.contactId && change.contactId !== job.contactId) return fail(s, 'Auftrag gehört zu einem anderen Kontakt');
         const n = appendNote(job.notes, note, ctx.at);
         if (n.error || !n.notes) return fail(s, n.error ?? 'Notiz ist leer');
-        const jobs = s.jobs.map((j) => (j.id === job.id ? { ...j, notes: n.notes } : j));
+        const jobs = s.jobs.map((j) => (j.id === job.id ? activityForNote({ ...j, notes: n.notes }, note, ctx.at.toISOString(), ctx.newId()) : j));
         return { state: { ...s, jobs }, text: `Notiz zum Auftrag: ${contactName(s, job.contactId)}`, id: job.id };
       }
       if (!change.contactId) return fail(s, 'Notiz braucht einen Kontakt oder einen Auftrag');

@@ -39,9 +39,9 @@ export default function InboxPage() {
       <PageHeader title="Nachrichten" subtitle={waiting > 0 ? `${waiting} warten auf Antwort` : 'Alles beantwortet'} />
 
       {newOrders.length > 0 && (
-        <ListGroup title="Neu aus WhatsApp – noch kein Auftrag" testId="inbox-new-orders">
+        <ListGroup title="Neu aus WhatsApp – noch kein Auftrag" testId="inbox-new-orders" sectionId="inbox-new-orders" defaultOpen>
           {newOrders.map((e) => (
-            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`new-order-${e.messageId}`}
+            <ListRow key={e.messageId} href={`/nachrichten/${encodeURIComponent(e.threadId)}`} testId={`new-order-${e.messageId}`}
               title={<span className="wrap-text">{e.body}</span>}
               subtitle={<span className="wrap-text">
                 {e.kind === 'auftrag' ? 'Auftrag' : 'Nachweis'}{e.docs.length ? ` (${e.docs.map((d) => DOC_LABEL[d]).join(', ')})` : ''}
@@ -67,7 +67,7 @@ export default function InboxPage() {
         <ul className="inbox-list" data-testid="inbox-list">
           {shown.map((r) => (
             <li key={`${r.channel}|${r.threadId}`}>
-              <Link href={`/nachrichten/${r.threadId}`} className="inbox-row" data-testid="inbox-row"
+              <Link href={`/nachrichten/${encodeURIComponent(r.threadId)}`} className="inbox-row" data-testid="inbox-row"
                 data-waiting={r.waitingHours !== null} data-overdue={r.overdue}>
                 <span className="inbox-avatar" aria-hidden="true">{initialsOf(r.name)}</span>
                 <span className="inbox-main">

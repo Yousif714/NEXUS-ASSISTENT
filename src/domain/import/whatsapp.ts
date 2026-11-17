@@ -1,6 +1,7 @@
 import type { ImportedMessage } from '@/domain/import/batch';
 import { emptyBatch } from '@/domain/import/batch';
 import { toE164 } from '@/domain/matching/messages';
+import type { MessageAttachment } from '@/domain/types';
 
 /** Kunden-WhatsApp des Zulassungsdienstes. Nur eingehend, nichts wird gesendet. */
 export const WHATSAPP_KUNDEN = 'whatsapp_kunden' as const;
@@ -107,13 +108,34 @@ function readBody(m: Obj): string | null {
   return null;
 }
 
-/** WhatsApp-Profilnamen aus `value.contacts` (wa_id → Name), Nummer in E.164. */
+
+/** Metadaten eines Mediums. Die ID bleibt am Anhang, nie im Text, und es wird nichts abgerufen. */
+function readAttachment(m: Obj): MessageAttachment | null {
+  const type = str(m.type) ?? '';
+  if (!MEDIA[type]) return null;
+  const media = isObj(m[type]) ? m[type] : null;
+  if (!media) return null;
+  const kind = (type === 'image' || type === 'video' || type === 'audio' || type === 'document' || type === 'sticker' ? type : 'other') as MessageAttachment['kind'];
+  const filename = str(media.filename);
+  const mime = str(media.mime_type);
+  const mediaId = str(media.id);
+  const caption = str(media.caption);
+  return {
+    kind,
+    ...(filename ? { filename } : {}),
+    ...(mime ? { mime } : {}),
+    ...(mediaId ? { mediaId } : {}),
+    ...(caption ? { caption } : {}),
+  };
+}
+
+/** WhatsApp-Profilnamen. Nimmt die Kontaktliste oder das ganze `value` (Feld `contacts`). */
 function profileNames(list: unknown): Map<string, string> {
   const names = new Map<string, string>();
-  if (!Array.isArray(list)) return names;
-  for (const c of list) {
+  const items = Array.isArray(list) ? list : isObj(list) && Array.isArray(list.contacts) ? list.contacts : [];
+  for (const c of items) {
     if (!isObj(c)) continue;
-    const name = isObj(c.profile) ? str(c.profile.name)?.trim().slice(0, 120) : undefined;
+    const name = isObj(c.profile) ? str(c.profile.name)?.trim().slice(0, 200) : undefined;
     const phone = e164(str(c.wa_id) ?? '');
     if (name && phone) names.set(phone, name);
   }
@@ -141,6 +163,9 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
     } else {
       const direction = prev.direction === 'out' || next.direction === 'out' ? 'out' : 'in';
       const fromEcho = direction === 'out' && next.direction !== 'out';
+      const fromName = next.fromName || prev.fromName;
+      const profileName = next.profileName || prev.profileName || fromName;
+      const attachments = next.attachments?.length ? next.attachments : prev.attachments;
       found.set(next.externalId, {
         ...next,
         direction,
@@ -152,7 +177,9 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
         needsReply: direction === 'out' ? false : next.needsReply,
         sentAt: next.sentAt || prev.sentAt,
         threadId: next.threadId || prev.threadId,
-        ...(next.fromName || prev.fromName ? { fromName: next.fromName || prev.fromName } : {}),
+        ...(fromName ? { fromName } : {}),
+        ...(profileName ? { profileName } : {}),
+        ...(attachments?.length ? { attachments } : {}),
       });
     }
     if (!cursor || next.sentAt > cursor) cursor = next.sentAt;
@@ -177,6 +204,8 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
     if (bodyRaw === null || bodyRaw.trim() === '') return null;
     const seen = fromHistory && isObj(m.history_context) && (m.history_context.status === 'read' || m.history_context.status === 'played');
     const threadId = (customer || customerRaw.trim() || externalId).slice(0, 200);
+    const attachment = readAttachment(m);
+    const profileName = direction === 'in' ? names.get(from) ?? names.get(customer) ?? names.get(customerRaw) : undefined;
     return {
       channel: 'whatsapp',
       connectionId: WHATSAPP_KUNDEN,
@@ -188,7 +217,8 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       body: bodyRaw.replace(/\u0000/g, '').slice(0, 2_400),
       sentAt,
       needsReply: direction === 'in' && !seen,
-      ...(direction === 'in' && from && names.get(from) ? { fromName: names.get(from) } : {}),
+      ...(profileName ? { fromName: profileName, profileName } : {}),
+      ...(attachment ? { attachments: [attachment] } : {}),
     };
   };
 
@@ -201,7 +231,7 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
     }
   };
 
-  const takeHistory = (history: unknown, business: string) => {
+  const takeHistory = (history: unknown, business: string, names: Map<string, string>) => {
     historySeen = true;
     if (!Array.isArray(history)) return;
     for (const chunk of history) {
@@ -209,10 +239,10 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       const meta = isObj(chunk.metadata) ? chunk.metadata : {};
       if (typeof meta.progress === 'number' && meta.progress < 100) complete = false;
       const threads = Array.isArray(chunk.threads) ? chunk.threads : [];
-      if (threads.length === 0 && Array.isArray(chunk.messages)) takeList(chunk.messages, business, 'auto', '', true);
+      if (threads.length === 0 && Array.isArray(chunk.messages)) takeList(chunk.messages, business, 'auto', '', true, names);
       for (const thread of threads) {
         if (!isObj(thread)) continue;
-        takeList(thread.messages, business, 'auto', str(thread.id) ?? '', true);
+        takeList(thread.messages, business, 'auto', str(thread.id) ?? '', true, names);
       }
     }
   };
@@ -236,11 +266,11 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       if (opts.phoneNumberId && phoneId !== opts.phoneNumberId) continue;
       relevant = true;
       const business = str(meta.display_phone_number) ?? '';
-      if (field === 'history' || Array.isArray(value.history)) takeHistory(value.history, business);
+      const names = profileNames(value.contacts);
+      if (field === 'history' || Array.isArray(value.history)) takeHistory(value.history, business, names);
       const echoes = Array.isArray(value.message_echoes) ? value.message_echoes : field === 'smb_message_echoes' && Array.isArray(value.echoes) ? value.echoes : null;
-      if (echoes) takeList(echoes, business, 'out', '', false);
-      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false, profileNames(value.contacts));
-      // statuses und state_sync (Kontakte der App): zur Kenntnis, ohne neue Zeilen.
+      if (echoes) takeList(echoes, business, 'out', '', false, names);
+      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false, names);
     }
   }
 

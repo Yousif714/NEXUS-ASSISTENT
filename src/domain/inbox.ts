@@ -47,7 +47,8 @@ export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: 
     const contactId = list.findLast((m) => m.contactId)?.contactId ?? null;
     const contact = contactId ? s.contacts.find((c) => c.id === contactId) : undefined;
     const phone = last.channel === 'whatsapp' ? validPhone(counterpart) : null;
-    const fromName = incoming.findLast((m) => m.fromName)?.fromName;
+    const named = incoming.findLast((m) => m.fromName || m.profileName);
+    const fromName = named?.fromName || named?.profileName;
     const waiting = openReplies(list, at, 0);
     const waitingHours = waiting.length ? Math.max(...waiting.map((w) => w.waitingHours)) : null;
     const classes = incoming.map((m) => classifyJobMessage(m.body));

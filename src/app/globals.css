@@ -1960,3 +1960,89 @@ a.task-body:active {
 .customer-search {
   margin: 0 16px 20px;
 }
+
+/* Einklappbare Abschnitte: Pfeil und Zähler bleiben im Kopf. */
+.collapse-summary,
+.nav-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.collapse-summary::-webkit-details-marker,
+.nav-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapse-title {
+  flex: 1;
+  margin: 0;
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.08px;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.collapse-chevron {
+  flex: none;
+  color: var(--label-3);
+  transition: transform 150ms var(--ease-out);
+}
+
+.fold[open] .collapse-chevron,
+.nav-group[open] .collapse-chevron {
+  transform: rotate(90deg);
+}
+
+.collapse-count {
+  flex: none;
+  min-width: 1.5rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.collapse-body .list-group {
+  margin-bottom: 0;
+}
+
+.nav-group {
+  margin: 0 0 4px;
+}
+
+.nav-group-summary {
+  padding: 4px 8px;
+}
+
+.nav-group-label {
+  flex: 1;
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nav-group-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label-2);
+  font-size: 12px;
+  font-weight: 600;
+}

@@ -10,7 +10,7 @@ import { syncMailboxes } from '@/server/mail-sync';
 import { getActionProvider, getMailDeps, getRepos } from '@/server/registry';
 import { dispatchEvents, loadState } from '@/server/state-service';
 import { logMcpTool } from './log';
-import { contactName, matches, overview, pageOf, scrub, shapeContact, shapeContract, shapeInvoice } from './view';
+import { contactName, matches, overview, pageOf, scrub, shapeContact, shapeContract, shapeInvoice, shapeJob, shapeMessage } from './view';
 
 type Page = { query?: string; limit?: number; offset?: number; company?: 'nexus' | 'zulassung' };
 
@@ -163,16 +163,31 @@ export function registerNexusTools(server: McpServer): void {
     return { item: scrub(item) };
   });
 
-  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender, Kanal). channel ist whatsapp oder email.', listed, async (args) => {
+  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender, Kanal). channel ist whatsapp oder email. Enthält Absender und Erkennung (Auftrag oder Nachweis).', listed, async (args) => {
     const s = await current();
-    const rows = s.messages.filter((m) => matches(args.query, [m.body, m.from, m.to, contactName(s, m.contactId), m.channel]));
-    return paged(rows.map((m) => scrub(m)), args);
+    const rows = s.messages.filter((m) => matches(args.query, [m.body, m.from, m.to, m.profileName, m.intake?.kind, contactName(s, m.contactId), m.channel]));
+    return paged(rows.map((m) => shapeMessage(s, m)), args);
   });
-  read('get_message', 'Nachricht lesen', 'Eine Nachricht. channel ist whatsapp oder email.', byId, async (args) => {
+  read('get_message', 'Nachricht lesen', 'Eine Nachricht. channel ist whatsapp oder email. sender ist der Absender, intake die Erkennung als Auftrag oder Nachweis.', byId, async (args) => {
     const s = await current();
     const item = s.messages.find((m) => m.id === args.id);
     if (!item) throw new McpToolError('Nicht gefunden');
-    return { item: scrub(item) };
+    return { item: shapeMessage(s, item) };
+  });
+
+  read('list_jobs', 'Vorgänge auflisten', 'Aufträge und Nachweise suchen (Leistung, Kennzeichen, FIN, Portal, Absender). portalSource ist mydigitalcar oder nextoz. activities ist der Verlauf.', listed, async (args) => {
+    const s = await current();
+    const rows = s.jobs.filter((j) => {
+      const vehicle = s.vehicles.find((v) => v.id === j.vehicleId);
+      return matches(args.query, [j.service, j.portalSource, j.portalStatus, j.origin, vehicle?.plate, vehicle?.vin, vehicle?.model, contactName(s, j.contactId), ...(j.receipts ?? []).map((r) => r.senderName)]);
+    });
+    return paged(rows.map((j) => shapeJob(s, j)), args);
+  });
+  read('get_job', 'Vorgang lesen', 'Ein Auftrag oder Nachweis mit Absender (receipts), Verlauf (activities) und Portalquelle. myDigitalCar und nextOZ bleiben getrennt.', byId, async (args) => {
+    const s = await current();
+    const item = s.jobs.find((j) => j.id === args.id);
+    if (!item) throw new McpToolError('Nicht gefunden');
+    return { item: shapeJob(s, item) };
   });
 
   read('list_vehicles', 'Fahrzeuge auflisten', 'Fahrzeuge suchen (Kennzeichen, FIN, Modell).', listed, async (args) => {

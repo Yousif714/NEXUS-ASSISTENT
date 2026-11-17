@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensureOpen } from './expand';
 
 const QUESTIONS = ['Wer ist bei NEXUS überfällig?', 'Was ist heute noch offen?', 'Was fehlt für SEELE?', 'Was ist mit dem Auftrag von Autohaus Schmidt?', 'Wie viel Geld kommt diesen Monat noch rein?'];
 
@@ -27,7 +28,7 @@ test('Abnahme 9: gebrochene Zusage', async ({ page }) => {
   await page.goto('/?reset=1');
   await expect(page.getByTestId('all-insights-link')).toBeVisible();
   const overdue = page.getByTestId('feed-ueberfaellig');
-  await overdue.locator('summary').click();
+  await ensureOpen(overdue);
   await expect(overdue.getByText('Herr Demir').first()).toBeVisible();
   await expect(overdue.getByText(/Rechnung/).first()).toBeVisible();
 });
@@ -85,7 +86,7 @@ test('Verbindungen: Anleitung für Phase 2 je Verbindung', async ({ page }) => {
   await expect(bank).toContainText('Stand vor 10 Min.');
   await page.getByTestId('conn-help-bank_qonto').getByText('So verbindest du das (Phase 2)').click();
   await expect(page.getByTestId('conn-help-bank_qonto')).toContainText('QONTO_LOGIN');
-  await expect(page.getByText('So verbindest du das (Phase 2)')).toHaveCount(13);
+  await expect(page.getByText('So verbindest du das (Phase 2)')).toHaveCount(15);
 });
 
 test('Protokoll: jeder Eintrag, neueste zuerst, mit Demo-Etikett', async ({ page }) => {

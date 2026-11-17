@@ -14,10 +14,10 @@ import { useAI } from '@/data/ai-client';
 import { useAppStore } from '@/data/store';
 import { replyAction, replyActionId } from '@/domain/action-factory';
 import { formatBerlin, now, todayBerlin } from '@/domain/clock';
-import type { Action, AppState, Contact, Message } from '@/domain/types';
+import { contractsOfContact, membershipContractOf } from '@/domain/ledger/contracts';
 import { DOC_LABEL, classifyJobMessage, jobActivity } from '@/domain/matching/job-messages';
 import { toE164 } from '@/domain/matching/messages';
-import { contractsOfContact, membershipContractOf } from '@/domain/ledger/contracts';
+import type { Action, AppState, Contact, Job, Message, MessageAttachment } from '@/domain/types';
 
 const CHANNEL_LABEL: Record<Message['channel'], string> = { whatsapp: 'WhatsApp', email: 'E-Mail' };
 
@@ -36,6 +36,14 @@ function BackLink() {
   );
 }
 
+function decodeThreadId(id: string): string {
+  try {
+    return decodeURIComponent(id);
+  } catch {
+    return id;
+  }
+}
+
 /** Erkannte Unterlagen bzw. Auftrag als kleine Marken unter einer eingehenden Blase. */
 function MessageTags({ body, incoming }: { body: string; incoming: boolean }) {
   if (!incoming) return null;
@@ -50,8 +58,28 @@ function MessageTags({ body, incoming }: { body: string; incoming: boolean }) {
   );
 }
 
+function AttachmentView({ file }: { file: MessageAttachment }) {
+  const name = file.filename || (file.kind === 'image' ? 'Bild' : file.kind === 'document' ? 'Dokument' : 'Datei');
+  if (file.kind === 'image') {
+    return (
+      <figure className="wa-media" data-testid="wa-media">
+        <div className="wa-media-frame" aria-hidden="true">{name}</div>
+        <figcaption>{file.caption || name}{file.mime ? ` · ${file.mime}` : ''}</figcaption>
+      </figure>
+    );
+  }
+  return <p className="wa-file" data-testid="wa-file">{name}{file.mime ? ` · ${file.mime}` : ''}{file.caption ? ` · ${file.caption}` : ''}</p>;
+}
+
+function jobOption(job: Job, state: AppState): string {
+  const plate = job.vehicleId ? state.vehicles.find((v) => v.id === job.vehicleId)?.plate : undefined;
+  const mark = job.draft ? 'Entwurf' : job.portalSource === 'nextoz' ? 'nextOZ' : job.portalSource === 'mydigitalcar' ? 'myDigitalCar' : '';
+  return [job.service, plate, mark].filter(Boolean).join(' · ');
+}
+
 export default function ThreadPage() {
-  const { threadId } = useParams<{ threadId: string }>();
+  const { threadId: rawId } = useParams<{ threadId: string }>();
+  const threadId = decodeThreadId(rawId);
   const { state, dispatch, mode } = useAppStore();
   const ai = useAI();
   const at = now();
@@ -63,7 +91,8 @@ export default function ThreadPage() {
   const contactId = messages.find((m) => m.contactId)?.contactId ?? null;
   const contact = state.contacts.find((c) => c.id === contactId) ?? null;
   const threadSource = { messages, vehicles: state.vehicles, contacts: state.contacts };
-  const jobs = state.jobs.filter((j) => jobActivity(j, threadSource).length > 0);
+  const jobs = state.jobs.filter((j) => jobActivity(j, threadSource).length > 0 || messages.some((m) => m.jobId === j.id));
+  const linkedJobId = [...messages].reverse().find((m) => m.jobId)?.jobId ?? '';
 
   const actionId = lastIn ? replyActionId(lastIn.id) : null;
   const stored = state.actions.find((a) => a.id === actionId);
@@ -71,6 +100,8 @@ export default function ThreadPage() {
 
   const [draft, setDraft] = useState<{ forId: string; text: string } | null>(null);
   const [later, setLater] = useState(false);
+  const [assignContact, setAssignContact] = useState(contactId ?? '');
+  const [assignJob, setAssignJob] = useState(linkedJobId);
 
   useEffect(() => {
     if (!needsDraft || !lastIn || draft?.forId === lastIn.id) return;
@@ -94,7 +125,8 @@ export default function ThreadPage() {
     );
   }
 
-  const fromName = messages.findLast((m) => m.direction === 'in' && m.fromName)?.fromName;
+  const fromName = [...messages].reverse().find((m) => m.direction === 'in' && (m.fromName || m.profileName))?.fromName
+    ?? [...messages].reverse().find((m) => m.profileName)?.profileName;
   const name = contact?.name ?? fromName ?? lastIn?.from ?? last.to;
   const channel = (lastIn ?? last).channel;
   const rawPhone = channel === 'whatsapp' ? toE164(lastIn?.from ?? last.to) : '';
@@ -105,7 +137,6 @@ export default function ThreadPage() {
     action = replyAction({ lastIn, contact, threadId, text: draft.text, at, isDemo: mode === 'demo' });
   }
 
-  // Die Aktion wird erst beim ersten Ändern oder Senden gespeichert.
   const ensureStored = (a: Action) => {
     if (!stored) dispatch({ type: 'createAction', action: a });
   };
@@ -123,6 +154,7 @@ export default function ThreadPage() {
     return todayBerlin(d) === today ? `Heute ${formatBerlin(d, 'HH:mm')}` : formatBerlin(d, 'dd.MM. HH:mm');
   };
   const contactLink = contact && contactHref(state, contact);
+  const jobChoices = [...state.jobs].sort((a, b) => Number(b.contactId === contact?.id) - Number(a.contactId === contact?.id) || a.service.localeCompare(b.service, 'de'));
 
   return (
     <>
@@ -137,7 +169,10 @@ export default function ThreadPage() {
           <Fragment key={p.item.id}>
             {p.stamp && <TimeStamp dateTime={p.item.sentAt}>{time(p.item)}</TimeStamp>}
             <li className="imsg-row" data-side={p.side} data-first={p.first}>
-              <Bubble side={p.side} tail={p.tail}><RichText text={p.item.body} /></Bubble>
+              <Bubble side={p.side} tail={p.tail}>
+                <RichText text={p.item.body} />
+                {p.item.attachments?.map((file, i) => <AttachmentView key={file.mediaId ?? file.filename ?? i} file={file} />)}
+              </Bubble>
               <MessageTags body={p.item.body} incoming={p.item.direction === 'in'} />
             </li>
           </Fragment>
@@ -147,7 +182,7 @@ export default function ThreadPage() {
       {(jobs.length > 0 || contactLink) && (
         <ListGroup>
           {jobs.map((job) => {
-            const vehicle = state.vehicles.find((v) => v.id === job.vehicleId);
+            const vehicle = job.vehicleId ? state.vehicles.find((v) => v.id === job.vehicleId) : undefined;
             return (
               <ListRow key={job.id} href={`/zulassung/auftraege/${job.id}`} testId={`thread-job-${job.id}`} title={`Auftrag: ${job.service}`}
                 subtitle={[vehicle && `${vehicle.model} · ${vehicle.plate}`, job.portalStatus].filter(Boolean).join(' · ') || undefined} />
@@ -156,6 +191,27 @@ export default function ThreadPage() {
           {contact && contactLink && <ListRow key="contact" href={contactLink} title={contact.name} subtitle="Kontakt ansehen" />}
         </ListGroup>
       )}
+
+      <form className="wa-assign" data-testid="wa-assign" onSubmit={(e) => {
+        e.preventDefault();
+        dispatch({ type: 'assignThread', threadId, contactId: assignContact || null, jobId: assignJob || null });
+      }}>
+        <label className="field">Kontakt
+          <select value={assignContact} data-testid="wa-contact" onChange={(e) => setAssignContact(e.target.value)}>
+            <option value="">Nicht zugeordnet</option>
+            {state.contacts.filter((c) => c.company === 'zulassung' || c.id === assignContact).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">Auftrag
+          <select value={assignJob} data-testid="wa-job" onChange={(e) => setAssignJob(e.target.value)}>
+            <option value="">Keiner</option>
+            {jobChoices.map((j) => <option key={j.id} value={j.id}>{jobOption(j, state)}</option>)}
+          </select>
+        </label>
+        <button type="submit" className="btn btn-secondary">Zuordnung speichern</button>
+      </form>
 
       {lastIn && (stored || last.direction === 'in') && (
         later ? (

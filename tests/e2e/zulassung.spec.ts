@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensureOpen } from './expand';
 
 import { formatEuro } from '@/domain/money';
 
@@ -41,8 +42,11 @@ test('Übersicht: Tageszahlen, Aufträge nach Status, Kundenliste', async ({ pag
   await expect(page.getByTestId('kpi-open')).toHaveText('0');
   await expect(page.getByTestId('kpi-waiting')).toHaveText('1');
   await expect(page.getByTestId('money-card-zulassung')).toBeVisible();
+  await ensureOpen(page.getByTestId('jobs-waiting_customer'));
   await expect(page.getByTestId('jobs-waiting_customer').getByTestId('job-row-j-schmidt-1')).toBeVisible();
+  await ensureOpen(page.getByTestId('jobs-done'));
   await expect(page.getByTestId('jobs-done').getByTestId('job-row-j-mueller-1')).toBeVisible();
+  await ensureOpen(page.getByTestId('customers'));
   await expect(page.getByTestId('customers').locator('[data-testid^="customer-row-"]')).toHaveCount(0);
   const card = page.getByTestId('customers-link');
   await expect(card).toContainText('überfällig');
@@ -95,6 +99,7 @@ test('Kunde: Fahrzeuge, Aufträge, offene Rechnungen, letzte Nachrichten', async
   await expect(page.getByTestId('invoice-i-z-290')).toContainText(formatEuro(39000));
   await expect(page.getByTestId('invoice-i-z-290')).toContainText('überfällig');
   await expect(page.getByTestId('invoice-i-z-311')).toContainText('offen');
+  await ensureOpen(page.getByTestId('customer-jobs'));
   await page.getByTestId('job-row-j-mueller-1').click();
   await expect(page).toHaveURL(/\/zulassung\/auftraege\/j-mueller-1/);
 
@@ -226,6 +231,7 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   await expect(page.getByTestId('portal-filter-empty')).toBeVisible();
   await expect(page.getByTestId('job-row-j-schmidt-1')).toHaveCount(0);
   await page.getByTestId('portal-source-filter').selectOption('all');
+  await ensureOpen(page.getByTestId('jobs-waiting_customer'));
   await expect(page.getByTestId('job-row-j-schmidt-1')).toBeVisible();
 
   await page.getByLabel('nextOZ-Datei').setInputFiles({ name: 'nextoz.csv', mimeType: 'text/csv', buffer: Buffer.from('a;b\n1;2\n') });
@@ -241,6 +247,7 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   await expect(page.getByRole('link', { name: /MD CI 200/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /MD CI 100/ })).toHaveCount(0);
   await page.getByRole('link', { name: /MD CI 200/ }).click();
+  await ensureOpen(page.getByTestId('job-portal'));
   await expect(page.getByTestId('job-portal-source')).toHaveText('myDigitalCar');
   await expect(page.locator('header').getByTestId('portal-badge-mydigitalcar')).toBeVisible();
   await expect(page.getByTestId('job-vorgang')).toHaveText('9002');
@@ -250,7 +257,9 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
 
   await page.goto('/zulassung');
   await page.getByTestId('portal-status-filter').selectOption('all');
+  await ensureOpen(page.getByTestId('jobs-done'));
   await page.getByRole('link', { name: /MD CI 100/ }).click();
+  await ensureOpen(page.getByTestId('job-portal'));
   await expect(page.getByTestId('job-vorgang')).toHaveText('9001');
   await expect(page.getByTestId('job-portal-status')).toHaveText('Genehmigt');
   await expect(page.getByTestId('portal-field-ZB1_Sicherheitscode')).toContainText('ZB1-GEHEIM');
@@ -258,6 +267,7 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   await expect(page.getByTestId('job-price')).toHaveText('–');
 
   await page.goto('/zulassung');
+  await ensureOpen(page.getByTestId('jobs-done'));
   await page.getByRole('link', { name: /MD CI 300/ }).click();
   await expect(page.getByTestId('job-customer')).toHaveText('Halter unbekannt (myDigitalCar)');
   await expect(page.getByTestId('job-vorgang')).toHaveText('9003');

@@ -78,7 +78,7 @@ function entryOf(m: Message, contacts: Contact[]): JobMessageEntry {
     direction: m.direction,
     kind,
     docs,
-    senderName: out ? 'Du' : (contact ?? byPhone)?.name ?? m.fromName ?? null,
+    senderName: out ? 'Du' : (contact ?? byPhone)?.name ?? m.fromName ?? m.profileName ?? null,
     senderPhone: phone,
     body: m.body,
   };

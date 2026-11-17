@@ -41,6 +41,8 @@ export interface AIProvider {
   draftReminder(i: { contact: Contact; status: MemberStatus; tone: 'freundlich' | 'bestimmt'; paymentLink: string | null }): Promise<string>;
   slidesFor(call: Call): Promise<Call['slides']>;
   detectCommitment(text: string, sentAt: string): Promise<{ kind: Commitment['kind']; dueAt: string } | null>;
+  /** Auftrag, Nachweis oder keines von beidem. Nur der Text, keine Kontaktdaten extra. */
+  classifyIntake(text: string): Promise<'order' | 'proof' | 'none'>;
 }
 
 /** Rechnung lesen: nur diese Felder gehen an den Leser (kein Kontaktname, keine E-Mail). */

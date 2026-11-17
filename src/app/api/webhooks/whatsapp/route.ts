@@ -1,9 +1,10 @@
 import { NextResponse, connection } from 'next/server';
 import { realNow } from '@/domain/clock';
+import { applyIntakeHints } from '@/domain/intake/hint';
 import { WHATSAPP_KUNDEN, parseWhatsAppWebhook } from '@/domain/import/whatsapp';
 import { verifyWhatsAppSignature, verifyWhatsAppToken } from '@/server/connectors/whatsapp-signature';
 import { readEnv } from '@/server/env';
-import { getActionProvider, getRepos } from '@/server/registry';
+import { getActionProvider, getAI, getRepos } from '@/server/registry';
 import { dispatchEvents } from '@/server/state-service';
 
 // Historien-Stücke können groß sein; das Sync-Budget von Stripe liegt darunter.
@@ -45,13 +46,15 @@ export async function POST(req: Request) {
   }
   const parsed = parseWhatsAppWebhook(payload, { phoneNumberId: env.whatsappPhoneNumberId, wabaId: env.whatsappWabaId });
   if (!parsed.relevant) return NextResponse.json({ received: true, ignored: true });
+  const ai = getAI();
+  const messages = await applyIntakeHints(parsed.batch.messages, (text) => ai.classifyIntake(text));
   const repos = getRepos();
   try {
     const prev = (await repos.state.load()).state.connections.find((c) => c.id === WHATSAPP_KUNDEN);
     await dispatchEvents(repos, [{
       type: 'importBatch',
       connectionId: WHATSAPP_KUNDEN,
-      batch: parsed.batch,
+      batch: { ...parsed.batch, messages },
       cursor: parsed.cursor ?? prev?.sync?.cursor ?? null,
       complete: parsed.historySeen ? parsed.complete : (prev?.sync?.complete ?? true),
     }], { at: realNow, provider: getActionProvider() });

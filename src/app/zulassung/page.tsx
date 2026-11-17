@@ -79,12 +79,12 @@ export default function ZulassungPage() {
         const cap = caps[status] ?? PORTAL_LIST_CAP;
         const shown = jobs.slice(0, cap);
         return (
-          <ListGroup key={status} title={`Aufträge: ${JOB_STATUS_LABEL[status]}`} testId={`jobs-${status}`}>
+          <ListGroup key={status} title={`Aufträge: ${JOB_STATUS_LABEL[status]}`} testId={`jobs-${status}`} sectionId={`jobs-${status}`} defaultOpen={status === 'open'}>
             {shown.map((j) => {
               const v = state.vehicles.find((x) => x.id === j.vehicleId);
               return (
                 <ListRow key={j.id} href={`/zulassung/auftraege/${j.id}`} testId={`job-row-${j.id}`}
-                  title={<>{v ? portalVehicleTitle(v) : j.service} {jobPortalBadge(j)}</>}
+                  title={<>{v ? portalVehicleTitle(v) : j.service} {jobPortalBadge(j)}{j.draft && <span className="draft-badge">Entwurf</span>}</>}
                   subtitle={portalJobSubtitle(contactName(j), j)}
                   value={<span className="amount">{jobAmount(j)}</span>} />
               );
@@ -97,7 +97,7 @@ export default function ZulassungPage() {
         );
       })}
 
-      <ListGroup title="Kunden" testId="customers">
+      <ListGroup title="Kunden" testId="customers" sectionId="zulassung-kunden" defaultOpen={false}>
         <ListRow href="/zulassung/kunden" testId="customers-link" title="Kunden"
           subtitle={<span className="wrap-text">{peopleSummary(overdueCustomers.length, overdueCustomers.map((c) => c.name), 'Keine überfälligen Kunden')}</span>}
           value={customers.length} />
