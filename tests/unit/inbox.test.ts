@@ -47,6 +47,20 @@ describe('buildInbox', () => {
     expect(filterInbox(rows, 'waiting', '')).toEqual([]);
     expect(filterInbox(rows, 'all', '').map((r) => r.threadId)).toEqual(['g-1']);
   });
+  test('WhatsApp-Tab enthält keine E-Mail, Zähler auch nicht', () => {
+    const mail = msg({
+      id: 'e2', channel: 'email', connectionId: 'gmail', threadId: 'mail-2', from: 'kunde@example.de',
+      body: 'Bitte Zulassung BOT-ZZ 1', needsReply: true, sentAt: '2026-11-17T11:40:00.000Z',
+    });
+    const rows = buildInbox({ messages: [...messages, mail], contacts: [anna] }, at, 2, 'whatsapp');
+    expect(rows.every((r) => r.channel === 'whatsapp')).toBe(true);
+    expect(rows.map((r) => r.threadId)).not.toContain('mail-2');
+    expect(filterInbox(rows, 'waiting', '').map((r) => r.threadId)).toEqual(['+491715551234']);
+    expect(filterInbox(rows, 'orders', 'bot-zz')).toEqual([]);
+    expect(filterInbox(rows, 'all', 'BOT-AB').map((r) => r.threadId)).toEqual(['+491715551234']);
+    const mails = buildInbox({ messages: [...messages, mail], contacts: [anna] }, at, 2, 'email');
+    expect(mails.map((r) => r.threadId).sort()).toEqual(['mail-1', 'mail-2']);
+  });
   test('filtern: Warten, Aufträge, Suche nach Name, Nummer, Text', () => {
     const rows = buildInbox({ messages, contacts: [anna] }, at, 2);
     expect(filterInbox(rows, 'waiting', '').map((r) => r.threadId)).toEqual(['+491715551234']);

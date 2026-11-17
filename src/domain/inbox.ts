@@ -21,6 +21,8 @@ export interface InboxRow {
   count: number;
   /** Stunden, die die älteste unbeantwortete Nachricht wartet; `null` = nichts offen. */
   waitingHours: number | null;
+  /** Unbeantwortete eingehende Nachrichten in dieser Unterhaltung. */
+  unread: number;
   overdue: boolean;
   hasOrder: boolean;
   docs: DocKind[];
@@ -35,9 +37,10 @@ const validPhone = (raw: string): string | null => {
   return /^\+\d{6,15}$/.test(p) ? p : null;
 };
 
-export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: Date, thresholdHours: number): InboxRow[] {
+export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: Date, thresholdHours: number, channel?: Message['channel']): InboxRow[] {
   const threads = new Map<string, Message[]>();
   for (const m of s.messages) {
+    if (channel && m.channel !== channel) continue;
     const key = `${m.channel}|${m.threadId}`;
     const list = threads.get(key);
     if (list) list.push(m);
@@ -75,6 +78,7 @@ export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: 
       lastDirection: last.direction,
       count: list.length,
       waitingHours,
+      unread: waiting.length,
       overdue: !system && waitingHours !== null && waitingHours >= thresholdHours,
       hasOrder: classes.some((c) => c.kind !== null),
       docs: [...new Set(classes.flatMap((c) => c.docs))],
