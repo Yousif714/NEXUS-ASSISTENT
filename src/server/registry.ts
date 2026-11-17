@@ -8,15 +8,17 @@ import { createMemoryRepos } from './db/memory';
 import type { Repos } from './db/repository';
 import { createSupabaseRepos } from './db/supabase';
 import { readEnv } from './env';
-import type { ImapAccount, MailSyncId } from './imap-config';
+import type { ImapAccount } from './imap-config';
+import type { ImapSession } from './connectors/imap';
 import type { ConnectionId } from '@/domain/types';
 import { realNow } from '@/domain/clock';
+import type { MailDeps } from './mail-sync';
 import type { SyncDeps } from './sync';
 import { createActionProvider } from './action-provider';
 import { createStripeWriter, type StripeWriter } from './connectors/stripe-write';
 
 // Route-Handler und Seiten können als getrennte Bundles geladen werden: der Testzustand liegt daher auf globalThis.
-const slot = globalThis as unknown as { __nexusRegistry?: { repos: Repos | null; testWriter: StripeWriter | null | undefined } };
+const slot = globalThis as unknown as { __nexusRegistry?: { repos: Repos | null; testWriter: StripeWriter | null | undefined; imapOpener?: (account: ImapAccount) => Promise<ImapSession> } };
 const reg = (slot.__nexusRegistry ??= { repos: null, testWriter: undefined });
 const demo = new DemoProvider();
 /** Test-Überschreibung des Stripe-Schreibers; `undefined` = aus der Umgebung. */
@@ -34,6 +36,7 @@ export function resetTestRepos(): void {
   if (!readEnv().testMemoryDb) throw new Error('resetTestRepos nur im Testmodus');
   reg.repos = createMemoryRepos();
   reg.testWriter = undefined;
+  reg.imapOpener = undefined;
 }
 
 /** Stripe-Schreibzugriff nur mit STRIPE_WRITE_KEY (oder Test-Überschreibung); sonst null → Umstellung als Demo. */
@@ -75,14 +78,26 @@ export function getSyncDeps(o: { only?: ConnectionId[]; budgetMs?: number } = {}
     provider: getActionProvider(),
     ...(o.only ? { only: o.only } : {}),
     ...(env.anthropicApiKey ? { reader: createClaudeInvoiceReader({ apiKey: env.anthropicApiKey }) } : {}),
-    ...imapOf(env),
   };
 }
 
-function imapOf(env: ReturnType<typeof readEnv>): { imap?: Partial<Record<MailSyncId, ImapAccount>> } {
-  const imap: Partial<Record<MailSyncId, ImapAccount>> = {};
-  if (env.imapInfoMail) imap.info_mail = env.imapInfoMail;
-  if (env.imapGmail) imap.gmail = env.imapGmail;
-  if (env.imapIcloud) imap.icloud = env.imapIcloud;
-  return Object.keys(imap).length ? { imap } : {};
+/** Postfächer getrennt vom übrigen Abgleich. Das Zeitbudget liegt unter der 300-Sekunden-Grenze der Mail-Route. */
+export function getMailDeps(o: { only?: string[]; budgetMs?: number } = {}): MailDeps {
+  const env = readEnv();
+  return {
+    at: realNow,
+    now: () => realNow().getTime(),
+    budgetMs: o.budgetMs ?? 240_000,
+    provider: getActionProvider(),
+    accounts: env.imapAccounts,
+    ...(env.imapConfigError ? { configError: env.imapConfigError } : {}),
+    ...(o.only ? { only: o.only } : {}),
+    ...(reg.imapOpener ? { openImap: reg.imapOpener } : {}),
+  };
+}
+
+/** Nur im Testmodus: IMAP-Client ersetzen, damit kein echtes Postfach angesprochen wird. */
+export function setTestImapOpener(opener: ((account: ImapAccount) => Promise<ImapSession>) | null): void {
+  if (!readEnv().testMemoryDb) throw new Error('setTestImapOpener nur im Testmodus');
+  reg.imapOpener = opener ?? undefined;
 }

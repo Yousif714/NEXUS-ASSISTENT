@@ -1,9 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { realNow, todayBerlin } from '@/domain/clock';
+import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
+import { applyPortalImport, isPortalSource, PORTAL_LABEL, type PortalSource } from '@/domain/import/portal';
 import { deriveProposals } from '@/domain/import/proposals';
 import { applyMcpChange, MCP_ACTION_TYPES, type McpChange } from '@/domain/mcp-changes';
-import { getActionProvider, getRepos } from '@/server/registry';
+import { isFetchableMailbox } from '@/domain/connections';
+import { syncMailboxes } from '@/server/mail-sync';
+import { getActionProvider, getMailDeps, getRepos } from '@/server/registry';
 import { dispatchEvents, loadState } from '@/server/state-service';
 import { logMcpTool } from './log';
 import { contactName, matches, overview, pageOf, scrub, shapeContact, shapeContract, shapeInvoice } from './view';
@@ -159,12 +163,12 @@ export function registerNexusTools(server: McpServer): void {
     return { item: scrub(item) };
   });
 
-  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender).', listed, async (args) => {
+  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender, Kanal). channel ist whatsapp oder email.', listed, async (args) => {
     const s = await current();
     const rows = s.messages.filter((m) => matches(args.query, [m.body, m.from, m.to, contactName(s, m.contactId), m.channel]));
     return paged(rows.map((m) => scrub(m)), args);
   });
-  read('get_message', 'Nachricht lesen', 'Eine Nachricht.', byId, async (args) => {
+  read('get_message', 'Nachricht lesen', 'Eine Nachricht. channel ist whatsapp oder email.', byId, async (args) => {
     const s = await current();
     const item = s.messages.find((m) => m.id === args.id);
     if (!item) throw new McpToolError('Nicht gefunden');
@@ -316,4 +320,67 @@ export function registerNexusTools(server: McpServer): void {
   write('dismiss_proposal', 'Vorschlag verwerfen', 'Markiert einen Vertragsvorschlag als verworfen, wie in der App.', z.object({
     proposalId: z.string().min(1).max(500),
   }), (a) => ({ op: 'dismissProposal', proposalId: String(a.proposalId) }));
+
+  server.registerTool('import_portal_csv', {
+    title: 'Portal-CSV importieren',
+    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz ist registriert, die Spaltenzuordnung fehlt noch und es wird nichts geschrieben. Antwort nur Zähler, keine Rohdaten.',
+    inputSchema: z.object({
+      source: z.enum(['mydigitalcar', 'nextoz']),
+      csv: z.string().min(1).max(MDC_CSV_MAX_CHARS),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args) => {
+    if (!isPortalSource(args.source)) return jsonResult({ error: 'Unbekannte Quelle' }, true);
+    const source = args.source as PortalSource;
+    const repos = getRepos();
+    const at = realNow();
+    const planned = applyPortalImport(await current(), source, args.csv, () => 'preview', at.toISOString());
+    if (planned.error) {
+      await logMcpTool('import_portal_csv', `${PORTAL_LABEL[source]}: ${planned.error}`);
+      return jsonResult({ error: planned.error, source }, true);
+    }
+    try {
+      await dispatchEvents(repos, [{ type: 'importPortalCsv', source, csv: args.csv }], { at: realNow, provider: getActionProvider() });
+    } catch (err) {
+      const message = err instanceof Error && err.message === 'conflict' ? 'Gleichzeitige Änderung, bitte erneut versuchen' : 'Import fehlgeschlagen';
+      await logMcpTool('import_portal_csv', message);
+      return jsonResult({ error: message, source }, true);
+    }
+    await logMcpTool('import_portal_csv', PORTAL_LABEL[source]);
+    return jsonResult({
+      ok: true,
+      source,
+      rows: planned.rows,
+      duplicates: planned.duplicates,
+      contacts: planned.contacts,
+      vehicles: planned.vehicles,
+      jobs: planned.jobs,
+      errors: planned.errors.slice(0, 50),
+      errorCount: planned.errors.length,
+    });
+  });
+
+  server.registerTool('sync_mail', {
+    title: 'Postfach abrufen',
+    description: 'Ruft ein IMAP-Postfach ab oder alle eingerichteten (info@, privates Gmail und weitere). id optional: info_mail, gmail, icloud oder mail_<name>. Antwort: Anzahl neuer Nachrichten und Fehler je Postfach. Kein Mailinhalt, keine Passwörter.',
+    inputSchema: z.object({ id: z.string().min(1).max(48).optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  }, async (args) => {
+    if (args.id !== undefined && !isFetchableMailbox(args.id)) {
+      await logMcpTool('sync_mail', 'unbekanntes Postfach');
+      return jsonResult({ error: 'Unbekanntes Postfach' }, true);
+    }
+    try {
+      const repos = getRepos();
+      const result = await syncMailboxes(repos, getMailDeps(args.id ? { only: [args.id] } : {}));
+      await logMcpTool('sync_mail', `${result.added} neu`);
+      return jsonResult({
+        added: result.added,
+        mailboxes: result.mailboxes.map((m) => ({ id: m.id, outcome: m.outcome, added: m.added, ...(m.error ? { error: m.error } : {}) })),
+      });
+    } catch {
+      await logMcpTool('sync_mail', 'Abruf fehlgeschlagen');
+      return jsonResult({ error: 'Abruf fehlgeschlagen' }, true);
+    }
+  });
 }

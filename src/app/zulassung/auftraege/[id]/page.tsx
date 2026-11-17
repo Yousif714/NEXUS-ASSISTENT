@@ -8,6 +8,7 @@ import { Figure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { PageHeader } from '@/components/PageHeader';
+import { PortalBadge } from '@/components/PortalImport';
 import { Segmented } from '@/components/Segmented';
 import { INVOICE_STATUS_LABEL, JOB_STATUS_LABEL, LOCATION_LABEL } from '@/components/zulassung-labels';
 import { invoiceCandidates } from '@/data/selectors';
@@ -15,6 +16,8 @@ import { useAppStore } from '@/data/store';
 import { jobInvoiceDraftAction, jobInvoiceDraftId } from '@/domain/action-factory';
 import { jobBilling } from '@/domain/billing';
 import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
+import { mdcVorgang } from '@/domain/import/mydigitalcar';
+import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
 
@@ -42,14 +45,14 @@ export default function JobPage() {
     );
   }
 
-  const contact = state.contacts.find((c) => c.id === job.contactId);
-  const name = contact?.name ?? 'Unbekannt';
+  const contact = job.contactId ? state.contacts.find((c) => c.id === job.contactId) : undefined;
+  const name = jobContactLabel(job, state.contacts);
   const vehicle = state.vehicles.find((v) => v.id === job.vehicleId);
   const { invoicedCents, restCents: rest } = jobBilling(state, job);
   const linked = job.invoiceIds.flatMap((iid) => state.invoices.filter((i) => i.id === iid));
   const candidates = invoiceCandidates(state, job.id);
   const lastMessage = [...state.messages]
-    .filter((m) => m.jobId === job.id || (m.contactId === job.contactId && !m.jobId))
+    .filter((m) => m.jobId === job.id || (job.contactId !== null && m.contactId === job.contactId && !m.jobId))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
 
   const draftId = jobInvoiceDraftId(job.id);
@@ -62,16 +65,28 @@ export default function JobPage() {
 
   return (
     <>
-      <PageHeader title={job.service} subtitle={<>{name}{vehicle && <> · {vehicle.plate}</>}</>} badge={mode === 'demo' ? <DemoBadge /> : undefined} trailing={back} />
+      <PageHeader title={job.service} subtitle={<>{name}{vehicle && <> · {vehicle.plate}</>}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
 
       <ListGroup title="Auftrag" testId="job-details">
         <ListRow key="vehicle" title="Fahrzeug" value={vehicle ? `${vehicle.model} · ${vehicle.plate}` : '–'} />
         <ListRow key="service" title="Leistung" value={job.service} />
         <ListRow key="location" title="Standort" value={LOCATION_LABEL[job.location]} />
-        <ListRow key="customer" href={`/zulassung/kunden/${job.contactId}`} title="Kunde" value={name} />
-        <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{formatEuro(job.priceCents)}</span>} />
+        <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
+        <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{job.portalData && job.priceCents === 0 ? '–' : formatEuro(job.priceCents)}</span>} />
         {job.notes ? <ListRow key="notes" title="Notiz" subtitle={job.notes} /> : null}
       </ListGroup>
+
+      {job.portalSource && (
+        <ListGroup title={PORTAL_LABEL[job.portalSource]} testId="job-portal">
+          <ListRow key="source" title="Portal" value={<span data-testid="job-portal-source">{PORTAL_LABEL[job.portalSource]}</span>} />
+          <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(job) ?? '–'}</span>} />
+          <ListRow key="pstatus" title="Portalstatus" value={<span data-testid="job-portal-status" className={job.portalProblem ? 'arrears-value' : undefined}>{job.portalStatus || '–'}</span>} />
+          {job.portalProblem ? <ListRow key="problem" title="Problem" testId="job-portal-problem" value="Portal meldet Fehler oder Ablehnung" /> : null}
+          {Object.entries(job.portalData ?? {})
+            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status')
+            .map(([k, v]) => <ListRow key={k} title={k.replace(/_/g, ' ')} value={v} testId={`portal-field-${k}`} />)}
+        </ListGroup>
+      )}
 
       <section className="list-group" aria-labelledby="status-title">
         <h2 id="status-title" className="list-group-title">Status</h2>

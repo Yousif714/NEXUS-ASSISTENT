@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { readImapAccount, type ImapAccount } from './imap-config';
+import { readImapAccounts, type ImapAccount } from './imap-config';
 
 export interface ServerEnv {
   supabaseUrl?: string;
@@ -25,9 +25,19 @@ export interface ServerEnv {
   /** Optionaler Schlüssel für den externen MCP-Connector. Fehlt er, bleibt `/api/mcp` geschlossen. */
   mcpApiKey?: string;
   /** IMAP-Postfächer. Fehlt ein Eintrag, bleibt die Quelle `missing`. */
-  imapInfoMail?: ImapAccount;
-  imapGmail?: ImapAccount;
-  imapIcloud?: ImapAccount;
+  imapAccounts: ImapAccount[];
+  /** IMAP_ACCOUNTS ist unbrauchbar. Enthält nie ein Passwort. */
+  imapConfigError?: string;
+  /**
+   * WhatsApp Cloud API (Kundennummer, Coexistence). Fehlt das App-Geheimnis bzw. der Verify-Token,
+   * nimmt der Webhook nichts an und `whatsapp_kunden` bleibt `missing`. Der Zugriffstoken wird nur
+   * aufbewahrt; dieser Stand sendet keine Nachrichten.
+   */
+  whatsappPhoneNumberId?: string;
+  whatsappAccessToken?: string;
+  whatsappAppSecret?: string;
+  whatsappVerifyToken?: string;
+  whatsappWabaId?: string;
 }
 
 const SUPABASE = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
@@ -43,6 +53,7 @@ export function readEnv(e: Record<string, string | undefined> = process.env): Se
   if (missing.length) throw new Error(`Fehlende Umgebungsvariablen: ${missing.join(', ')}`);
   const sessionSecret = val('SESSION_SECRET')!;
   if (sessionSecret.length < 32) throw new Error('SESSION_SECRET muss mindestens 32 Zeichen lang sein');
+  const imap = readImapAccounts(e);
   return {
     supabaseUrl: val('SUPABASE_URL'),
     supabaseServiceRoleKey: val('SUPABASE_SERVICE_ROLE_KEY'),
@@ -61,8 +72,12 @@ export function readEnv(e: Record<string, string | undefined> = process.env): Se
     qontoSecretKey: val('QONTO_SECRET_KEY'),
     anthropicApiKey: val('ANTHROPIC_API_KEY'),
     mcpApiKey: val('MCP_API_KEY'),
-    imapInfoMail: readImapAccount(e, 'info_mail', val),
-    imapGmail: readImapAccount(e, 'gmail', val),
-    imapIcloud: readImapAccount(e, 'icloud', val),
+    imapAccounts: imap.accounts,
+    ...(imap.configError ? { imapConfigError: imap.configError } : {}),
+    whatsappPhoneNumberId: val('WHATSAPP_PHONE_NUMBER_ID'),
+    whatsappAccessToken: val('WHATSAPP_ACCESS_TOKEN'),
+    whatsappAppSecret: val('WHATSAPP_APP_SECRET'),
+    whatsappVerifyToken: val('WHATSAPP_VERIFY_TOKEN'),
+    whatsappWabaId: val('WHATSAPP_WABA_ID'),
   };
 }

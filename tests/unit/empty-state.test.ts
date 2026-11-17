@@ -15,12 +15,14 @@ afterEach(() => { setClockMode('demo'); setNowForTests(null); });
 describe('leerer Startzustand', () => {
   test('alle Verbindungen fehlen, Listen leer', () => {
     const e = createEmptyState();
-    expect(e.connections.length).toBe(13);
+    expect(e.connections.length).toBe(15);
     expect(e.invoiceReadings).toEqual([]);
     expect(e.takeovers).toEqual([]);
     expect(e.settings).toMatchObject({ takeoverReminderDays: 3, takeoverLinkNudgeDays: 7 });
     expect(e.connections.find((c) => c.id === 'claude_invoices')).toMatchObject({ status: 'missing', company: 'nexus', label: 'Claude (Rechnungen lesen)' });
     expect(e.connections.find((c) => c.id === 'portal_nexus')).toMatchObject({ company: 'nexus', label: 'NEXUS-Portal', status: 'missing' });
+    expect(e.connections.find((c) => c.id === 'mydigitalcar')).toMatchObject({ company: 'zulassung', label: 'myDigitalCar', status: 'missing' });
+    expect(e.connections.find((c) => c.id === 'nextoz')).toMatchObject({ company: 'zulassung', label: 'nextOZ', status: 'missing' });
     expect(e.portalMembers).toEqual([]);
     expect(e.ignoredPortalMembers).toEqual([]);
     expect(e.orderConfirmations).toEqual([]);

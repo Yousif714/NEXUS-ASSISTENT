@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useId, useState } from 'react';
 
+import { FeedList, FeedSection } from '@/components/FeedSection';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
@@ -12,7 +13,8 @@ import { TaskRow } from '@/components/TaskRow';
 import { openInsights } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing, renderBriefingText } from '@/domain/briefing';
-import { formatBerlin, formatBerlinDe, now } from '@/domain/clock';
+import { berlinParts, formatBerlin, formatBerlinDe, now, todayBerlin } from '@/domain/clock';
+import { buildHeuteFeed } from '@/domain/heute';
 import { notConnected } from '@/domain/connections';
 import { areaUnreliable } from '@/domain/freshness';
 import { openReplies } from '@/domain/matching/messages';
@@ -43,9 +45,16 @@ export default function HeutePage() {
   const at = now();
 
   const briefing = buildBriefing(state, 'morning', at);
+  const feed = buildHeuteFeed(state, at);
+  const dueToday = feed.find((s) => s.id === 'faellig');
+  const later = feed.filter((s) => s.id !== 'faellig');
   const allOpen = openInsights(state);
   const coachTip = briefing.coach[0];
   const replies = openReplies(state.messages, at, state.settings.replyThresholdHours);
+  const today = todayBerlin(at);
+  const todayCalls = state.calls.filter((c) => berlinParts(new Date(c.startsAt)).date === today).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const onDone = (key: string) => dispatch({ type: 'dismissInsight', key });
+  const onLater = (key: string) => dispatch({ type: 'snoozeInsight', key });
   const header = <PageHeader title="Heute" subtitle={formatBerlinDe(at, 'EEEE, d. MMMM')} trailing={<MoreMenu />} />;
 
   // Echtmodus ohne eine einzige Verbindung: Weg zur Einrichtung statt leerer Karten.
@@ -65,54 +74,64 @@ export default function HeutePage() {
     <>
       {header}
 
-      <ListGroup title="Wichtig heute" testId="top-insights">
-        {briefing.top.length === 0
-          ? <ListRow key="empty" title="Alles erledigt." />
-          : briefing.top.map((i) => <TaskRow key={i.dedupeKey} insight={i} onDone={() => dispatch({ type: 'dismissInsight', key: i.dedupeKey })}
-              onLater={() => dispatch({ type: 'snoozeInsight', key: i.dedupeKey })} />)}
-        <ListRow key="all" href="/hinweise" title={`Alle Hinweise (${allOpen.length})`} testId="all-insights-link" />
-      </ListGroup>
+      <section data-testid="feed-heute">
+        <h2 className="feed-heading feed-heading-first">Heute</h2>
 
-      <ListGroup title="Termine heute" testId="events-today">
-        {briefing.events.length === 0
-          ? <ListRow key="empty" title="Keine Termine heute." />
-          : briefing.events.map((e) => (
+        <ListGroup title="Wichtig heute" testId="top-insights">
+          {briefing.top.length === 0
+            ? <ListRow key="empty" title="Alles erledigt." />
+            : briefing.top.map((i) => <TaskRow key={i.dedupeKey} insight={i} onDone={() => onDone(i.dedupeKey)}
+                onLater={() => onLater(i.dedupeKey)} />)}
+          <ListRow key="all" href="/hinweise" title={`Alle Hinweise (${allOpen.length})`} testId="all-insights-link" />
+        </ListGroup>
+
+        <ListGroup title="Termine heute" testId="events-today">
+          {briefing.events.length === 0 && todayCalls.length === 0 && <ListRow key="empty" title="Keine Termine heute." />}
+          {briefing.events.map((e) => (
             <ListRow key={e.id} title={e.title} subtitle={e.location} value={formatBerlin(new Date(e.startAt), 'HH:mm')} />
           ))}
-      </ListGroup>
-
-      <section className="money-cards" aria-label="Geld">
-        {briefing.money.map((m) => (
-          <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
-            stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
-        ))}
-      </section>
-
-      <ListGroup title="Nachrichten" testId="replies">
-        {replies.length === 0
-          ? <ListRow key="empty" title="Keine offenen Antworten." />
-          : replies.map(({ message: m, waitingHours }) => (
-            <ListRow key={m.id} href={`/nachrichten/${m.threadId}`} testId="reply-row"
-              title={state.contacts.find((c) => c.id === m.contactId)?.name ?? m.from}
-              subtitle={m.body} value={`${waitingHours} Std.`} />
+          {todayCalls.map((c) => (
+            <ListRow key={c.id} href={`/nexus/calls/${c.id}`} title={c.topic} subtitle="Call" value={formatBerlin(new Date(c.startsAt), 'HH:mm')} />
           ))}
-      </ListGroup>
+        </ListGroup>
 
-      {coachTip && (
-        <CoachTip key={coachTip.dedupeKey} tip={coachTip}
-          onTake={() => dispatch({ type: 'dismissInsight', key: coachTip.dedupeKey })}
-          onLater={() => dispatch({ type: 'snoozeInsight', key: coachTip.dedupeKey })}
-          onNever={() => dispatch({ type: 'suppressCoach', key: coachTip.dedupeKey })} />
-      )}
+        {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
 
-      <section className="briefing">
-        <button type="button" className="nav-button" aria-expanded={showBriefing} aria-controls={briefingId} onClick={() => setShowBriefing((v) => !v)}>
-          {showBriefing ? 'Morgenbriefing ausblenden' : 'Morgenbriefing ansehen'}
-        </button>
-        <div id={briefingId} className="briefing-panel" data-testid="briefing-text" hidden={!showBriefing}>
-          {renderBriefingText(briefing)}
-        </div>
+        <section className="money-cards" aria-label="Geld">
+          {briefing.money.map((m) => (
+            <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
+              stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
+          ))}
+        </section>
+
+        <ListGroup title="Nachrichten" testId="replies">
+          {replies.length === 0
+            ? <ListRow key="empty" title="Keine offenen Antworten." />
+            : replies.map(({ message: m, waitingHours }) => (
+              <ListRow key={m.id} href={`/nachrichten/${m.threadId}`} testId="reply-row"
+                title={state.contacts.find((c) => c.id === m.contactId)?.name ?? m.from}
+                subtitle={m.body} value={`${waitingHours} Std.`} />
+            ))}
+        </ListGroup>
+
+        {coachTip && (
+          <CoachTip key={coachTip.dedupeKey} tip={coachTip}
+            onTake={() => dispatch({ type: 'dismissInsight', key: coachTip.dedupeKey })}
+            onLater={() => dispatch({ type: 'snoozeInsight', key: coachTip.dedupeKey })}
+            onNever={() => dispatch({ type: 'suppressCoach', key: coachTip.dedupeKey })} />
+        )}
+
+        <section className="briefing">
+          <button type="button" className="nav-button" aria-expanded={showBriefing} aria-controls={briefingId} onClick={() => setShowBriefing((v) => !v)}>
+            {showBriefing ? 'Morgenbriefing ausblenden' : 'Morgenbriefing ansehen'}
+          </button>
+          <div id={briefingId} className="briefing-panel" data-testid="briefing-text" hidden={!showBriefing}>
+            {renderBriefingText(briefing)}
+          </div>
+        </section>
       </section>
+
+      {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater} />)}
     </>
   );
 }

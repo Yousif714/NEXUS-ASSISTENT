@@ -1,7 +1,14 @@
 import { sourceFreshness } from '../freshness';
 import { shortDateDe } from '../import/statement';
-import type { AppState, Insight } from '../types';
+import type { AppState, ConnectionId, Insight } from '../types';
 import { connectionRef } from './refs';
+
+const staleBody = (id: ConnectionId): string => {
+  if (id === 'portal_nexus') return 'Die Mitgliederliste ist älter als 30 Tage. Bitte neu einfügen.';
+  if (id === 'mydigitalcar') return 'Der myDigitalCar-Export ist älter als 30 Tage. Bitte neu hochladen.';
+  if (id === 'nextoz') return 'Der Nextoz-Stand ist älter als 30 Tage.';
+  return 'Der letzte erfolgreiche Abruf ist älter als 45 Minuten.';
+};
 
 export function detectStaleSources(s: AppState, now: Date): Insight[] {
   const out: Insight[] = [];
@@ -31,7 +38,7 @@ export function detectStaleSources(s: AppState, now: Date): Insight[] {
       company: c.company,
       priority: 'info',
       title: f === 'error' ? `${c.label}: Verbindungsfehler` : `${c.label}: Datenstand zu alt`,
-      body: f === 'error' ? (c.lastError ?? 'Die Quelle meldet einen Fehler.') : c.id === 'portal_nexus' ? 'Die Mitgliederliste ist älter als 30 Tage. Bitte neu einfügen.' : 'Der letzte erfolgreiche Abruf ist älter als 45 Minuten.',
+      body: f === 'error' ? (c.lastError ?? 'Die Quelle meldet einen Fehler.') : staleBody(c.id),
       refs: [connectionRef(c.id, c.label)],
       nextStep: 'Verbindung prüfen',
       needsSources: [],

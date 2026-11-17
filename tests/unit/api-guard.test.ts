@@ -13,7 +13,7 @@ function routes(dir: string): string[] {
 }
 
 // Eigene Prüfung bzw. bewusst offen.
-const EXEMPT = [/^auth\/session$/, /^auth\/register\//, /^auth\/login\//, /^auth\/recover$/, /^auth\/logout$/, /^cron\/tick$/, /^mcp$/, /^test\/reset$/, /^test\/import$/, /^test\/takeover$/, /^webhooks\/stripe$/];
+const EXEMPT = [/^auth\/session$/, /^auth\/register\//, /^auth\/login\//, /^auth\/recover$/, /^auth\/logout$/, /^cron\/tick$/, /^cron\/mail$/, /^mcp$/, /^test\/reset$/, /^test\/import$/, /^test\/takeover$/, /^webhooks\/stripe$/, /^webhooks\/whatsapp$/];
 
 describe('API-Schutz', () => {
   const files = routes(API);
@@ -46,6 +46,12 @@ describe('API-Schutz', () => {
   });
   it('Stripe-Webhook prüft die Signatur', () =>
     expect(readFileSync(path.join(API, 'webhooks/stripe/route.ts'), 'utf8')).toContain('verifyStripeSignature('));
+  it('WhatsApp-Webhook prüft die Signatur und sendet nichts', () => {
+    const src = readFileSync(path.join(API, 'webhooks/whatsapp/route.ts'), 'utf8');
+    expect(src).toContain('verifyWhatsAppSignature(');
+    expect(src).not.toContain('graph.facebook.com');
+    expect(src).not.toContain('requireSession(');
+  });
   it('manueller Abgleich: Sitzung, Zeitbudget und Ratenbegrenzung über job_runs', () => {
     const src = readFileSync(path.join(API, 'sync/route.ts'), 'utf8');
     expect(src).toContain('requireSession(');

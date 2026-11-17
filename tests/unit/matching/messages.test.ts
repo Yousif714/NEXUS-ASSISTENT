@@ -1,11 +1,17 @@
 import { describe, expect, test } from 'vitest';
-import { extractPlates, extractVins, matchMessage, normalizePhone, openReplies, plateInText } from '@/domain/matching/messages';
+import { extractPlates, extractVins, matchMessage, normalizePhone, openReplies, plateInText, toE164 } from '@/domain/matching/messages';
 import { NOW_0930, contacts, jobs, msg, vehicles } from '../helpers';
 
 test('Telefon', () => {
   expect(normalizePhone('0151 234 567')).toBe('+49151234567');
   expect(normalizePhone('0049 151-234/567')).toBe('+49151234567');
   expect(normalizePhone('+49 (151) 234567')).toBe('+49151234567');
+});
+test('E.164, auch die Ziffernfolge von WhatsApp', () => {
+  expect(toE164('49151234567')).toBe('+49151234567');
+  expect(toE164('0151 234 567')).toBe('+49151234567');
+  expect(toE164('0049 151-234/567')).toBe('+49151234567');
+  expect(toE164('+49 (151) 234567')).toBe('+49151234567');
 });
 test('Kennzeichen/FIN', () => {
   expect(extractPlates('Ist der Golf GE-AS 123 fertig?')).toEqual(['GE-AS 123']);
@@ -14,6 +20,7 @@ test('Kennzeichen/FIN', () => {
 });
 describe('matchMessage', () => {
   test('Telefon', () => expect(matchMessage({ direction: 'in', from: '+49209111222', to: '', body: 'Hallo' }, contacts, vehicles, jobs).contactId).toBe('d-schmidt'));
+  test('WhatsApp-Ziffern ohne Plus treffen die deutsche Nummer', () => expect(matchMessage({ direction: 'in', from: '49209111222', to: '491511111111', body: 'Hallo' }, contacts, vehicles, jobs).contactId).toBe('d-schmidt'));
   test('ausgehend nutzt to', () => expect(matchMessage({ direction: 'out', from: '+49', to: '0209 111222', body: 'Hi' }, contacts, vehicles, jobs).contactId).toBe('d-schmidt'));
   test('Kennzeichen', () => expect(matchMessage({ direction: 'in', from: '+49000', to: '', body: 'Wegen BOT-MK 456' }, contacts, vehicles, jobs)).toEqual({ contactId: 'd-mueller', jobId: 'j-mueller-1' }));
   test('FIN', () => expect(matchMessage({ direction: 'in', from: '+49000', to: '', body: 'FIN WVWZZZ1KZAW123456' }, contacts, vehicles, jobs)).toEqual({ contactId: 'd-mueller', jobId: 'j-mueller-1' }));

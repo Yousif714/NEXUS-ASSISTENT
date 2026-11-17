@@ -1,7 +1,7 @@
 import { REJECT_REASON_DE, approve, editDraft, finishExecution, reconcileUncertain, retry, startExecution, type ActionOutput } from '@/domain/actions/machine';
 import { handleButton } from '@/domain/assistant';
 import { jobBilling } from '@/domain/billing';
-import { LEXWARE_OF } from '@/domain/connections';
+import { LEXWARE_OF, isMailConnection } from '@/domain/connections';
 import { berlinParts, todayBerlin } from '@/domain/clock';
 import { runCoach } from '@/domain/coach';
 import { detectCommitment } from '@/domain/commitments';
@@ -17,6 +17,7 @@ import { READ_LIMITS, limitReached, planFromReading, readingProposalId, textSear
 import { invoiceRef, membershipContractOf, retargetAllocations } from '@/domain/ledger/contracts';
 import { emptyBatch } from '@/domain/import/batch';
 import { mergeBatch } from '@/domain/import/merge';
+import { applyPortalImport, portalResultText } from '@/domain/import/portal';
 import { mergePortalList, normalizePortalEntries } from '@/domain/import/portal-list';
 import { deriveProposals, findContactFor, type ContractProposal } from '@/domain/import/proposals';
 import { applyMcpChange } from '@/domain/mcp-changes';
@@ -522,6 +523,34 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
         ? { state, audit: { actor: 'system' as const, text } }
         : { state };
     }
+    case 'ensureMailbox': {
+      if (!isMailConnection(e.id)) return { state: s };
+      const label = e.label.replace(/[\r\n]+/g, ' ').trim().slice(0, 80) || e.id;
+      const existing = s.connections.find((c) => c.id === e.id);
+      if (!existing) {
+        const row: Connection = {
+          id: e.id, company: e.company, label, status: e.error ? 'error' : 'missing', lastSuccessAt: null,
+          ...(e.error ? { lastError: e.error.slice(0, 300) } : {}),
+        };
+        return { state: { ...s, connections: [...s.connections, row] } };
+      }
+      let connections = s.connections;
+      if (existing.label !== label || existing.company !== e.company) {
+        connections = connections.map((c) => (c.id === e.id ? { ...c, label, company: e.company } : c));
+      }
+      if (typeof e.error === 'string' && existing.lastError !== e.error) {
+        connections = connections.map((c) => (c.id === e.id ? { ...c, status: 'error' as const, lastError: e.error!.slice(0, 300) } : c));
+      }
+      if (e.error === null && (e.id as string) === 'mail_config' && (existing.status === 'error' || existing.lastError)) {
+        connections = connections.map((c) => {
+          if (c.id !== e.id) return c;
+          const next: Connection = { ...c, status: 'missing' };
+          delete next.lastError;
+          return next;
+        });
+      }
+      return connections === s.connections ? { state: s } : { state: { ...s, connections } };
+    }
     case 'syncFailed': {
       const conn = s.connections.find((c) => c.id === e.connectionId);
       if (!conn) return { state: s };
@@ -705,6 +734,12 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       if (r.error) return { state: s, audit: { actor: 'assistant', source: 'mcp', text: `MCP abgelehnt: ${r.error}` } };
       if (r.unchanged) return { state: s };
       return { state: r.state, audit: { actor: 'assistant', source: 'mcp', text: r.text } };
+    }
+    case 'importPortalCsv': {
+      const r = applyPortalImport(s, e.source, e.csv, ctx.newId, at.toISOString());
+      const label = e.source === 'nextoz' ? 'nextOZ' : 'myDigitalCar';
+      if (r.error) return { state: s, audit: { actor: 'owner', text: `${label} nicht übernommen: ${r.error}` } };
+      return owner({ state: r.state, text: portalResultText(e.source, r) });
     }
     case 'resetDemo':
       return { state: createDemoState() };

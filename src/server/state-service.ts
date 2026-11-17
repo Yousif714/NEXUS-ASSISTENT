@@ -4,6 +4,8 @@ import { checkAction, executeApproved, sweepStaleExecutions, type EventSink } fr
 import type { ActionProvider } from '@/domain/actions/machine';
 import { addDaysIso, realNow, todayBerlin } from '@/domain/clock';
 import { IMPORT_SINCE } from '@/domain/import/batch';
+import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
+import { isPortalSource } from '@/domain/import/portal';
 import { isPortalEmail } from '@/domain/import/portal-list';
 import type { StoreEvent } from '@/domain/events';
 import { newId } from '@/domain/ids';
@@ -17,7 +19,7 @@ const MAX_ATTEMPTS = 3;
 export const CLIENT_EVENTS: ReadonlySet<StoreEvent['type']> = new Set<StoreEvent['type']>([
   'confirmPaymentMatch', 'dismissPayment', 'settleInvoice', 'linkInvoiceToJob', 'setJobStatus', 'createAction', 'editAction', 'approveAction',
   'retryAction', 'checkAction', 'dismissInsight', 'snoozeInsight', 'suppressCoach', 'setSlides', 'updateSettings',
-  'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'createPortalContract', 'linkPortalMember', 'ignorePortalMember', 'unignorePortalMember',
+  'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'importPortalCsv', 'createPortalContract', 'linkPortalMember', 'ignorePortalMember', 'unignorePortalMember',
   // Umstellung auf Stripe; takeoverSetUp/takeoverPlanChanged kommen nur vom Webhook.
   'prepareTakeover', 'prepareAllTakeovers', 'withdrawTakeover', 'approveActions', 'simulateTakeoverSetUp', 'takeoverShared',
 ]);
@@ -124,6 +126,7 @@ const SHAPE: Record<string, (e: Record<string, unknown>) => boolean> = {
   ignorePortalMember: (e) => isStr(e.externalId),
   unignorePortalMember: (e) => isStr(e.externalId),
   importBankStatement: (e) => e.connectionId === 'bank_sparkasse' && Array.isArray(e.payments) && e.payments.length <= 5000 && e.payments.every(isSparkassePayment) && isBookingDate(e.statementTo),
+  importPortalCsv: (e) => isPortalSource(e.source) && typeof e.csv === 'string' && e.csv.length >= 1 && e.csv.length <= MDC_CSV_MAX_CHARS,
   prepareTakeover: (e) => isStr(e.contractId) && isCatchUp(e.mode),
   prepareAllTakeovers: () => true,
   withdrawTakeover: (e) => isStr(e.contractId),

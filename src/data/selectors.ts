@@ -10,7 +10,7 @@ import { customerOpenInvoices, invoiceAllocatableCents, invoiceOpenCents, invoic
 import { formatEuro } from '@/domain/money';
 import { portalViews, type PortalView } from '@/domain/portal';
 import { monthForecast } from '@/domain/ledger/forecast';
-import type { Action, AppState, Company, Installment, Invoice, IsoDate, MemberContract, Payment, StoredInsight, TakeoverStatus } from '@/domain/types';
+import type { Action, AppState, Company, Contact, Installment, Invoice, IsoDate, MemberContract, Payment, StoredInsight, TakeoverStatus } from '@/domain/types';
 import type { MemberStatus } from '@/domain/ledger/status';
 import { contractKindLabel, contractOnHold, isMembershipContract } from '@/domain/ledger/contracts';
 import { takeoverCandidates } from '@/domain/takeover/prepare';
@@ -151,8 +151,47 @@ export function invoiceCandidates(s: AppState, jobId: string): Invoice[] {
   const linked = new Set(s.jobs.flatMap((j) => j.invoiceIds));
   const hasPlate = (i: Invoice) => (plate && plateInText(plate, (i.text ?? '').toUpperCase()) ? 1 : 0);
   return s.invoices
-    .filter((i) => i.contactId === job.contactId && i.company === 'zulassung' && i.status !== 'void' && !linked.has(i.id) && i.totalCents <= rest)
+    .filter((i) => job.contactId !== null && i.contactId === job.contactId && i.company === 'zulassung' && i.status !== 'void' && !linked.has(i.id) && i.totalCents <= rest)
     .sort((a, b) => hasPlate(b) - hasPlate(a) || b.issuedOn.localeCompare(a.issuedOn));
+}
+
+export type ZulassungCustomerRow = {
+  id: string;
+  name: string;
+  kind: Contact['kind'];
+  openCents: number;
+  overdueCents: number;
+  jobs: number;
+  plates: string[];
+};
+
+/** Zulassungskunden, nach offenem Betrag (dann überfällig, dann Name). NEXUS-Kontakte bleiben draußen. */
+export function zulassungCustomers(s: AppState, today: IsoDate): ZulassungCustomerRow[] {
+  return s.contacts
+    .filter((c) => c.company === 'zulassung')
+    .map((c) => {
+      let openCents = 0;
+      let overdueCents = 0;
+      for (const inv of s.invoices) {
+        if (inv.company !== 'zulassung' || inv.contactId !== c.id) continue;
+        const open = invoiceOpenCents(s, inv);
+        openCents += open;
+        if (inv.dueDate < today) overdueCents += open;
+      }
+      return {
+        id: c.id, name: c.name, kind: c.kind, openCents, overdueCents,
+        jobs: s.jobs.filter((j) => j.contactId === c.id).length,
+        plates: s.vehicles.filter((v) => v.contactId === c.id).map((v) => v.plate),
+      };
+    })
+    .sort((a, b) => b.openCents - a.openCents || b.overdueCents - a.overdueCents || a.name.localeCompare(b.name, 'de'));
+}
+
+/** Suche über Name, Art (vom Aufrufer beschriftet) und Kennzeichen. Leere Eingabe trifft jeden. */
+export function matchesCustomer(row: ZulassungCustomerRow, query: string, kindLabel: string): boolean {
+  const q = query.trim().toLocaleLowerCase('de');
+  if (!q) return true;
+  return `${row.name} ${kindLabel} ${row.plates.join(' ')}`.toLocaleLowerCase('de').includes(q);
 }
 
 /** Offene Rechnungen eines Zulassung-Kunden mit Rest und bereits bezahltem Betrag, nach Fälligkeit. */

@@ -1,9 +1,12 @@
 import Link from 'next/link';
 
+import { isFetchableMailbox } from '@/domain/connections';
 import { now } from '@/domain/clock';
 import type { readerSummary } from '@/domain/import/invoice-reading';
 import type { Connection } from '@/domain/types';
 
+import { FetchMailButton } from './FetchMailButton';
+import { PortalUploadLink } from './PortalImport';
 import { connectionSubtitle } from './connection-labels';
 import { IconCheck } from './Icons';
 import { ListGroup } from './ListGroup';
@@ -28,7 +31,7 @@ export function SetupChecklist({ connections, reader }: { connections: Connectio
               : <span className="setup-mark" role="img" aria-label="Noch offen" />}
             title={<span className="wrap-text">{c.label}</span>}
             subtitle={<span className="wrap-text">{connectionSubtitle(c, at, reader)}</span>}
-            accessory={c.id === 'bank_sparkasse' ? <StatementUploadLink /> : undefined} />
+            accessory={c.id === 'bank_sparkasse' ? <StatementUploadLink /> : c.id === 'mydigitalcar' || c.id === 'nextoz' ? <PortalUploadLink source={c.id} /> : isFetchableMailbox(c.id) ? <FetchMailButton id={c.id} /> : undefined} />
         );
       })}
     </ListGroup>

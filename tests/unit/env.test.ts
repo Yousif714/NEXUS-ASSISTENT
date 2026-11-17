@@ -16,6 +16,7 @@ describe('readEnv', () => {
       supabaseUrl: FULL.SUPABASE_URL, supabaseServiceRoleKey: FULL.SUPABASE_SERVICE_ROLE_KEY, sessionSecret: FULL.SESSION_SECRET,
       ownerSetupToken: 'setup', cronSecret: 'cron', appOrigin: 'https://nexus.example', testMemoryDb: false,
       paymentLinkBaseUrl: 'https://nexus.example',
+      imapAccounts: [],
     });
   });
 
@@ -69,11 +70,10 @@ test('ANTHROPIC_API_KEY optional', () => {
 });
 
 describe('IMAP-Umgebung', () => {
+  const byId = (e: ReturnType<typeof readEnv>, id: string) => e.imapAccounts.find((a) => a.id === id);
   test('ohne Zugangsdaten bleibt jedes Postfach ungesetzt', () => {
-    const e = readEnv(FULL);
-    expect(e.imapGmail).toBeUndefined();
-    expect(e.imapInfoMail).toBeUndefined();
-    expect(e.imapIcloud).toBeUndefined();
+    expect(readEnv(FULL).imapAccounts).toEqual([]);
+    expect(readEnv(FULL).imapConfigError).toBeUndefined();
   });
   test('Gmail und info@ sind Gmail-IMAP, iCloud hat den Apple-Server', () => {
     const e = readEnv({
@@ -85,20 +85,56 @@ describe('IMAP-Umgebung', () => {
       IMAP_ICLOUD_USER: 'icloud@example.de',
       IMAP_ICLOUD_PASSWORD: 'apple-app-pass',
     });
-    expect(e.imapGmail).toEqual({ host: 'imap.gmail.com', port: 993, user: 'privat@example.de', password: 'abcdefghijklmnop' });
-    expect(e.imapInfoMail).toEqual({ host: 'imap.gmail.com', port: 993, user: 'info@example.de', password: 'info-app-pass' });
-    expect(e.imapIcloud).toEqual({ host: 'imap.mail.me.com', port: 993, user: 'icloud@example.de', password: 'apple-app-pass' });
+    expect(byId(e, 'gmail')).toMatchObject({ host: 'imap.gmail.com', port: 993, user: 'privat@example.de', password: 'abcdefghijklmnop', label: 'Gmail' });
+    expect(byId(e, 'info_mail')).toMatchObject({ host: 'imap.gmail.com', port: 993, user: 'info@example.de', password: 'info-app-pass', company: 'zulassung' });
+    expect(byId(e, 'icloud')).toMatchObject({ host: 'imap.mail.me.com', port: 993, user: 'icloud@example.de', password: 'apple-app-pass' });
   });
   test('nur Passwort oder nur Nutzer zählt als nicht verbunden', () => {
-    expect(readEnv({ ...FULL, IMAP_GMAIL_PASSWORD: 'geheim' }).imapGmail).toBeUndefined();
-    expect(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'info@example.de' }).imapInfoMail).toBeUndefined();
+    expect(byId(readEnv({ ...FULL, IMAP_GMAIL_PASSWORD: 'geheim' }), 'gmail')).toBeUndefined();
+    expect(byId(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'info@example.de' }), 'info_mail')).toBeUndefined();
   });
   test('Host und Port lassen sich überschreiben, Port 143 nicht', () => {
-    expect(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'a@example.de', IMAP_INFO_MAIL_PASSWORD: 'pw', IMAP_INFO_MAIL_HOST: 'imap.example.de', IMAP_INFO_MAIL_PORT: '993' }).imapInfoMail)
+    expect(byId(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'a@example.de', IMAP_INFO_MAIL_PASSWORD: 'pw', IMAP_INFO_MAIL_HOST: 'imap.example.de', IMAP_INFO_MAIL_PORT: '993' }), 'info_mail'))
       .toMatchObject({ host: 'imap.example.de', port: 993 });
     expect(() => readEnv({ ...FULL, IMAP_GMAIL_USER: 'a@example.de', IMAP_GMAIL_PASSWORD: 'pw', IMAP_GMAIL_PORT: '143' })).toThrow(/nur TLS/);
     expect(() => readEnv({ ...FULL, IMAP_GMAIL_USER: 'a@example.de', IMAP_GMAIL_PASSWORD: 'pw', IMAP_GMAIL_PORT: 'kein' })).toThrow(/IMAP_GMAIL_PORT/);
   });
+  test('weiteres Postfach über IMAP_<NAME>_* und JSON, Passwort nie in der Fehlermeldung', () => {
+    const secret = 'json-passwort-geheim';
+    const e = readEnv({
+      ...FULL,
+      IMAP_BUERO_USER: 'buero@example.de',
+      IMAP_BUERO_PASSWORD: 'pw buero',
+      IMAP_ACCOUNTS: JSON.stringify([{ name: 'privat', user: 'privat@example.de', password: 'abcd efgh', label: 'Privat' }]),
+    });
+    expect(byId(e, 'mail_buero')).toMatchObject({ host: 'imap.gmail.com', port: 993, user: 'buero@example.de', password: 'pwbuero' });
+    expect(byId(e, 'mail_privat')).toMatchObject({ label: 'Privat', password: 'abcdefgh', host: 'imap.gmail.com' });
+    const broken = readEnv({ ...FULL, IMAP_ACCOUNTS: `[{"password":"${secret}"}` });
+    expect(broken.imapConfigError).toBe('IMAP_ACCOUNTS ist kein gültiges JSON');
+    expect(JSON.stringify(broken)).not.toContain(secret);
+    expect(broken.imapAccounts).toEqual([]);
+  });
+});
+
+test('WhatsApp-Variablen optional, leer zählt als nicht gesetzt', () => {
+  const e = readEnv(FULL);
+  expect(e.whatsappPhoneNumberId).toBeUndefined();
+  expect(e.whatsappAccessToken).toBeUndefined();
+  expect(e.whatsappAppSecret).toBeUndefined();
+  expect(e.whatsappVerifyToken).toBeUndefined();
+  expect(e.whatsappWabaId).toBeUndefined();
+  const set = readEnv({
+    ...FULL,
+    WHATSAPP_PHONE_NUMBER_ID: '123456',
+    WHATSAPP_ACCESS_TOKEN: 'tok',
+    WHATSAPP_APP_SECRET: 'sec',
+    WHATSAPP_VERIFY_TOKEN: 'ver',
+    WHATSAPP_WABA_ID: 'waba',
+  });
+  expect(set).toMatchObject({
+    whatsappPhoneNumberId: '123456', whatsappAccessToken: 'tok', whatsappAppSecret: 'sec', whatsappVerifyToken: 'ver', whatsappWabaId: 'waba',
+  });
+  expect(readEnv({ ...FULL, WHATSAPP_APP_SECRET: '  ', WHATSAPP_VERIFY_TOKEN: '' }).whatsappAppSecret).toBeUndefined();
 });
 
 test('STRIPE_WRITE_KEY optional, PAYMENT_LINK_BASE_URL fällt auf APP_ORIGIN zurück', () => {

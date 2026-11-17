@@ -7,7 +7,7 @@ const KAYA = createDemoState().contracts.find((c) => c.contactId === 'm-kaya')!.
 const STRIPE_LEX = '[data-key="stripe-lex:i-lex-118"]';
 
 test('Abnahme 2: überfälliges Mitglied → Rechenweg → Erinnerung mit Link', async ({ page }) => {
-  await page.goto('/nexus?reset=1'); await page.getByTestId(`member-row-${KAYA}`).click();
+  await page.goto('/nexus/vertraege?reset=1'); await page.getByTestId(`member-row-${KAYA}`).click();
   await expect(page.getByTestId('arrears')).toHaveText(formatEuro(15000));
   await expect(page.getByTestId('future')).toHaveText(formatEuro(60000));
   await page.getByRole('button', { name: 'Erinnerung vorbereiten' }).click();
@@ -73,9 +73,12 @@ test('Zuordnen: „Keine Mitgliedszahlung“ blendet aus und bleibt nach Neulade
 test('Abnahme 5: Stripe bezahlt, Lexware offen', async ({ page }) => {
   await page.goto('/?reset=1');
   await expect(page.getByTestId('top-insights')).toBeVisible();
-  // Der Hinweis steht auf Heute nur sicher in der Liste, wenn er unter den Top 3 ist.
-  if (await page.locator(STRIPE_LEX).count()) await page.locator(STRIPE_LEX).click();
-  else await page.goto('/nexus/zuordnen');
+  // Steht der Hinweis nicht in den drei wichtigsten, liegt er im Abschnitt Offen.
+  const stripeLex = page.locator(STRIPE_LEX);
+  if (await stripeLex.count()) {
+    if (!(await stripeLex.first().isVisible())) await page.getByTestId('feed-offen').locator('summary').click();
+    await stripeLex.first().click();
+  } else await page.goto('/nexus/zuordnen');
   await expect(page).toHaveURL(/\/nexus\/zuordnen/);
   await page.getByRole('button', { name: 'Als durch Stripe bezahlt markieren' }).click();
   await expect(page.getByTestId('stripe-case-i-lex-118')).toHaveCount(0);
@@ -98,13 +101,17 @@ test('NEXUS-Übersicht: Filter überfällig, Zuordnen-Einstieg, Content-Board', 
   await page.goto('/nexus?reset=1');
   await expect(page.getByTestId('money-card-nexus')).toBeVisible();
   await expect(page.getByTestId('forecast')).toContainText('wackelig');
+  await expect(page.locator('[data-testid^="member-row-"]')).toHaveCount(0);
+  await expect(page.getByTestId('members-link')).toContainText('überfällig');
+  await expect(page.getByRole('link', { name: /Zuordnen \(\d+\)/ })).toBeVisible();
+  await page.getByTestId('members-link').click();
+  await expect(page).toHaveURL(/\/nexus\/vertraege$/);
   const all = await page.locator('[data-testid^="member-row-"]').count();
   await page.getByRole('radio', { name: 'Überfällig' }).check();
   const overdue = page.locator('[data-testid^="member-row-"]');
   await expect(overdue.first()).toBeVisible();
   expect(await overdue.count()).toBeLessThan(all);
   await expect(page.getByTestId(`member-row-${KAYA}`)).toBeVisible();
-  await expect(page.getByRole('link', { name: /Zuordnen \(\d+\)/ })).toBeVisible();
   await page.goto('/nexus/content');
   await expect(page.getByTestId('content-stage')).toHaveCount(5);
 });
@@ -161,7 +168,7 @@ test('Demo: keine Vorschlagskarte, Übernahme zeigt Demo-Etikett', async ({ page
 });
 
 test('Bank nicht verbunden: Übernahme-Seite zeigt keinen Rückstand und keinen Plan', async ({ page }) => {
-  await page.goto('/nexus?reset=1');
+  await page.goto('/nexus/vertraege?reset=1');
   await expect(page.getByTestId(`member-row-${KAYA}`)).toBeVisible();
   await page.evaluate(() => {
     const key = 'nexus-demo-v1';

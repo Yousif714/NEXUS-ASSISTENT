@@ -1,30 +1,61 @@
-import type { Contact } from '@/domain/types';
-import { IMPORT_SINCE, cursorOutdated, type ImportedMessage } from '@/domain/import/batch';
+import { addDaysIso, todayBerlin } from '@/domain/clock';
+import type { ImportedMessage } from '@/domain/import/batch';
+import type { Contact, IsoDate } from '@/domain/types';
 
 /** Zeichen des gespeicherten Textauszugs, ohne Anhänge. */
 export const MAIL_SNIPPET_CHARS = 2_000;
 
+/** Erster Abruf eines Postfachs: nur so viele Tage zurück, nicht der allgemeine Importbeginn. */
+export const MAIL_LOOKBACK_DAYS = 60;
+
+/** Berliner Kalendertag, ab dem ein neues Postfach gelesen wird. */
+export function mailWindowStart(now: Date): IsoDate {
+  return addDaysIso(todayBerlin(now), -MAIL_LOOKBACK_DAYS);
+}
+
+/** UID-Cursor eines Postfachs. `v` trennt ihn vom alten Posteingang-Cursor (UIDs gelten je Ordner). */
 export interface ImapCursor {
+  v: 2;
   since: string;
+  /** Ordner der eingehenden Mails (bei Gmail „Alle Nachrichten“, sonst INBOX). */
+  incoming: string;
   inboxUid: number;
+  /** Gesendet-Ordner; fehlt bei Gmail, weil „Alle Nachrichten“ den Ausgang schon enthält. */
+  sent: string | null;
   sentUid: number;
 }
 
-/** Letzte verarbeitete UID je Ordner. Ungültig oder veraltet → Start bei IMPORT_SINCE, UID 0. */
-export function parseImapCursor(raw: string | null): ImapCursor {
+function freshCursor(since: string): ImapCursor {
+  return { v: 2, since, incoming: '', inboxUid: 0, sent: null, sentUid: 0 };
+}
+
+const isoDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+/**
+ * Letzte UID je Ordner. Ein Cursor ohne `v: 2` (alter Stand ab Juni, nur INBOX) startet neu:
+ * die UIDs eines anderen Ordners dürfen nicht weiterverwendet werden.
+ */
+export function parseImapCursor(raw: string | null, since: string): ImapCursor {
   if (raw) {
     try {
       const c = JSON.parse(raw) as Partial<ImapCursor>;
-      if (!cursorOutdated(c.since) && Number.isInteger(c.inboxUid) && (c.inboxUid as number) >= 0 && Number.isInteger(c.sentUid) && (c.sentUid as number) >= 0) {
-        return { since: IMPORT_SINCE, inboxUid: c.inboxUid as number, sentUid: c.sentUid as number };
+      if (c.v === 2 && isoDay(c.since) && Number.isInteger(c.inboxUid) && (c.inboxUid as number) >= 0 && Number.isInteger(c.sentUid) && (c.sentUid as number) >= 0) {
+        return {
+          v: 2,
+          since: c.since,
+          incoming: typeof c.incoming === 'string' ? c.incoming : '',
+          inboxUid: c.inboxUid as number,
+          sent: typeof c.sent === 'string' ? c.sent : null,
+          sentUid: c.sentUid as number,
+        };
       }
     } catch { /* ungültiger Cursor → Neustart */ }
   }
-  return { since: IMPORT_SINCE, inboxUid: 0, sentUid: 0 };
+  return freshCursor(since);
 }
 
 export function encodeImapCursor(c: ImapCursor): string {
-  return JSON.stringify({ since: IMPORT_SINCE, inboxUid: c.inboxUid, sentUid: c.sentUid });
+  return JSON.stringify({ v: 2, since: c.since, incoming: c.incoming, inboxUid: c.inboxUid, sent: c.sent, sentUid: c.sentUid });
 }
 
 /** Message-ID ohne Klammern, kleingeschrieben, gekürzt. Leer, wenn nichts übrig bleibt. */
