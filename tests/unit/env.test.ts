@@ -101,6 +101,27 @@ describe('IMAP-Umgebung', () => {
   });
 });
 
+test('WhatsApp-Variablen optional, leer zählt als nicht gesetzt', () => {
+  const e = readEnv(FULL);
+  expect(e.whatsappPhoneNumberId).toBeUndefined();
+  expect(e.whatsappAccessToken).toBeUndefined();
+  expect(e.whatsappAppSecret).toBeUndefined();
+  expect(e.whatsappVerifyToken).toBeUndefined();
+  expect(e.whatsappWabaId).toBeUndefined();
+  const set = readEnv({
+    ...FULL,
+    WHATSAPP_PHONE_NUMBER_ID: '123456',
+    WHATSAPP_ACCESS_TOKEN: 'tok',
+    WHATSAPP_APP_SECRET: 'sec',
+    WHATSAPP_VERIFY_TOKEN: 'ver',
+    WHATSAPP_WABA_ID: 'waba',
+  });
+  expect(set).toMatchObject({
+    whatsappPhoneNumberId: '123456', whatsappAccessToken: 'tok', whatsappAppSecret: 'sec', whatsappVerifyToken: 'ver', whatsappWabaId: 'waba',
+  });
+  expect(readEnv({ ...FULL, WHATSAPP_APP_SECRET: '  ', WHATSAPP_VERIFY_TOKEN: '' }).whatsappAppSecret).toBeUndefined();
+});
+
 test('STRIPE_WRITE_KEY optional, PAYMENT_LINK_BASE_URL fällt auf APP_ORIGIN zurück', () => {
   const a = readEnv(FULL);
   expect([a.stripeWriteKey, a.paymentLinkBaseUrl]).toEqual([undefined, 'https://nexus.example']);

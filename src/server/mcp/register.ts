@@ -159,12 +159,12 @@ export function registerNexusTools(server: McpServer): void {
     return { item: scrub(item) };
   });
 
-  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender).', listed, async (args) => {
+  read('list_messages', 'Nachrichten auflisten', 'WhatsApp- und E-Mail-Nachrichten suchen (Text, Absender, Kanal). channel ist whatsapp oder email.', listed, async (args) => {
     const s = await current();
     const rows = s.messages.filter((m) => matches(args.query, [m.body, m.from, m.to, contactName(s, m.contactId), m.channel]));
     return paged(rows.map((m) => scrub(m)), args);
   });
-  read('get_message', 'Nachricht lesen', 'Eine Nachricht.', byId, async (args) => {
+  read('get_message', 'Nachricht lesen', 'Eine Nachricht. channel ist whatsapp oder email.', byId, async (args) => {
     const s = await current();
     const item = s.messages.find((m) => m.id === args.id);
     if (!item) throw new McpToolError('Nicht gefunden');

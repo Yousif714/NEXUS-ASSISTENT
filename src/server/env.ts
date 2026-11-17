@@ -28,6 +28,16 @@ export interface ServerEnv {
   imapInfoMail?: ImapAccount;
   imapGmail?: ImapAccount;
   imapIcloud?: ImapAccount;
+  /**
+   * WhatsApp Cloud API (Kundennummer, Coexistence). Fehlt das App-Geheimnis bzw. der Verify-Token,
+   * nimmt der Webhook nichts an und `whatsapp_kunden` bleibt `missing`. Der Zugriffstoken wird nur
+   * aufbewahrt; dieser Stand sendet keine Nachrichten.
+   */
+  whatsappPhoneNumberId?: string;
+  whatsappAccessToken?: string;
+  whatsappAppSecret?: string;
+  whatsappVerifyToken?: string;
+  whatsappWabaId?: string;
 }
 
 const SUPABASE = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
@@ -64,5 +74,10 @@ export function readEnv(e: Record<string, string | undefined> = process.env): Se
     imapInfoMail: readImapAccount(e, 'info_mail', val),
     imapGmail: readImapAccount(e, 'gmail', val),
     imapIcloud: readImapAccount(e, 'icloud', val),
+    whatsappPhoneNumberId: val('WHATSAPP_PHONE_NUMBER_ID'),
+    whatsappAccessToken: val('WHATSAPP_ACCESS_TOKEN'),
+    whatsappAppSecret: val('WHATSAPP_APP_SECRET'),
+    whatsappVerifyToken: val('WHATSAPP_VERIFY_TOKEN'),
+    whatsappWabaId: val('WHATSAPP_WABA_ID'),
   };
 }
