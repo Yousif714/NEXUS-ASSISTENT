@@ -4,7 +4,7 @@ import { cursorOutdated, IMPORT_SINCE } from '@/domain/import/batch';
 import { mapStripe, STRIPE_API_VERSION, type StripeRaw } from '@/domain/import/stripe';
 
 import { createApiClient } from './http';
-import { BudgetExceeded, type PullContext, type PullResult } from './types';
+import { BudgetExceeded, ConnectorError, type PullContext, type PullResult } from './types';
 
 export { STRIPE_API_VERSION };
 
@@ -80,7 +80,21 @@ export async function pullStripe(cursor: string | null, ctx: PullContext): Promi
   const state: Cursor = { ...cur };
   try {
     if (cur.phase === 'invoices' && cur.startingAfter === null) {
-      await readAll('/v1/subscriptions', [['status', 'all'], ['expand[]', 'data.customer'], ['expand[]', 'data.schedule']], raw.subscriptions);
+      /** 409 beim Expand: dieselbe Liste ohne Expand. Leere `status=all`-Antwort: noch einmal ohne Status. */
+      const loadSubs = async (params: [string, string][]): Promise<unknown[]> => {
+        const into: unknown[] = [];
+        try {
+          await readAll('/v1/subscriptions', params, into);
+        } catch (e) {
+          if (!(e instanceof ConnectorError) || !e.message.includes('HTTP 409')) throw e;
+          await readAll('/v1/subscriptions', params.filter(([k]) => k !== 'expand[]'), into);
+        }
+        return into;
+      };
+      const expand: [string, string][] = [['expand[]', 'data.customer'], ['expand[]', 'data.schedule']];
+      let subs = await loadSubs([['status', 'all'], ...expand]);
+      if (subs.length === 0) subs = await loadSubs(expand);
+      raw.subscriptions.push(...subs);
       await readAll('/v1/products', [], raw.products);
       // Seit dem letzten Laufstart nicht mehr offen → einzeln nachladen (der Mapper übernimmt nur bezahlte).
       const open: Obj[] = [];

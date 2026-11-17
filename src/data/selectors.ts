@@ -137,7 +137,7 @@ export function zulassungKpis(s: AppState, at: Date): { doneToday: number; open:
     doneToday: s.jobs.filter((j) => j.doneAt && todayBerlin(new Date(j.doneAt)) === today).length,
     open: s.jobs.filter((j) => j.status === 'open').length,
     waiting: s.jobs.filter((j) => j.status === 'waiting_customer').length,
-    notInvoiced: stale ? null : openInsights(s).filter((i) => i.type === 'job_not_invoiced').length,
+    notInvoiced: stale ? null : s.jobs.filter((j) => j.status === 'done' && jobBilling(s, j).restCents > 0).length,
   };
 }
 

@@ -1,4 +1,5 @@
 import { activityForNote } from './intake/apply';
+import { applyPortalCleanup, portalCleanupText } from './import/portal-cleanup';
 import { validPhone } from './matching/messages';
 import type { Action, ActionType, AppState, Commitment, Company, Contact } from './types';
 
@@ -25,7 +26,8 @@ export type McpChange =
   | { op: 'completeCommitment'; id: string }
   | { op: 'createAction'; title: string; actionType: McpActionType; company: Company | null; payload: Record<string, string | number | boolean | null> }
   | { op: 'createNote'; text: string; jobId?: string; contactId?: string }
-  | { op: 'dismissProposal'; proposalId: string };
+  | { op: 'dismissProposal'; proposalId: string }
+  | { op: 'cleanupPortalJobs' };
 
 export type McpApply = { state: AppState; text: string; id?: string; error?: string; unchanged?: boolean };
 
@@ -196,6 +198,11 @@ export function applyMcpChange(s: AppState, change: McpChange, ctx: { newId: () 
       if (!id || id.length > 500) return fail(s, 'Vorschlags-ID fehlt oder ist zu lang');
       if (s.dismissedProposals.includes(id)) return { state: s, text: '', unchanged: true, id };
       return { state: { ...s, dismissedProposals: [...s.dismissedProposals, id] }, text: `Vorschlag verworfen: ${id}`, id };
+    }
+    case 'cleanupPortalJobs': {
+      const r = applyPortalCleanup(s);
+      if (r.counts.jobs === 0) return { state: s, text: '', unchanged: true };
+      return { state: r.state, text: portalCleanupText(r.counts, false) };
     }
   }
 }

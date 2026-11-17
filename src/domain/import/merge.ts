@@ -92,8 +92,9 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
     newId,
   );
 
-  // Streitfälle: Zahlung (externalId = Rechnung) → Abo
-  let subscriptions = sub.items;
+  // Feste ID je Stripe-Abo: ein erneuter Abruf trifft dieselbe Zeile (sonst 409 am Unique-Index).
+  const knownSubIds = new Set(s.subscriptions.map((x) => x.id));
+  let subscriptions = sub.items.map((x) => knownSubIds.has(x.id) || !x.externalId ? x : { ...x, id: `stripe_nexus:${x.externalId}` });
   for (const d of b.disputes) {
     if (!d.invoiceExternalId) continue;
     const payment = pay.items.find((p) => p.externalId === d.invoiceExternalId && p.subscriptionExternalId);

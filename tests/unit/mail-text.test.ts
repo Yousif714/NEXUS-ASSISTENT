@@ -15,6 +15,10 @@ describe('Mail-Text', () => {
     expect(isAutomatedMail({ channel: 'email', from: 'notifications@shop.example.de' })).toBe(true);
     expect(isAutomatedMail({ channel: 'email', from: 'News <news@example.de>', subject: 'Newsletter Mai' })).toBe(true);
     expect(isAutomatedMail({ channel: 'email', from: 'Meta <noreply@facebookmail.com>' })).toBe(true);
+    expect(isAutomatedMail({ channel: 'email', from: 'PayPal <service@paypal.de>' })).toBe(true);
+    expect(isAutomatedMail({ channel: 'email', from: 'Lexware <buchhaltung@mail.lexware.de>' })).toBe(true);
+    expect(isAutomatedMail({ channel: 'email', from: 'lexoffice <noreply@lexoffice.de>' })).toBe(true);
+    expect(isAutomatedMail({ channel: 'email', from: 'Beleg <receipts@shop.example.de>' })).toBe(true);
     expect(isAutomatedMail({ channel: 'email', from: 'Kunde <kunde@example.de>', subject: 'Zulassung' })).toBe(false);
     expect(isAutomatedMail({ channel: 'whatsapp', from: 'no-reply@example.de' })).toBe(false);
   });

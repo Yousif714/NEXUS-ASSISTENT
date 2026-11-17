@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import './zulassung.css';
 
@@ -18,7 +18,8 @@ import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable } from '@/domain/freshness';
-import { jobContactLabel } from '@/domain/import/portal';
+import { jobBilling } from '@/domain/billing';
+import { jobContactLabel, jobPortalSource } from '@/domain/import/portal';
 import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
 import { formatBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
@@ -29,6 +30,12 @@ const jobAmount = (j: Job) => (j.portalData && j.priceCents === 0 ? '–' : form
 export default function ZulassungPage() {
   const { state } = useAppStore();
   const at = now();
+  const [unbilled, setUnbilled] = useState(false);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('abrechnung');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (q === 'portal') setUnbilled(true);
+  }, []);
   const [portal, setPortal] = useState('all');
   const [portalStatus, setPortalStatus] = useState('all');
   const [caps, setCaps] = useState<Record<string, number>>({});
@@ -71,17 +78,27 @@ export default function ZulassungPage() {
         </section>
       </div>
 
+      {unbilled && (
+        <p className="empty-card" data-testid="portal-unbilled-filter">
+          Nur Portal-Aufträge, die erledigt und nicht abgerechnet sind. <a href="/zulassung">Alle Aufträge</a>
+        </p>
+      )}
+
       {filterPortalJobs(state.jobs, portal, portalStatus).length === 0 && (portal !== 'all' || portalStatus !== 'all') && (
         <p className="empty-card" data-testid="portal-filter-empty">Keine Aufträge für diese Portalauswahl.</p>
       )}
 
       {JOB_STATUS_ORDER.map((status) => {
-        const jobs = filterPortalJobs(state.jobs.filter((j) => j.status === status), portal, portalStatus);
+        const jobs = filterPortalJobs(state.jobs.filter((j) => {
+          if (j.status !== status) return false;
+          if (!unbilled) return true;
+          return !!jobPortalSource(j) && jobBilling(state, j).restCents > 0;
+        }), portal, portalStatus);
         if (jobs.length === 0) return null;
         const cap = caps[status] ?? PORTAL_LIST_CAP;
         const shown = jobs.slice(0, cap);
         return (
-          <ListGroup key={status} title={JOB_STATUS_LABEL[status].charAt(0).toUpperCase() + JOB_STATUS_LABEL[status].slice(1)} testId={`jobs-${status}`} sectionId={`jobs-${status}`} defaultOpen={status === 'open'}>
+          <ListGroup key={status} title={JOB_STATUS_LABEL[status].charAt(0).toUpperCase() + JOB_STATUS_LABEL[status].slice(1)} testId={`jobs-${status}`} sectionId={unbilled && status === 'done' ? 'jobs-unbilled' : `jobs-${status}`} defaultOpen={status === 'open' || (unbilled && status === 'done')}>
             {shown.map((j) => {
               const v = state.vehicles.find((x) => x.id === j.vehicleId);
               return (

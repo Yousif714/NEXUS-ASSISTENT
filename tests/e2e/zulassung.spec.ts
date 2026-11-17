@@ -278,7 +278,8 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   const ozPreview = page.getByTestId('portal-preview-nextoz');
   await expect(ozPreview).toContainText('4 Vorgänge');
   await ozPreview.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('portal-summary-nextoz')).toContainText('4 Aufträge neu');
+  await expect(page.getByTestId('portal-summary-nextoz')).toContainText('2 Aufträge neu');
+  await expect(page.getByTestId('portal-summary-nextoz')).toContainText('2 übersprungen');
 
   await page.getByTestId('portal-source-filter').selectOption('nextoz');
   await expect(page.getByRole('link', { name: /BO JD 1003/ })).toBeVisible();
@@ -300,10 +301,10 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   await page.getByTestId('portal-source-filter').selectOption('nextoz');
   await page.getByTestId('portal-status-filter').selectOption('problem');
   await expect(page.getByRole('link', { name: /MD CI 200/ })).toHaveCount(0);
-  await page.getByRole('link', { name: /Neuzulassung/ }).click();
+  await page.getByRole('link', { name: /E AB 9/ }).click();
   await expect(page.getByTestId('job-portal-status')).toHaveText('Signaturfehler');
   await expect(page.getByTestId('job-portal-error')).toContainText('Unterschrift fehlt');
   await expect(page.getByTestId('job-portal-problem')).toBeVisible();
-  await expect(page.getByTestId('job-vehicle')).toContainText('–');
-  await expect(page.getByTestId('portal-field-Kennzeichen')).toContainText('Zufällig');
+  await expect(page.getByTestId('job-vehicle')).toContainText('E AB 9');
+  await expect(page.getByTestId('portal-field-Kennzeichen')).toContainText('E AB 9');
 });
