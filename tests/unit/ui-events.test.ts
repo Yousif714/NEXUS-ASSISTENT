@@ -37,6 +37,8 @@ describe('UI-Ereignisse im Echtmodus bestehen isClientEvent', () => {
     ['Rechnung erledigt', { type: 'settleInvoice', invoiceId: 'i-1', paymentId: 'p-1' }],
     ['Rechnung zuordnen', { type: 'linkInvoiceToJob', jobId: job.id, invoiceId: 'i-1' }],
     ['Auftragsstatus', { type: 'setJobStatus', jobId: job.id, status: 'done' }],
+    ['Portal-CSV', { type: 'importPortalCsv', source: 'mydigitalcar', csv: 'Ex_Vorgangsnummer\n' }],
+    ['nextOZ-CSV', { type: 'importPortalCsv', source: 'nextoz', csv: 'noch ohne Zuordnung' }],
     ['Hinweis erledigt', { type: 'dismissInsight', key: 'k' }],
     ['Hinweis später', { type: 'snoozeInsight', key: 'k' }],
     ['Coach nie', { type: 'suppressCoach', key: 'k' }],

@@ -52,6 +52,8 @@ export type StoreEvent =
   | { type: 'importPortalList'; entries: PortalListEntry[] }
   /** Sparkasse-Auszug (vom Client geparst); die Engine baut die Zahlungen aus den Feldern neu. `statementTo`: letzter Buchungstag der Datei (auch ohne neue Zahlungen Cursor und Frische). */
   | { type: 'importBankStatement'; connectionId: 'bank_sparkasse'; payments: ImportedPayment[]; statementTo: IsoDate }
+  /** Portal-CSV. `source` trennt myDigitalCar und nextOZ. Idempotent, auch in Portionen mit Kopfzeile. */
+  | { type: 'importPortalCsv'; source: 'mydigitalcar' | 'nextoz'; csv: string }
   /** Vertrag für ein Portal-Mitglied ohne Vertrag; `created[0]` ist die Vertrags-ID. `contactId`: bestätigter Namenstreffer, sonst null. */
   | { type: 'createPortalContract'; externalId: string; draft: ContractDraft; contactId: string | null }
   /** „Mit Vertrag verknüpfen“: Portal-Mitglied per Ref an einen bestehenden NEXUS-Kontakt hängen (idempotent). */

@@ -822,6 +822,26 @@ a.task-body:active {
   vertical-align: middle;
 }
 
+.portal-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--blue, #007aff) 14%, transparent);
+  color: var(--blue, #007aff);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.portal-badge[data-source="nextoz"] {
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
+  color: var(--demo-fg);
+}
+
 /* Leerer Zustand der Platzhalterseiten */
 .empty-state {
   display: flex;

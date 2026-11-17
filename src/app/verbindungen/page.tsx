@@ -6,6 +6,7 @@ import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { COMPANY_LABEL } from '@/components/MoneyCard';
 import { PageHeader } from '@/components/PageHeader';
+import { PortalUploadLink } from '@/components/PortalImport';
 import { SetupChecklist, StatementUploadLink } from '@/components/SetupChecklist';
 import { statementStandText } from '@/components/connection-labels';
 import { readerSummary } from '@/domain/import/invoice-reading';
@@ -26,11 +27,12 @@ function SourceList() {
       {state.connections.map((c) => {
         const company = c.company ? COMPANY_LABEL[c.company] : 'Firmenübergreifend';
         const statement = c.id === 'bank_sparkasse';
+        const portal = c.id === 'mydigitalcar' || c.id === 'nextoz' ? c.id : null;
         const subtitle = statement ? `${company} · ${statementStandText(c, at)}` : [company, STATUS_LABEL[c.status], ageText(c, at)].join(' · ');
         return (
           <div key={c.id}>
             <ListRow testId={`conn-${c.id}`} title={<span className="wrap-text">{c.label}</span>} subtitle={<span className="wrap-text">{subtitle}</span>}
-              accessory={statement ? <StatementUploadLink /> : mode !== 'demo' ? undefined : c.status === 'connected'
+              accessory={statement ? <StatementUploadLink /> : portal ? <PortalUploadLink source={portal} /> : mode !== 'demo' ? undefined : c.status === 'connected'
                 ? <button type="button" className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'setConnectionStatus', id: c.id, status: 'error' })}>Störung simulieren</button>
                 : <button type="button" className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'setConnectionStatus', id: c.id, status: 'connected' })}>Wieder verbinden</button>} />
             <details className="conn-help" data-testid={`conn-help-${c.id}`}>

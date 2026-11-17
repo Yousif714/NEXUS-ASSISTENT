@@ -14,6 +14,8 @@ export const CONNECTION_CATALOG: readonly { id: ConnectionId; company: Company |
   { id: 'whatsapp_assistent', company: null, label: 'WhatsApp Assistent' },
   { id: 'portal_nexus', company: 'nexus', label: 'NEXUS-Portal' },
   { id: 'claude_invoices', company: 'nexus', label: 'Claude (Rechnungen lesen)' },
+  { id: 'mydigitalcar', company: 'zulassung', label: 'myDigitalCar' },
+  { id: 'nextoz', company: 'zulassung', label: 'nextOZ' },
 ];
 
 /** Lexware-Verbindung je Firma. */
@@ -34,6 +36,8 @@ export const HOW_TO: Record<ConnectionId, string> = {
   whatsapp_assistent: 'Zweite Nummer einrichten und Meta-Vorlagen für Briefings freigeben lassen.',
   portal_nexus: 'Mitgliederliste auf portal.nexusnetzwerk.de/mitglieder kopieren (oder als CSV speichern) und unter NEXUS → Portal-Mitglieder → „Mitgliederliste einfügen“ übernehmen.',
   claude_invoices: 'Schlüssel als Vercel-Variable ANTHROPIC_API_KEY hinterlegen. Claude liest dann offene NEXUS-Rechnungen auf Ratenvereinbarungen (Monatslimit 100 €).',
+  mydigitalcar: 'Vorgänge auf web.mydigitalcar.de als CSV exportieren (Semikolon, UTF-8, eine Kopfzeile) und unter Zulassungsdienst bei myDigitalCar hochladen. Dieselbe Datei kann das MCP-Werkzeug import_portal_csv mit source mydigitalcar übernehmen. Große Exporte dürfen in Portionen kommen, jede Portion mit derselben Kopfzeile.',
+  nextoz: 'nextOZ ist eine eigene Quelle neben myDigitalCar, nicht darin enthalten. Den Export unter Zulassungsdienst bei nextOZ hochladen (MCP: import_portal_csv mit source nextoz). Die Spaltenzuordnung folgt, sobald das Format feststeht; bis dahin wird nichts übernommen.',
 };
 
 /** True, wenn alle genannten Quellen noch nicht verbunden sind (Status 'missing'). */
