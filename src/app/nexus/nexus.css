@@ -1,0 +1,5 @@
+/* NEXUS-Übersicht: Werkzeuge ganz unten, optisch zurückgenommen. */
+.nexus-tools {
+  margin-top: var(--space-4, 24px);
+  opacity: 0.92;
+}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { useAppStore } from '@/data/store';
-import { formatIsoDe, now } from '@/domain/clock';
+import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
 import { decodeListFile } from '@/domain/import/portal-list';
 import { MDC_CSV_MAX_CHARS, MDC_PORTAL_STATUSES, matchesPortalFilter, mdcResultText, mdcVorgang } from '@/domain/import/mydigitalcar';
 import { applyPortalImport, matchesPortalSource, PORTAL_LABEL, PORTAL_SOURCES, type PortalSource } from '@/domain/import/portal';
@@ -108,30 +108,37 @@ export function PortalCsvUpload({ source }: { source: PortalSource }) {
     setCsv(null);
   }
 
+  const conn = state.connections.find((c) => c.id === source);
+  const stand = conn?.lastSuccessAt ? `Stand ${formatBerlin(new Date(conn.lastSuccessAt), 'dd.MM., HH:mm')}` : 'Noch kein Import';
+  const count = state.jobs.filter((j) => j.portalSource === source).length;
+  const hint = source === 'mydigitalcar'
+    ? 'Export von web.mydigitalcar.de (Semikolon, UTF-8). Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.'
+    : 'Anträge-Liste von dashboard.nextoz.de (Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr). Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.';
+
   return (
-    <section className="list-group" id={`portal-${source}`} data-testid={`portal-upload-${source}`} aria-labelledby={`portal-${source}-title`}>
-      <h2 id={`portal-${source}-title`} className="list-group-title">{label}</h2>
-      <div className="note-card sim-form">
-        <p className="list-row-subtitle">
-          {source === 'mydigitalcar'
-            ? 'Export von web.mydigitalcar.de (Semikolon, UTF-8). Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.'
-            : 'Anträge-Liste von dashboard.nextoz.de (Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr). Nr ist nur die Listenposition. Ein erneuter Import aktualisiert den Status und legt nichts doppelt an.'}
-        </p>
-        <label className="field">{label}-Datei
-          <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
+    <div className="portal-card" id={`portal-${source}`} data-testid={`portal-upload-${source}`} aria-labelledby={`portal-${source}-title`} role="group">
+      <div className="portal-card-row">
+        <span className="portal-logo" data-source={source} aria-hidden="true">{source === 'mydigitalcar' ? 'MDC' : 'OZ'}</span>
+        <div className="list-row-text">
+          <div id={`portal-${source}-title`} className="list-row-title">{label}</div>
+          <div className="list-row-subtitle" title={hint}>{stand}{count > 0 ? ` · ${count} Vorgänge` : ''}</div>
+        </div>
+        <label className="btn btn-secondary btn-small portal-file-btn">CSV hochladen
+          <input type="file" className="visually-hidden" aria-label={`${label}-Datei`} accept=".csv,.txt,text/csv,text/plain"
+            onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
         </label>
-        {error && <p className="form-error" role="alert">{error}</p>}
-        {planned && !planned.error && (
-          <div data-testid={`portal-preview-${source}`}>
-            <p className="list-row-title">{planned.rows} Vorgänge · {planned.duplicates} Dubletten · {planned.errors.length} Zeilen mit Fehler</p>
-            <p className="list-row-subtitle">{planned.contacts.created} Kunden neu · {planned.vehicles.created} Fahrzeuge neu · {planned.jobs.created} Aufträge neu, {planned.jobs.updated} aktualisiert</p>
-            <div className="card-buttons">
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => { void take(); }}>Übernehmen</button>
-            </div>
-          </div>
-        )}
-        {summary && <p className="list-row-title" role="status" data-testid={`portal-summary-${source}`}>{summary}</p>}
       </div>
-    </section>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      {planned && !planned.error && (
+        <div className="portal-card-preview" data-testid={`portal-preview-${source}`}>
+          <p className="list-row-title">{planned.rows} Vorgänge · {planned.duplicates} Dubletten · {planned.errors.length} Zeilen mit Fehler</p>
+          <p className="list-row-subtitle">{planned.contacts.created} Kunden neu · {planned.vehicles.created} Fahrzeuge neu · {planned.jobs.created} Aufträge neu, {planned.jobs.updated} aktualisiert</p>
+          <div className="card-buttons">
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => { void take(); }}>Übernehmen</button>
+          </div>
+        </div>
+      )}
+      {summary && <p className="list-row-title portal-card-preview" role="status" data-testid={`portal-summary-${source}`}>{summary}</p>}
+    </div>
   );
 }

@@ -1,0 +1,151 @@
+/* Zulassungsdienst-Übersicht: Zahlen oben, Aufträge links, WhatsApp + Portale rechts bzw. unten. */
+.zl-top {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.zl-top .money-cards {
+  margin: 0;
+}
+
+.zl-cols {
+  display: grid;
+  gap: 0 24px;
+}
+
+.zl-jobs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.zl-jobs-head .list-group-title {
+  margin-bottom: 0;
+}
+
+.zl-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.zl-filters .field {
+  margin: 0;
+  font-size: 12px;
+}
+
+.zl-filters select {
+  min-height: 34px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.zl-portal-list {
+  overflow: hidden;
+  border-radius: var(--radius-group);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 0.5px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow), var(--glass-shine);
+}
+
+.portal-card + .portal-card {
+  border-top: 0.5px solid var(--separator);
+}
+
+.portal-card-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.portal-logo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  background: #1d4ed8;
+}
+
+.portal-logo[data-source="nextoz"] {
+  background: #0f6b62;
+}
+
+.portal-file-btn {
+  position: relative;
+  flex: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.portal-file-btn:focus-within {
+  outline: 2px solid var(--tint-graphic);
+  outline-offset: 2px;
+}
+
+.portal-card .form-error,
+.portal-card-preview {
+  margin: 0;
+  padding: 0 14px 12px 62px;
+}
+
+@media (min-width: 1100px) {
+  .zl-top {
+    grid-template-columns: minmax(0, 4fr) minmax(220px, 1.3fr);
+    align-items: stretch;
+  }
+
+  .zl-top .money-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .zl-top .money-card {
+    height: 100%;
+  }
+
+  .zl-cols {
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+    align-items: start;
+  }
+}
+
+.zl-top > .list-group {
+  margin: 0;
+}
+
+/* Status-Gruppen unter „Aufträge“: kleiner und dichter */
+.zl-main .fold {
+  margin-bottom: 4px;
+}
+
+.zl-main .fold[open] {
+  margin-bottom: 18px;
+}
+
+.zl-main .fold .collapse-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.zl-main > .fold:not(:has(+ .fold)) {
+  margin-bottom: 26px;
+}
+
+.zl-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

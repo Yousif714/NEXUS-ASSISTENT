@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { CollapsibleSection } from './CollapsibleSection';
-import { NAV_GROUPS, isActive, type NavItem } from './nav';
+import { PRIMARY_NAV, SECONDARY_NAV, isActive, type NavItem } from './nav';
 
 function Item({ item, pathname }: { item: NavItem; pathname: string }) {
   const { key, href, label, Icon } = item;
@@ -16,19 +16,21 @@ function Item({ item, pathname }: { item: NavItem; pathname: string }) {
   );
 }
 
-/** Seitenleiste ab 768px. Gruppen lassen sich einklappen, der Zustand bleibt. */
+/** Seitenleiste ab 768px: die vier Bereiche oben, Einstellungen & Quellen unten (einklappbar). */
 export function Sidebar() {
   const pathname = usePathname();
   return (
     <nav className="sidebar" data-testid="sidebar" aria-label="Navigation">
       <div className="sidebar-title">Nexus</div>
-      {NAV_GROUPS.map((group) => (
-        <CollapsibleSection key={group.id} id={`nav-${group.id}`} title={group.label} count={group.items.length}
-          defaultOpen={group.defaultOpen || group.items.some((item) => isActive(item.href, pathname))}
-          testId={`nav-group-${group.id}`} variant="nav">
-          {group.items.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
+      <div className="sidebar-primary">
+        {PRIMARY_NAV.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
+      </div>
+      <div className="sidebar-more">
+        <CollapsibleSection id="nav-mehr" title="Einstellungen & Quellen" count={SECONDARY_NAV.length}
+          defaultOpen={SECONDARY_NAV.some((item) => isActive(item.href, pathname))} testId="nav-group-mehr" variant="nav">
+          {SECONDARY_NAV.map((item) => <Item key={item.key} item={item} pathname={pathname} />)}
         </CollapsibleSection>
-      ))}
+      </div>
     </nav>
   );
 }

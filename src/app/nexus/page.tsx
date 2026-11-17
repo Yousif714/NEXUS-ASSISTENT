@@ -1,5 +1,6 @@
 'use client';
 
+import { CountFigure, Figure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
@@ -14,6 +15,8 @@ import { deriveProposals } from '@/domain/import/proposals';
 import { nexusReceivables } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
 import { portalSummary } from '@/domain/portal';
+
+import './nexus.css';
 
 export default function NexusPage() {
   const { state } = useAppStore();
@@ -37,33 +40,28 @@ export default function NexusPage() {
     <>
       <PageHeader title="NEXUS" />
 
+      <Figures title="Überblick" columns={4}>
+        <CountFigure label="Mitglieder" value={members.length} testId="kpi-members" />
+        <CountFigure label="Überfällig" value={overdueRows.length} testId="kpi-overdue" />
+        <CountFigure label="Zuordnen" value={toMatch} testId="kpi-match" />
+        <Figure label="Offen" cents={receivables.totalCents} testId="kpi-open-cents" />
+      </Figures>
+
       <section className="money-cards" aria-label="Geld">
         <MoneyCard company="nexus" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaUnreliable(MONEY_SOURCES.nexus, state.connections, at)} />
       </section>
 
-      <ListGroup title="Monatsvorschau">
-        <ListRow key="forecast" testId="forecast" title={formatBerlinDe(at, 'MMMM yyyy')}
-          subtitle={<>erwartet <span className="amount">{formatEuro(forecast.expectedCents)}</span>, davon <span className="amount">{formatEuro(forecast.atRiskCents)}</span> wackelig</>} />
-        <ListRow key="match" href="/nexus/zuordnen" title={`Zuordnen (${toMatch})`} testId="match-link" />
-        <ListRow key="open" href="/nexus/offen" title={`Offen (${formatEuro(receivables.totalCents)})`} testId="open-link" />
-        <ListRow key="portal" href="/nexus/mitglieder" testId="portal-link" title={`Portal-Mitglieder (${portal.total})`}
-          value={portal.total === 0 ? 'Liste einfügen' : `${portal.noInvoice} ohne Rechnung`} />
-        <ListRow key="takeover" href={unsentLinks > 0 ? '/nexus/umstellung#links' : '/nexus/umstellung'} testId="takeover-link" title="Umstellung auf Stripe"
-          subtitle={unsentLinks > 0 ? (unsentLinks === 1 ? '1 Link noch nicht gesendet' : `${unsentLinks} Links noch nicht gesendet`) : undefined}
-          value={switchable === 0 ? undefined : `${switchable} umstellbar`} />
-      </ListGroup>
-
-      {openProposals > 0 && (
-        <ListGroup title="Verträge">
+      <ListGroup title="Mitglieder" testId="members">
+        {openProposals > 0 ? (
           <ListRow key="proposals" href="/nexus/mitglieder/vorschlaege" testId="proposals-card"
             title={openProposals === 1 ? '1 Vertrag zum Bestätigen' : `${openProposals} Verträge zum Bestätigen`} />
-        </ListGroup>
-      )}
-
-      <ListGroup title="Mitglieder" testId="members">
+        ) : null}
         <ListRow href="/nexus/vertraege" testId="members-link" title="Mitglieder"
           subtitle={<span className="wrap-text">{peopleSummary(overdueRows.length, [...new Set(overdueRows.map((r) => r.name))], 'Niemand überfällig')}</span>}
           value={members.length} />
+        <ListRow key="open" href="/nexus/offen" title={`Offen (${formatEuro(receivables.totalCents)})`} testId="open-link" />
+        <ListRow key="forecast" testId="forecast" title={`Monatsvorschau ${formatBerlinDe(at, 'MMMM yyyy')}`}
+          subtitle={<>erwartet <span className="amount">{formatEuro(forecast.expectedCents)}</span>, davon <span className="amount">{formatEuro(forecast.atRiskCents)}</span> wackelig</>} />
       </ListGroup>
 
       <ListGroup title="Calls" sectionId="nexus-calls" defaultOpen={false}>
@@ -76,6 +74,17 @@ export default function NexusPage() {
       <ListGroup title="Content" sectionId="nexus-content" defaultOpen={false}>
         <ListRow key="content" href="/nexus/content" title="Content-Board" value={`${contentOpen} in Arbeit`} />
       </ListGroup>
+
+      <div className="nexus-tools">
+        <ListGroup title="Werkzeuge & Import" testId="nexus-tools" sectionId="nexus-tools" defaultOpen={false}>
+          <ListRow key="match" href="/nexus/zuordnen" title={`Zahlungen zuordnen (${toMatch})`} testId="match-link" />
+          <ListRow key="portal" href="/nexus/mitglieder" testId="portal-link" title={`Portal-Mitglieder (${portal.total})`}
+            value={portal.total === 0 ? 'Liste einfügen' : `${portal.noInvoice} ohne Rechnung`} />
+          <ListRow key="takeover" href={unsentLinks > 0 ? '/nexus/umstellung#links' : '/nexus/umstellung'} testId="takeover-link" title="Umstellung auf Stripe"
+            subtitle={unsentLinks > 0 ? (unsentLinks === 1 ? '1 Link noch nicht gesendet' : `${unsentLinks} Links noch nicht gesendet`) : undefined}
+            value={switchable === 0 ? undefined : `${switchable} umstellbar`} />
+        </ListGroup>
+      </div>
     </>
   );
 }

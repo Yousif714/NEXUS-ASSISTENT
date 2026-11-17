@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import './zulassung.css';
+
 import { EmailFolder } from '@/components/EmailFolder';
 import { CountFigure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
@@ -17,6 +19,8 @@ import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable } from '@/domain/freshness';
 import { jobContactLabel } from '@/domain/import/portal';
+import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
+import { formatBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
 
@@ -33,6 +37,7 @@ export default function ZulassungPage() {
   const money = buildBriefing(state, 'morning', at).money.find((m) => m.company === 'zulassung')!;
   const contactName = (j: Job) => jobContactLabel(j, state.contacts);
   const customers = zulassungCustomers(state, today);
+  const newOrders = unlinkedOrderMessages(state);
   const overdueCustomers = customers
     .filter((c) => c.overdueCents > 0)
     .sort((a, b) => b.overdueCents - a.overdueCents || a.name.localeCompare(b.name, 'de'));
@@ -41,7 +46,8 @@ export default function ZulassungPage() {
     <>
       <PageHeader title="Zulassungsdienst" subtitle={formatBerlinDe(at, 'EEEE, d. MMMM')} />
 
-      <Figures title="Heute" columns={4}>
+      <div className="zl-top">
+      <Figures columns={4}>
         <CountFigure label="Heute erledigt" value={kpis.doneToday} testId="kpi-done-today" />
         <CountFigure label="Offen" value={kpis.open} testId="kpi-open" />
         <CountFigure label="Wartet auf Kunde" value={kpis.waiting} testId="kpi-waiting" />
@@ -52,25 +58,18 @@ export default function ZulassungPage() {
         <MoneyCard company="zulassung" openCents={money.openCents} overdueCents={money.overdueCents}
           stale={areaUnreliable(MONEY_SOURCES.zulassung, state.connections, at)} />
       </section>
+      </div>
 
-      <PortalCsvUpload source="mydigitalcar" />
-      <PortalCsvUpload source="nextoz" />
-
-      <section className="list-group" aria-label="Portalfilter" data-testid="portal-filters">
-        <h2 className="list-group-title">Portale</h2>
-        <div className="note-card sim-form">
+      <div className="zl-cols">
+      <div className="zl-main">
+      <div className="zl-jobs-head">
+        <h2 className="list-group-title">Aufträge</h2>
+        <section className="zl-filters" aria-label="Portalfilter" data-testid="portal-filters">
           <PortalSourceFilter value={portal} onChange={setPortal} />
           <PortalStatusFilter value={portalStatus} onChange={setPortalStatus}
             statuses={[...new Set(state.jobs.map((j) => j.portalStatus).filter((s): s is string => !!s))]} />
-        </div>
-      </section>
-
-      <EmailFolder />
-
-      <ListGroup title="Zahlungen" testId="zulassung-payments">
-        <ListRow href="/zulassung/zuordnen" testId="zulassung-match-row" title="Zahlungen zuordnen" subtitle="Sparkassen-Auszug hochladen und zuordnen"
-          value={unallocatedBankPayments(state, 'zulassung').length} />
-      </ListGroup>
+        </section>
+      </div>
 
       {filterPortalJobs(state.jobs, portal, portalStatus).length === 0 && (portal !== 'all' || portalStatus !== 'all') && (
         <p className="empty-card" data-testid="portal-filter-empty">Keine Aufträge für diese Portalauswahl.</p>
@@ -82,7 +81,7 @@ export default function ZulassungPage() {
         const cap = caps[status] ?? PORTAL_LIST_CAP;
         const shown = jobs.slice(0, cap);
         return (
-          <ListGroup key={status} title={`Aufträge: ${JOB_STATUS_LABEL[status]}`} testId={`jobs-${status}`} sectionId={`jobs-${status}`} defaultOpen={status === 'open'}>
+          <ListGroup key={status} title={JOB_STATUS_LABEL[status].charAt(0).toUpperCase() + JOB_STATUS_LABEL[status].slice(1)} testId={`jobs-${status}`} sectionId={`jobs-${status}`} defaultOpen={status === 'open'}>
             {shown.map((j) => {
               const v = state.vehicles.find((x) => x.id === j.vehicleId);
               return (
@@ -105,6 +104,36 @@ export default function ZulassungPage() {
           subtitle={<span className="wrap-text">{peopleSummary(overdueCustomers.length, overdueCustomers.map((c) => c.name), 'Keine überfälligen Kunden')}</span>}
           value={customers.length} />
       </ListGroup>
+
+      <ListGroup title="Zahlungen" testId="zulassung-payments" sectionId="zulassung-zahlungen">
+        <ListRow href="/zulassung/zuordnen" testId="zulassung-match-row" title="Zahlungen zuordnen" subtitle="Sparkassen-Auszug hochladen und zuordnen"
+          value={unallocatedBankPayments(state, 'zulassung').length} />
+      </ListGroup>
+      </div>
+
+      <aside className="zl-side">
+        {newOrders.length > 0 && (
+          <ListGroup title="Neu aus WhatsApp" testId="zulassung-new-orders" sectionId="zulassung-neu-whatsapp">
+            {newOrders.slice(0, 6).map((e) => (
+              <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`zl-new-order-${e.messageId}`}
+                title={<span className="wrap-text zl-clamp">{e.docs.length ? e.docs.map((d) => DOC_LABEL[d]).join(', ') : e.body}</span>}
+                subtitle={<span className="wrap-text">{e.kind === 'auftrag' ? 'Auftrag' : 'Nachweis'} · {e.senderName ?? 'Unbekannt'}{e.senderPhone ? ` · ${e.senderPhone}` : ''}</span>}
+                value={formatBerlin(new Date(e.sentAt), 'dd.MM.')} />
+            ))}
+          </ListGroup>
+        )}
+
+        <EmailFolder />
+
+        <section className="list-group zl-portals" aria-label="Portale und Import">
+          <h2 className="list-group-title">Portale &amp; Import</h2>
+          <div className="zl-portal-list">
+            <PortalCsvUpload source="mydigitalcar" />
+            <PortalCsvUpload source="nextoz" />
+          </div>
+        </section>
+      </aside>
+      </div>
     </>
   );
 }
