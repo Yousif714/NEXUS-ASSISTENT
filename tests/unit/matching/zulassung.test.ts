@@ -5,7 +5,7 @@ import { PAID_LOOKBACK_DAYS, buildMatchContext, detectUnmatchedPayments } from '
 import { invoiceOpenCents, paymentRestCents } from '@/domain/ledger/receivables';
 import type { StoreEvent } from '@/domain/events';
 import { matchBankPayment } from '@/domain/matching/payments';
-import { IBAN_KAYA, IBAN_MUELLER, NOW_0930, base, ibanLinks, inv, sptx, stateWith, tx, workshop } from '../helpers';
+import { IBAN_KAYA, IBAN_MUELLER, NOW_0930, base, ibanLinks, inv, member, sptx, stateWith, tx, workshop } from '../helpers';
 
 const z1 = inv('i-z1', 39000, { number: 'RE-Z-2026-290', dueDate: '2026-10-20' });
 const muellerLink = { iban: IBAN_MUELLER, contactId: 'd-mueller', confirmedAt: 'x' };
@@ -67,8 +67,8 @@ describe('Zulassung: in Lexware bezahlte Rechnungen', () => {
     expect(c.invoices).toEqual([expect.objectContaining({ id: 'i-new', openCents: 0, paidInLexware: true, totalCents: 39000, dueDate: '2026-12-10' })]);
     expect(PAID_LOOKBACK_DAYS).toBe(180);
   });
-  test('NEXUS-Kontext bekommt keine bezahlten Rechnungen', () =>
-    expect(buildMatchContext(stateWith({ invoices: [{ ...workshop, status: 'paid' }] }), NOW_0930).invoices).toEqual([]));
+  test('NEXUS-Kontext bekommt keine bezahlten Mitgliedsrechnungen (Tickets: matching/nexus-tickets.test.ts)', () =>
+    expect(buildMatchContext(stateWith({ invoices: [{ ...member('i-pm'), status: 'paid' }] }), NOW_0930).invoices).toEqual([]));
 });
 
 describe('Zulassung: Sammelzahlung, Teil- und Überzahlung, Rückbuchung', () => {

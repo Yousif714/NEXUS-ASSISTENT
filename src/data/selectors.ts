@@ -6,7 +6,7 @@ import { todayBerlin } from '@/domain/clock';
 import { memberView } from '@/domain/detectors';
 import { areaUnreliable } from '@/domain/freshness';
 import { plateInText } from '@/domain/matching/messages';
-import { customerOpenInvoices, invoiceOpenCents, invoicePaidCents, paymentRestCents } from '@/domain/ledger/receivables';
+import { customerOpenInvoices, invoiceAllocatableCents, invoiceOpenCents, invoicePaidCents, paymentRestCents } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
 import { portalViews, type PortalView } from '@/domain/portal';
 import { monthForecast } from '@/domain/ledger/forecast';
@@ -101,6 +101,10 @@ export function matchOptions(s: AppState, company: Company = 'nexus'): { value: 
     ...s.invoices
       .filter((i) => i.connectionId === LEXWARE_OF[company] && invoiceOpenCents(s, i) > 0)
       .map((i) => ({ value: `invoice:${i.id}`, label: `Rechnung ${i.number} · ${name(i.contactId)} · ${formatEuro(invoiceOpenCents(s, i))}` })),
+    // NEXUS: in Lexware bezahlte Rechnungen ohne Vertrag (Event-Tickets), solange noch keine Zahlung daran hängt.
+    ...(company === 'nexus' ? s.invoices
+      .filter((i) => i.connectionId === LEXWARE_OF[company] && i.status === 'paid' && invoiceAllocatableCents(s, i) > 0)
+      .map((i) => ({ value: `invoice:${i.id}`, label: `Rechnung ${i.number} · ${name(i.contactId)} · ${formatEuro(invoiceAllocatableCents(s, i))} · in Lexware bezahlt` })) : []),
   ].sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }
 
