@@ -18,7 +18,7 @@ export function detectReplies(s: AppState, now: Date): Insight[] {
     const oldest = [...list].sort((a, b) => b.waitingHours - a.waitingHours || a.message.sentAt.localeCompare(b.message.sentAt))[0];
     const m = oldest.message;
     const contact = s.contacts.find((c) => c.id === m.contactId);
-    const name = contact?.name ?? m.from;
+    const name = contact?.name ?? m.fromName ?? m.from;
     const extra = list.length > 1 ? `${list.length} Nachrichten. ` : '';
     insights.push({
       dedupeKey: `reply:${m.id}`,

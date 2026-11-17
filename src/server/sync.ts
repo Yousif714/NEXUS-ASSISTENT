@@ -52,7 +52,13 @@ export async function syncConnections(repos: Repos, deps: SyncDeps): Promise<Par
   const out: Partial<Record<ConnectionId, SyncOutcome>> = {};
   const secrets = syncSecrets(deps.keys);
   const deadline = deps.now() + deps.budgetMs; // geteilt über alle Verbindungen, ohne Postfächer
-  for (const id of ORDER) {
+  // Ältester Stand zuerst: reicht das Budget nicht für alle, kommt jede Quelle trotzdem reihum dran.
+  const due = ORDER.filter((id) => (!deps.only || deps.only.includes(id)) && deps.keys[id]);
+  const before = due.length > 1 ? (await repos.state.load()).state.connections : [];
+  const lastOk = (id: SyncId) => before.find((c) => c.id === id)?.lastSuccessAt ?? '';
+  const order = [...ORDER].sort((x, y) => lastOk(x).localeCompare(lastOk(y)) || ORDER.indexOf(x) - ORDER.indexOf(y));
+  let readAfter = false;
+  for (const id of order) {
     if (deps.only && !deps.only.includes(id)) continue;
     const key = deps.keys[id];
     if (!key) {
@@ -79,16 +85,18 @@ export async function syncConnections(repos: Repos, deps: SyncDeps): Promise<Par
         : await pullLexware(id as LexwareConnection, cursor, ctx);
       await dispatchEvents(repos, [{ type: 'importBatch', connectionId: id, batch: r.batch, cursor: r.cursor, complete: r.complete, ...(r.warning ? { warning: sanitizeError(new ConnectorError(r.warning), secrets) } : {}) }], { at: deps.at, provider: deps.provider });
       out[id] = r.complete ? 'ok' : 'partial';
-      if (id === 'lexware_nexus' && deps.reader) {
-        // Eigener Fehlerbereich: ein Problem beim Lesen ist kein Lexware-Fehler (Final-Review I4).
-        out.claude_invoices = await readInvoices(repos, { at: deps.at, now: deps.now, deadline, reader: deps.reader, provider: deps.provider }).catch(() => 'error' as const);
-      }
+      if (id === 'lexware_nexus' && deps.reader) readAfter = true;
     } catch (err) {
       out[id] = 'error';
       try {
         await dispatchEvents(repos, [{ type: 'syncFailed', connectionId: id, error: sanitizeError(err, secrets) }], { at: deps.at, provider: deps.provider });
       } catch { /* Speichern des Fehlers scheitert: andere Verbindungen laufen weiter */ }
     }
+  }
+  // Rechnungen lesen (langsam, KI) erst, wenn alle Quellen dran waren – mit dem restlichen Budget.
+  // Eigener Fehlerbereich: ein Problem beim Lesen ist kein Lexware-Fehler (Final-Review I4).
+  if (readAfter && deps.reader) {
+    out.claude_invoices = await readInvoices(repos, { at: deps.at, now: deps.now, deadline, reader: deps.reader, provider: deps.provider }).catch(() => 'error' as const);
   }
   if (!deps.only || deps.only.includes('claude_invoices')) out.claude_invoices ??= 'skipped';
   return out;
