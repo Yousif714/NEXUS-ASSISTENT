@@ -63,6 +63,7 @@ export async function parseRawMail(raw: Buffer, connectionId: ConnectionId, dire
     if (!v) return '';
     return (Array.isArray(v) ? v : [v]).map((a) => a.text ?? '').filter(Boolean).join(', ');
   };
+  const unsub = parsed.headers?.get('list-unsubscribe');
   return toImportedMessage({
     connectionId,
     direction,
@@ -74,13 +75,14 @@ export async function parseRawMail(raw: Buffer, connectionId: ConnectionId, dire
     subject: parsed.subject ?? '',
     text,
     sentAt,
+    listUnsubscribe: Array.isArray(unsub) ? unsub.length > 0 : Boolean(unsub),
   });
 }
 
 function applyDirection(msg: NonNullable<Awaited<ReturnType<typeof parseRawMail>>>, which: 'inbox' | 'sent', source: MailboxChoice['source'], user: string, hinted?: 'in' | 'out') {
   const own = emailsIn(msg.from).includes(user.trim().toLowerCase());
   const direction = hinted ?? (source === 'all' ? (own ? 'out' : 'in') : which === 'sent' ? 'out' : 'in');
-  return { ...msg, direction, needsReply: direction === 'in' };
+  return { ...msg, direction, needsReply: direction === 'in' && !msg.automated };
 }
 
 /**
@@ -152,7 +154,7 @@ export async function pullImap(connectionId: ConnectionId, cursor: string | null
     }
     const direction = prev.direction === 'out' || m.direction === 'out' ? 'out' : 'in';
     const chosen = m.direction === 'out' ? m : prev.direction === 'out' ? prev : m;
-    byId.set(m.externalId, { ...chosen, direction, needsReply: direction === 'in' });
+    byId.set(m.externalId, { ...chosen, direction, needsReply: direction === 'in' && !chosen.automated && !prev.automated });
   }
   batch.messages = [...byId.values()];
 

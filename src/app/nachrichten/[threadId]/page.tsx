@@ -15,6 +15,7 @@ import { useAppStore } from '@/data/store';
 import { replyAction, replyActionId } from '@/domain/action-factory';
 import { formatBerlin, now, todayBerlin } from '@/domain/clock';
 import { contractsOfContact, membershipContractOf } from '@/domain/ledger/contracts';
+import { senderLabel } from '@/domain/mail-text';
 import { DOC_LABEL, classifyJobMessage, jobActivity } from '@/domain/matching/job-messages';
 import { toE164 } from '@/domain/matching/messages';
 import type { Action, AppState, Contact, Job, Message, MessageAttachment } from '@/domain/types';
@@ -127,7 +128,7 @@ export default function ThreadPage() {
 
   const fromName = [...messages].reverse().find((m) => m.direction === 'in' && (m.fromName || m.profileName))?.fromName
     ?? [...messages].reverse().find((m) => m.profileName)?.profileName;
-  const name = contact?.name ?? fromName ?? lastIn?.from ?? last.to;
+  const name = contact?.name ?? senderLabel(lastIn?.from ?? last.from, { fromName, profileName: fromName });
   const channel = (lastIn ?? last).channel;
   const rawPhone = channel === 'whatsapp' ? toE164(lastIn?.from ?? last.to) : '';
   const phone = /^\+\d{6,15}$/.test(rawPhone) ? rawPhone : null;
