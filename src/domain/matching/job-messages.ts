@@ -114,7 +114,7 @@ export function unlinkedOrderMessages(s: Source & { jobs: Job[] }): UnlinkedOrde
   return s.messages
     .filter((m) => m.channel === 'whatsapp' && m.direction === 'in' && !m.jobId)
     .filter((m) => classifyJobMessage(m.body).kind !== null)
-    .filter((m) => !s.jobs.some((j) => mentionsJob(m, j, vehiclesById.get(j.vehicleId))))
+    .filter((m) => !s.jobs.some((j) => mentionsJob(m, j, j.vehicleId ? vehiclesById.get(j.vehicleId) : undefined)))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))
     .map((m) => ({ ...entryOf(m, s.contacts), plates: extractPlates(m.body), vins: extractVins(m.body) }));
 }
