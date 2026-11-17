@@ -7,10 +7,10 @@ import { formatEuro } from '@/domain/money';
 import { CountUp } from './CountUp';
 
 /** Kennzahlen-Raster (Wallet-Stil) mit Abschnittsüberschrift. */
-export function Figures({ title, children, columns }: { title: string; children: ReactNode; columns?: 4 }) {
+export function Figures({ title, children, columns }: { title?: string; children: ReactNode; columns?: 4 }) {
   return (
-    <section className="list-group">
-      <h2 className="list-group-title">{title}</h2>
+    <section className="list-group" aria-label={title ? undefined : 'Kennzahlen'}>
+      {title && <h2 className="list-group-title">{title}</h2>}
       <dl className="figures" data-columns={columns}>{children}</dl>
     </section>
   );

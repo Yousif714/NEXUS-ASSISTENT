@@ -5,13 +5,15 @@ const chromiumPath = '/opt/pw-browsers/chromium';
 const executablePath = existsSync(chromiumPath) ? chromiumPath : undefined;
 const clipboard = ['clipboard-read', 'clipboard-write'];
 // Zustandsbehaftete Specs (setzen/ändern den gemeinsamen Server-Stand, z. B. /api/test/takeover): nie parallel zu anderen Specs.
+// Eigener Port pro Arbeitskopie (E2E_PORT), damit parallele Läufe nicht fremde Server wiederverwenden.
+const port = Number(process.env.E2E_PORT ?? 3100);
 const stateful = ['**/auth.spec.ts', '**/umstellung.spec.ts'];
 
 export default defineConfig({
   testDir: 'tests/e2e',
   webServer: {
-    command: 'npm run build && npm run start -- -p 3100',
-    port: 3100,
+    command: `npm run build && npm run start -- -p ${port}`,
+    port,
     reuseExistingServer: true,
     timeout: 300_000,
     // Testserver mit Speicher-Datenbank; nur Testwerte, keine echten Zugangsdaten.
@@ -20,11 +22,11 @@ export default defineConfig({
       SESSION_SECRET: 'e2e-session-secret-nur-fuer-tests-0123456789',
       OWNER_SETUP_TOKEN: 'e2e-setup-token',
       CRON_SECRET: 'e2e-cron',
-      APP_ORIGIN: 'http://localhost:3100',
+      APP_ORIGIN: `http://localhost:${port}`,
       STRIPE_WEBHOOK_SECRET: 'whsec_e2e_nur_test',
     },
   },
-  use: { baseURL: 'http://localhost:3100' },
+  use: { baseURL: `http://localhost:${port}` },
   projects: [
     {
       name: 'iphone',

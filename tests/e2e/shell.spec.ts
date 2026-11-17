@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { ensureOpen } from './expand';
 
 test('mobil: drei Tabs unten', async ({ page, isMobile }) => {
   test.skip(!isMobile);
@@ -32,7 +31,6 @@ test('mobil: Mehr-Menü als Disclosure', async ({ page, isMobile }) => {
   await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   await trigger.click();
   await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-  await ensureOpen(page.getByTestId('more-group-system'));
   await expect(page.getByTestId('more-menu').getByRole('link', { name: 'Protokoll' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('more-menu')).toBeHidden();

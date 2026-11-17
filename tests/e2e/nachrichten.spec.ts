@@ -7,12 +7,12 @@ test('Postfach: Chatliste, Filter, Suche, Unterhaltung mit Weg zurück', async (
   await expect(rows.first()).toBeVisible();
   const total = await rows.count();
 
-  await page.getByText('Wartet', { exact: true }).click();
+  await page.getByRole('radio', { name: 'Wartet' }).check({ force: true });
   const waiting = await rows.count();
   expect(waiting).toBeLessThanOrEqual(total);
   for (let i = 0; i < waiting; i++) await expect(rows.nth(i).getByTestId('inbox-wait')).toBeVisible();
 
-  await page.getByText('Alle', { exact: true }).click();
+  await page.getByRole('radio', { name: 'Alle' }).check({ force: true });
   await page.getByTestId('inbox-search').fill('zzzz-gibt-es-nicht');
   await expect(page.getByText('Nichts passt zum Filter.')).toBeVisible();
   await page.getByTestId('inbox-search').fill('');
