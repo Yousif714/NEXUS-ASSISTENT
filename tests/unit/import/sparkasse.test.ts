@@ -197,6 +197,66 @@ test('xml-Helfer: Namespaces, Entities', () => {
   expect(childText(stripNamespaces('<a:X><a:Y>A &amp; B</a:Y></a:X>'), ['X', 'Y'])).toBe('A & B');
 });
 
+const NS052 = 'urn:iso:std:iso:20022:tech:xsd:camt.052.001.02';
+const rptDoc = (entries: string, iban = 'DE00360501050000009999') =>
+  `<Document xmlns="${NS052}"><BkToCstmrAcctRpt><GrpHdr><MsgId>1</MsgId><CreDtTm>2026-11-03T18:00:00+01:00</CreDtTm></GrpHdr><Rpt><Id>RPT-1</Id><CreDtTm>2026-11-03T18:00:00+01:00</CreDtTm><Acct><Id><IBAN>${iban}</IBAN></Id><Ccy>EUR</Ccy></Acct>${entries}</Rpt></BkToCstmrAcctRpt></Document>`;
+
+test('camt.052 (BkToCstmrAcctRpt/Rpt) liest dieselbe Buchung wie camt.053, Schlüssel identisch', () => {
+  const entry = ntry({ amt: '64.00', ref: 'Rechnungsnummer.: 2584' });
+  const from052 = parseCamt053(rptDoc(entry))!;
+  const from053 = parseCamt053(doc(entry))!;
+  expect(from052.format).toBe('camt');
+  expect(from052.payments).toHaveLength(1);
+  expect(from052.payments[0]).toMatchObject({ amountCents: 6400, bookedOn: '2026-11-03', reference: 'Rechnungsnummer.: 2584', payerName: 'Max Mustermann', iban: 'DE00100000000000000001' });
+  expect(from052.account).toBe('DE00360501050000009999');
+  expect(from052.payments[0].externalId).toBe(from053.payments[0].externalId);
+  expect(from052.payments[0].externalId).toMatch(/^spk-[0-9a-f]{16}$/);
+});
+test('camt.052: mehrere Rpt in einer Datei', () => {
+  const xml052 = `<Document xmlns="${NS052}"><BkToCstmrAcctRpt><GrpHdr><MsgId>1</MsgId></GrpHdr>`
+    + `<Rpt><Id>1</Id><Acct><Id><IBAN>DE00360501050000009999</IBAN></Id></Acct>${ntry({ date: '2026-11-03', ref: 'RE2347' })}</Rpt>`
+    + `<Rpt><Id>2</Id><Acct><Id><IBAN>DE00360501050000009999</IBAN></Id></Acct>${ntry({ date: '2026-11-04', amt: '20.00', ref: 'RE2534' })}</Rpt>`
+    + `</BkToCstmrAcctRpt></Document>`;
+  const r = parseCamt053(xml052)!;
+  expect(r.payments.map((p) => [p.bookedOn, p.amountCents, p.reference])).toEqual([
+    ['2026-11-03', 1000, 'RE2347'],
+    ['2026-11-04', 2000, 'RE2534'],
+  ]);
+});
+test('ZIP aus täglichen camt.052-Dateien: zusammengeführt, Überlappung nur einmal, Schlüssel stabil', async () => {
+  const day = (date: string, amt: string, ref: string) => rptDoc(ntry({ date, amt, ref }));
+  const d1 = day('2026-11-03', '10.00', 'RE2347');
+  const d1b = rptDoc(ntry({ date: '2026-11-03', amt: '10.00', ref: 'RE2347' }) + ntry({ date: '2026-11-03', amt: '12.00', ref: 'RE2534' }));
+  const d2 = rptDoc(ntry({ date: '2026-11-03', amt: '10.00', ref: 'RE2347' }) + ntry({ date: '2026-11-04', amt: '15.00', ref: 'RE2535' }));
+  const d3 = day('2026-11-05', '8.00', 'Rechnungsnummer.: 2584');
+  const d4 = day('2026-11-06', '9.00', 'GA 2370');
+  const files = [...(await unzip(zip({
+    '2026-11-03-a.xml': d1,
+    '2026-11-03-b.xml': d1b,
+    '2026-11-04.xml': d2,
+    '2026-11-05.xml': d3,
+    '2026-11-06.xml': d4,
+  })))].map(([name, bytes]) => ({ name, bytes }));
+  const r = parseSparkasse(files);
+  expect(r.ok).toBe(true);
+  if (!r.ok) return;
+  expect(r.format).toBe('camt');
+  expect(r.payments.map((p) => [p.bookedOn, p.amountCents, p.reference])).toEqual([
+    ['2026-11-03', 1000, 'RE2347'],
+    ['2026-11-03', 1200, 'RE2534'],
+    ['2026-11-04', 1500, 'RE2535'],
+    ['2026-11-05', 800, 'Rechnungsnummer.: 2584'],
+    ['2026-11-06', 900, 'GA 2370'],
+  ]);
+  const alone = parseCamt053(d1b)!;
+  expect(r.payments[0].externalId).toBe(parseCamt053(d1)!.payments[0].externalId);
+  expect(r.payments[0].externalId).toBe(alone.payments[0].externalId);
+  expect(r.payments[1].externalId).toBe(alone.payments[1].externalId);
+  expect(new Set(r.payments.map((p) => p.externalId)).size).toBe(r.payments.length);
+  const again = parseSparkasse(files);
+  expect(again.ok && again.payments.map((p) => p.externalId)).toEqual(r.payments.map((p) => p.externalId));
+});
+
 test('überlappende Dateien: gleiche Buchung nur einmal, Doppelzeile innerhalb einer Datei bleibt 2-fach', () => {
   const enc = new TextEncoder();
   const a = doc(ntry() + ntry() + ntry({ date: '2026-11-04', amt: '20.00', ref: 'RE-A' }));

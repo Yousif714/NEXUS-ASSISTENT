@@ -152,6 +152,57 @@ describe('Zulassung: Sammelzahlung, Teil- und Überzahlung, Rückbuchung', () =>
     expect(matchBankPayment(s.payments[0], buildMatchContext(s, NOW_0930, 'zulassung')).confidence).toBe('medium');
     expect(invoiceOpenCents(apply(s, { type: 'confirmPaymentMatch', paymentId: 'sp1', invoiceId: 'i-z-290' }), z290)).toBe(18000);
   });
+  test('Stichwort ohne RE-Präfix: Rechnungsnummer.: 2584 trifft RE2584', () => {
+    const re = inv('i-2584', 14900, { number: 'RE2584', dueDate: '2026-11-20' });
+    const s = stateWith({ invoices: [re], payments: [sptx({ amountCents: 14900, reference: 'Rechnungsnummer.: 2584' })] });
+    expect(matchBankPayment(s.payments[0], buildMatchContext(s, NOW_0930, 'zulassung'))).toMatchObject({
+      confidence: 'high', reason: 'Rechnungsnummer im Verwendungszweck, Betrag passt.', target: { kind: 'invoice', id: 'i-2584' } });
+    expect(refresh(s, NOW_0930).allocations).toEqual([{ paymentId: 'sp1', invoiceId: 'i-2584', amountCents: 14900, method: 'auto' }]);
+  });
+  test('Liste RE2347,2534,2535 erbt das Präfix, Summe mit Lexware-bezahlt exakt → automatisch', () => {
+    const a = inv('i-2347', 10000, { number: 'RE2347', dueDate: '2026-10-01' });
+    const b = inv('i-2534', 20000, { number: 'RE-2534', status: 'paid', openCents: 0, issuedOn: '2026-10-02', dueDate: '2026-10-10' });
+    const c = inv('i-2535', 5000, { number: 'RE2535', dueDate: '2026-10-20' });
+    const s = stateWith({ invoices: [a, b, c], payments: [sptx({ amountCents: 35000, reference: 'RE2347,2534,2535,...' })] });
+    expect(matchBankPayment(s.payments[0], buildMatchContext(s, NOW_0930, 'zulassung'))).toMatchObject({
+      confidence: 'high', reason: 'Mehrere Rechnungsnummern im Verwendungszweck, Summe passt.',
+      target: { kind: 'invoices', contactId: 'd-mueller', invoiceIds: ['i-2347', 'i-2535', 'i-2534'] } });
+    const r = refresh(s, NOW_0930);
+    expect(r.allocations).toEqual([
+      { paymentId: 'sp1', invoiceId: 'i-2347', amountCents: 10000, method: 'auto' },
+      { paymentId: 'sp1', invoiceId: 'i-2534', amountCents: 20000, method: 'auto' },
+      { paymentId: 'sp1', invoiceId: 'i-2535', amountCents: 5000, method: 'auto' }]);
+  });
+  test('RE2347, 2534 und 2535 und Sammler /INV/RE.. RE.. auf schon bezahlte Rechnungen', () => {
+    const a = inv('i-2347', 39000, { number: 'RE2347', status: 'paid', openCents: 0, issuedOn: '2026-10-01', dueDate: '2026-10-15' });
+    const b = inv('i-2534', 25000, { number: 'RE2534', status: 'paid', openCents: 0, issuedOn: '2026-10-02', dueDate: '2026-10-20' });
+    const listed = stateWith({ invoices: [a, b], payments: [sptx({ amountCents: 64000, reference: 'RE2347, 2534 und 2535' })] });
+    expect(matchBankPayment(listed.payments[0], buildMatchContext(listed, NOW_0930, 'zulassung'))).toMatchObject({
+      confidence: 'high', target: { kind: 'invoices', invoiceIds: ['i-2347', 'i-2534'] } });
+    const s = stateWith({ invoices: [a, b], payments: [sptx({ amountCents: 64000, reference: 'SVWZ+/INV/RE2347 RE2534' })] });
+    expect(matchBankPayment(s.payments[0], buildMatchContext(s, NOW_0930, 'zulassung'))).toMatchObject({
+      confidence: 'high', reason: 'Mehrere Rechnungsnummern im Verwendungszweck, Summe passt.',
+      target: { kind: 'invoices', invoiceIds: ['i-2347', 'i-2534'] } });
+    const r = refresh(s, NOW_0930);
+    expect(r.allocations).toEqual([
+      { paymentId: 'sp1', invoiceId: 'i-2347', amountCents: 39000, method: 'auto' },
+      { paymentId: 'sp1', invoiceId: 'i-2534', amountCents: 25000, method: 'auto' }]);
+    expect(r.audit.at(-1)?.text).toBe('Automatisch aufgeteilt: Rechnungen RE2347, RE2534');
+    const off = stateWith({ invoices: [a, b], payments: [sptx({ amountCents: 60000, reference: '/INV/RE2347/RE2534' })] });
+    expect(matchBankPayment(off.payments[0], buildMatchContext(off, NOW_0930, 'zulassung'))).toMatchObject({
+      confidence: 'medium', reason: 'Mehrere Rechnungsnummern, Summe weicht ab – Verteilung prüfen.' });
+    expect(refresh(off, NOW_0930).allocations).toEqual([]);
+  });
+  test('Geldautomat und PayPal sind keine Rechnungsnummern', () => {
+    const ga = inv('i-ga', 5000, { number: 'RE2370' });
+    const bare = inv('i-bare', 5000, { number: '2370' });
+    const pp = inv('i-pp', 2782, { number: 'RE2782' });
+    const s = stateWith({ invoices: [ga, bare, pp], payments: [sptx({ amountCents: 5000, reference: 'GA 2370 Karte 4821' })] });
+    expect(matchBankPayment(s.payments[0], buildMatchContext(s, NOW_0930, 'zulassung')).confidence).toBe('low');
+    const paypal = stateWith({ invoices: [pp, { ...bare, id: 'i-2782', number: '2782', totalCents: 2782, openCents: 2782 }], payments: [sptx({ amountCents: 2782, reference: 'PP.2782.PP . PAYPAL *Händler' })] });
+    expect(matchBankPayment(paypal.payments[0], buildMatchContext(paypal, NOW_0930, 'zulassung')).confidence).toBe('low');
+    expect(refresh(s, NOW_0930).allocations).toEqual([]);
+  });
   test('Lexware schon bezahlt: Nummer + Gesamtbetrag → automatisch, offen bleibt 0', () => {
     const r = refresh(stateWith({ invoices: [z301], payments: [sptx({ amountCents: 9900, reference: 'Rechnung RE-Z-2026-301' })] }), NOW_0930);
     expect(r.allocations).toEqual([{ paymentId: 'sp1', invoiceId: 'i-z-301', amountCents: 9900, method: 'auto' }]);

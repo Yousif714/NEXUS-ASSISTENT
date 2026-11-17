@@ -52,11 +52,11 @@ export function invoiceAllocatableCents(s: AppState, inv: Invoice): number {
   return invoiceOpenCents(s, inv);
 }
 
-/** Zahlung auf offene Rechnungen verteilen, älteste zuerst; `restCents` = Überzahlung. */
+/** Zahlung auf Rechnungen verteilen, älteste zuerst; `restCents` = Überzahlung. Deckel ist der noch zuordenbare Betrag (offen, bei Zulassung auch in Lexware schon bezahlt). */
 export function splitPaymentOverInvoices(s: AppState, amountCents: number, invoiceIds: string[]): { shares: { invoiceId: string; amountCents: number }[]; restCents: number } {
   const open = s.invoices
     .filter((i) => invoiceIds.includes(i.id))
-    .map((i) => ({ id: i.id, dueDate: i.dueDate, number: i.number, openCents: invoiceOpenCents(s, i) }))
+    .map((i) => ({ id: i.id, dueDate: i.dueDate, number: i.number, openCents: invoiceAllocatableCents(s, i) }))
     .filter((i) => i.openCents > 0);
   const { shares, restCents } = distributeOldestFirst(amountCents, open);
   return { shares: shares.map((x) => ({ invoiceId: x.id, amountCents: x.amountCents })), restCents };

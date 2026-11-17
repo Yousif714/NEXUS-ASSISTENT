@@ -140,7 +140,7 @@ export function parseSparkasseCsv(text: string): SparkasseResult | null {
 }
 
 // ---------------------------------------------------------------------------
-// CAMT.053
+// CAMT.053 (Kontoauszug) und CAMT.052 (Tagesreport, Sparkasse Essen)
 
 const emptyCounts = (): Record<SkipReason, number> => ({ expense: 0, pending: 0, currency: 0, before_since: 0, unreadable: 0, zero: 0 });
 const skippedList = (counts: Record<SkipReason, number>): SparkasseResult['skipped'] =>
@@ -163,16 +163,23 @@ const camtDate = (ntry: string): IsoDate | null => {
   return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? (raw as IsoDate) : null;
 };
 
-/** null = kein camt.053 (Document/BkToCstmrStmt fehlt). */
+/** null = kein CAMT (weder Document/BkToCstmrStmt noch Document/BkToCstmrAcctRpt). Ntry/TxDtls ist bei camt.052 und camt.053 gleich. */
 export function parseCamt053(xmlText: string): SparkasseResult | null {
   const xml = stripNamespaces(xmlText);
-  if (elements(xml, 'Document').length === 0 || elements(xml, 'BkToCstmrStmt').length === 0) return null;
+  if (elements(xml, 'Document').length === 0) return null;
+  const stmtBodies = elements(xml, 'BkToCstmrStmt');
+  const rptBodies = elements(xml, 'BkToCstmrAcctRpt');
+  if (stmtBodies.length === 0 && rptBodies.length === 0) return null;
+  const blocks = [
+    ...stmtBodies.flatMap((body) => elements(body, 'Stmt')),
+    ...rptBodies.flatMap((body) => elements(body, 'Rpt')),
+  ];
   const counts = emptyCounts();
   const payments: ImportedPayment[] = [];
   const key = createKeyer();
   let from: IsoDate | null = null, to: IsoDate | null = null, account: string | null = null, batchBookings = 0;
 
-  elements(xml, 'Stmt').forEach((stmt, n) => {
+  blocks.forEach((stmt, n) => {
     if (n === 0) {
       const iban = childText(stmt, ['Acct', 'Id', 'IBAN']);
       account = iban ? normalizeIban(iban) : null;

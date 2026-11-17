@@ -75,6 +75,64 @@ export function referenceHasNumber(reference: string, number: string): boolean {
   return new RegExp(`(?<![a-z0-9])${parts.join('[-\\s]?')}(?![0-9])`, 'i').test(reference);
 }
 
+const INVOICE_DIGITS = '(\\d{2,10})(?!\\d)(?!\\.\\d)';
+
+/** Nackte Ziffern nach einem Rechnung-Stichwort oder einer RE-Nummer (`RE2347, 2534 und 2535`). */
+function takeInvoiceList(reference: string, from: number, items: { index: number; digits: string }[]): void {
+  let i = from;
+  const next = new RegExp(`^\\s*(?:,|\\bund\\b)\\s*${INVOICE_DIGITS}`, 'i');
+  while (i < reference.length) {
+    const m = next.exec(reference.slice(i));
+    if (!m) break;
+    items.push({ index: i + m[0].length - m[1].length, digits: m[1] });
+    i += m[0].length;
+  }
+}
+
+/**
+ * Rechnungsnummern aus dem Verwendungszweck, kanonisch `RE` + Ziffern.
+ * Stichwort (`Rechnungsnummer`, `Rechnungsnr`, `ReNr`, `Rechnung`) plus Ziffern wird `RE2584`.
+ * Eine RE-Liste vererbt das Präfix. Geldautomat (`GA 2370`) und PayPal (`PP.2782.PP`) bleiben leer.
+ */
+export function invoiceNumbersInReference(reference: string): string[] {
+  const items: { index: number; digits: string }[] = [];
+  const keyword = new RegExp(`(?<![a-z0-9])(?:rechnungsnummer|rechnungsnr|renr|rechnung)(?![a-z])[\\s.:\\-]*${INVOICE_DIGITS}`, 'gi');
+  for (const m of reference.matchAll(keyword)) {
+    items.push({ index: m.index + m[0].length - m[1].length, digits: m[1] });
+    takeInvoiceList(reference, m.index + m[0].length, items);
+  }
+  const prefixed = new RegExp(`(?<![a-z0-9])re(?![a-z])[\\s\\-]*${INVOICE_DIGITS}`, 'gi');
+  for (const m of reference.matchAll(prefixed)) {
+    items.push({ index: m.index + m[0].length - m[1].length, digits: m[1] });
+    takeInvoiceList(reference, m.index + m[0].length, items);
+  }
+  items.sort((a, b) => a.index - b.index);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const it of items) {
+    const key = 'RE' + it.digits;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
+/** `RE-2584`, `RE2584` und `2584` sind dieselbe Nummer; `RE-Z-2026-290` bleibt zusammengesetzt. */
+function canonicalInvoiceNumber(number: string): string {
+  const compact = number.replace(/[\s-]/g, '').toUpperCase();
+  const digits = /^(?:RE)?(\d+)$/.exec(compact);
+  return digits ? 'RE' + digits[1] : compact;
+}
+
+/** Trifft die Rechnung den Verwendungszweck: ausgeschriebene Nummer oder extrahierte RE-Nummer. Nackte Ziffern nur über die Extraktion. */
+function referenceMentionsInvoice(reference: string, number: string, extracted: readonly string[]): boolean {
+  const want = canonicalInvoiceNumber(number);
+  if (extracted.some((n) => canonicalInvoiceNumber(n) === want)) return true;
+  if (/^\d+$/.test(number.replace(/[\s-]/g, ''))) return false;
+  return referenceHasNumber(reference, number);
+}
+
 export interface ExpectedContract { contactId: string; rateCents: number; nextRateCents: number; arrearsCents: number; openCents: number }
 /** Schlüssel: Vertrags-ID. */
 export type Expected = Map<string, ExpectedContract>;
@@ -119,7 +177,7 @@ export function matchBankPayment(p: Payment, ctx: MatchContext): MatchResult {
     const i = ctx.invoices.find((x) => x.id === t.id);
     return !!i && (i.paidInLexware ? i.totalCents : i.openCents) === p.amountCents;
   };
-  // Sammelziel über mehrere offene Rechnungen eines Kontakts; Summe = Betrag → high, sonst Verteilung prüfen.
+  // Sammelziel über mehrere Rechnungen eines Kontakts (offen oder in Lexware bezahlt); Summe = Betrag → high.
   const invoicesTarget = (contactId: string, list: MatchInvoice[]): MatchTarget => ({ kind: 'invoices', id: list.map((i) => i.id).join(','), contactId, invoiceIds: list.map((i) => i.id) });
   const sumFits = (list: MatchInvoice[]) => list.reduce((n, i) => n + i.openCents, 0) === p.amountCents;
   const zulassung = ctx.company === 'zulassung';
@@ -128,15 +186,19 @@ export function matchBankPayment(p: Payment, ctx: MatchContext): MatchResult {
     ...ctx.invoices.filter((i) => i.contactId === contactId && i.contractId === null && i.openCents > 0).map(invoiceTarget),
   ];
 
-  if (p.reference) {
-    const hits = ctx.invoices.filter((i) => referenceHasNumber(p.reference!, i.number));
+  const reference = p.reference;
+  if (reference) {
+    const extracted = invoiceNumbersInReference(reference);
+    const hits = ctx.invoices.filter((i) => referenceMentionsInvoice(reference, i.number, extracted));
     if (hits.length > 0) {
-      const open = hits.filter((i) => i.openCents > 0);
-      const contactId = open[0]?.contactId;
-      if (zulassung && open.length >= 2 && contactId && open.every((i) => i.contactId === contactId && i.contractId === null)) {
-        return sumFits(open)
-          ? result([invoicesTarget(contactId, open)], 'high', 'Mehrere Rechnungsnummern im Verwendungszweck, Summe passt.')
-          : result([invoicesTarget(contactId, open)], 'medium', 'Mehrere Rechnungsnummern, Summe weicht ab – Verteilung prüfen.');
+      // Offene und in Lexware schon bezahlte Rechnungen: Summe aus offenem Rest bzw. Gesamtbetrag.
+      const amountOf = (i: MatchInvoice) => (i.paidInLexware ? i.totalCents : i.openCents);
+      const group = hits.filter((i) => i.contractId === null && (i.openCents > 0 || i.paidInLexware));
+      const contactId = group[0]?.contactId;
+      if (zulassung && group.length >= 2 && contactId && group.every((i) => i.contactId === contactId)) {
+        return group.reduce((n, i) => n + amountOf(i), 0) === p.amountCents
+          ? result([invoicesTarget(contactId, group)], 'high', 'Mehrere Rechnungsnummern im Verwendungszweck, Summe passt.')
+          : result([invoicesTarget(contactId, group)], 'medium', 'Mehrere Rechnungsnummern, Summe weicht ab – Verteilung prüfen.');
       }
       const asTarget = (i: MatchInvoice) => (i.contractId ? contractTarget(i.contractId, i.contactId) : invoiceTarget(i));
       const all = distinct(hits.map(asTarget));
