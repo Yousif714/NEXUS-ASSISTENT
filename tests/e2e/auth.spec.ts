@@ -158,6 +158,7 @@ test('Echtmodus: Gesamtrechnung ohne Tag ist zum Monatsende fällig; leerer Tag 
 
 test('Echtmodus: Mitgliederliste einfügen, Status, Vertrag anlegen, Kein zahlendes Mitglied, CSV', async () => {
   await page.goto('/nexus');
+  await page.getByTestId('nexus-tools').locator('summary').click();
   await expect(page.getByTestId('portal-link')).toContainText('Liste einfügen');
   await page.getByTestId('portal-link').click();
   await page.getByLabel('Mitgliederliste', { exact: true }).fill(portalListText);
