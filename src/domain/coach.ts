@@ -84,7 +84,7 @@ function onsiteSurcharge(s: AppState): Insight[] {
   });
   if (jobs.length === 0) return [];
   const sum = jobs.length * ONSITE_SURCHARGE_CENTS;
-  const label = (id: string) => s.contacts.find((c) => c.id === id)?.name ?? 'Kunde';
+  const label = (id: string | null) => s.contacts.find((c) => c.id === id)?.name ?? 'Kunde';
   return [
     {
       dedupeKey: `coach:onsite:${jobs.map((j) => j.id).sort().join(',')}`,

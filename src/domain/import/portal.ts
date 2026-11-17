@@ -56,3 +56,9 @@ export function matchesPortalSource(job: Pick<Job, 'portalSource' | 'externalRef
   if (!source || source === 'all') return true;
   return jobPortalSource(job) === source;
 }
+
+/** Anzeigename. Ohne Halter bleibt der Auftrag ohne Kontakt, das Portal steht in der Bezeichnung. */
+export function jobContactLabel(job: Pick<Job, 'contactId' | 'portalSource'>, contacts: { id: string; name: string }[]): string {
+  if (job.contactId) return contacts.find((c) => c.id === job.contactId)?.name ?? 'Unbekannt';
+  return job.portalSource ? `Halter unbekannt (${PORTAL_LABEL[job.portalSource]})` : 'Halter unbekannt';
+}

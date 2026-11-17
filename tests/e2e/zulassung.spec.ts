@@ -233,9 +233,9 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
 
   await page.getByLabel('myDigitalCar-Datei').setInputFiles('tests/fixtures/mydigitalcar/vorgaenge.csv');
   const preview = page.getByTestId('portal-preview-mydigitalcar');
-  await expect(preview).toContainText('2 Vorgänge · 1 Dubletten');
+  await expect(preview).toContainText('3 Vorgänge · 1 Dubletten');
   await preview.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('portal-summary-mydigitalcar')).toContainText('2 Aufträge neu');
+  await expect(page.getByTestId('portal-summary-mydigitalcar')).toContainText('3 Aufträge neu');
 
   await page.getByTestId('portal-status-filter').selectOption('problem');
   await expect(page.getByRole('link', { name: /MD CI 200/ })).toBeVisible();
@@ -256,4 +256,10 @@ test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async
   await expect(page.getByTestId('portal-field-ZB1_Sicherheitscode')).toContainText('ZB1-GEHEIM');
   await expect(page.getByTestId('portal-field-Steuer_IBAN')).toContainText('DE89370400440532013000');
   await expect(page.getByTestId('job-price')).toHaveText('–');
+
+  await page.goto('/zulassung');
+  await page.getByRole('link', { name: /MD CI 300/ }).click();
+  await expect(page.getByTestId('job-customer')).toHaveText('Halter unbekannt (myDigitalCar)');
+  await expect(page.getByTestId('job-vorgang')).toHaveText('9003');
+  await expect(page.getByRole('link', { name: 'Halter unbekannt (myDigitalCar)' })).toHaveCount(0);
 });

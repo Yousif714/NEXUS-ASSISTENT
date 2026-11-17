@@ -15,6 +15,7 @@ import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable } from '@/domain/freshness';
+import { jobContactLabel } from '@/domain/import/portal';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
 
@@ -29,7 +30,7 @@ export default function ZulassungPage() {
   const today = todayBerlin(at);
   const kpis = zulassungKpis(state, at);
   const money = buildBriefing(state, 'morning', at).money.find((m) => m.company === 'zulassung')!;
-  const contactName = (id: string) => state.contacts.find((c) => c.id === id)?.name ?? 'Unbekannt';
+  const contactName = (j: Job) => jobContactLabel(j, state.contacts);
   const customers = zulassungCustomers(state, today);
   const overdueCustomers = customers
     .filter((c) => c.overdueCents > 0)
@@ -84,7 +85,7 @@ export default function ZulassungPage() {
               return (
                 <ListRow key={j.id} href={`/zulassung/auftraege/${j.id}`} testId={`job-row-${j.id}`}
                   title={<>{v ? `${v.model} · ${v.plate}` : j.service} {jobPortalBadge(j)}</>}
-                  subtitle={portalJobSubtitle(contactName(j.contactId), j)}
+                  subtitle={portalJobSubtitle(contactName(j), j)}
                   value={<span className="amount">{jobAmount(j)}</span>} />
               );
             })}

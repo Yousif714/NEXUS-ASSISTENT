@@ -311,50 +311,49 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
 
   for (const row of parsed.rows) {
     const holder = holderOf(row.raw);
-    if (!holder) {
-      errors.push({ line: row.line, vorgang: row.externalId.startsWith('row:') ? undefined : row.externalId, message: 'Halter fehlt' });
-      continue;
-    }
     const vin = normVin(cell(row.raw, 'FIN'));
     const plate = normPlate(cell(row.raw, 'Kennzeichen_Neu') || cell(row.raw, 'Kennzeichen_Alt'));
     if (!vin && !plate) {
-      errors.push({ line: row.line, vorgang: row.externalId, message: 'Weder FIN noch Kennzeichen' });
+      errors.push({ line: row.line, vorgang: row.externalId.startsWith('row:') ? undefined : row.externalId, message: 'Weder FIN noch Kennzeichen' });
       continue;
     }
 
-    const ref: ExternalRef = { connectionId: CONNECTION, externalId: holder.key };
-    let ci = refAt.get(holder.key);
-    if (ci === undefined && holder.address?.postalCode) ci = nameAt.get(holder.key);
-    const prevContact = ci === undefined ? undefined : contacts[ci];
-    const contact: Contact = prevContact
-      ? {
-        ...prevContact,
-        name: holder.name,
-        kind: holder.kind,
-        externalRefs: withRef(prevContact.externalRefs, ref),
-        ...(holder.address ? { address: holder.address } : {}),
-        ...(holder.person ? { contactPersons: withPerson(prevContact.contactPersons, holder.person) } : {}),
+    let contact: Contact | undefined;
+    if (holder) {
+      const ref: ExternalRef = { connectionId: CONNECTION, externalId: holder.key };
+      let ci = refAt.get(holder.key);
+      if (ci === undefined && holder.address?.postalCode) ci = nameAt.get(holder.key);
+      const prevContact = ci === undefined ? undefined : contacts[ci];
+      contact = prevContact
+        ? {
+          ...prevContact,
+          name: holder.name,
+          kind: holder.kind,
+          externalRefs: withRef(prevContact.externalRefs, ref),
+          ...(holder.address ? { address: holder.address } : {}),
+          ...(holder.person ? { contactPersons: withPerson(prevContact.contactPersons, holder.person) } : {}),
+        }
+        : {
+          id: newId(),
+          company: 'zulassung',
+          kind: holder.kind,
+          name: holder.name,
+          phones: [],
+          emails: [],
+          externalRefs: [ref],
+          ...(holder.address ? { address: holder.address } : {}),
+          ...(holder.person ? { contactPersons: [holder.person] } : {}),
+        };
+      if (ci === undefined) {
+        ci = contacts.length;
+        contacts.push(contact);
+        bump(counts.contacts, 'created');
+      } else {
+        contacts[ci] = contact;
+        touch(counts.contacts, prevContact, contact, false);
       }
-      : {
-        id: newId(),
-        company: 'zulassung',
-        kind: holder.kind,
-        name: holder.name,
-        phones: [],
-        emails: [],
-        externalRefs: [ref],
-        ...(holder.address ? { address: holder.address } : {}),
-        ...(holder.person ? { contactPersons: [holder.person] } : {}),
-      };
-    if (ci === undefined) {
-      ci = contacts.length;
-      contacts.push(contact);
-      bump(counts.contacts, 'created');
-    } else {
-      contacts[ci] = contact;
-      touch(counts.contacts, prevContact, contact, false);
+      indexContact(ci);
     }
-    indexContact(ci);
 
     const hsn = cell(row.raw, 'HSN');
     const tsn = cell(row.raw, 'TSN');
@@ -364,7 +363,7 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
     const vehicle: Vehicle = prevVehicle
       ? {
         ...prevVehicle,
-        contactId: contact.id,
+        contactId: contact ? contact.id : prevVehicle.contactId,
         vin: vin || prevVehicle.vin,
         plate: plate || prevVehicle.plate,
         ...(hsn ? { hsn } : {}),
@@ -373,7 +372,7 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
       }
       : {
         id: newId(),
-        contactId: contact.id,
+        contactId: contact?.id ?? null,
         vin,
         plate,
         model: 'unbekannt',
@@ -402,7 +401,7 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
       ? {
         ...prevJob,
         vehicleId: vehicle.id,
-        contactId: contact.id,
+        contactId: contact ? contact.id : prevJob.contactId,
         service: serviceName(cell(row.raw, 'artDesVorfalls')),
         status: keepBilling ? prevJob.status : mapped.status,
         doneAt: keepBilling ? prevJob.doneAt : (mapped.status === 'done' ? prevJob.doneAt : null),
@@ -416,7 +415,7 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
       : {
         id: newId(),
         vehicleId: vehicle.id,
-        contactId: contact.id,
+        contactId: contact?.id ?? null,
         service: serviceName(cell(row.raw, 'artDesVorfalls')),
         location: 'online',
         priceCents: 0,

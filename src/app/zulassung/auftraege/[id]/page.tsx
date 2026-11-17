@@ -17,7 +17,7 @@ import { jobInvoiceDraftAction, jobInvoiceDraftId } from '@/domain/action-factor
 import { jobBilling } from '@/domain/billing';
 import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
 import { mdcVorgang } from '@/domain/import/mydigitalcar';
-import { PORTAL_LABEL } from '@/domain/import/portal';
+import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
 
@@ -45,14 +45,14 @@ export default function JobPage() {
     );
   }
 
-  const contact = state.contacts.find((c) => c.id === job.contactId);
-  const name = contact?.name ?? 'Unbekannt';
+  const contact = job.contactId ? state.contacts.find((c) => c.id === job.contactId) : undefined;
+  const name = jobContactLabel(job, state.contacts);
   const vehicle = state.vehicles.find((v) => v.id === job.vehicleId);
   const { invoicedCents, restCents: rest } = jobBilling(state, job);
   const linked = job.invoiceIds.flatMap((iid) => state.invoices.filter((i) => i.id === iid));
   const candidates = invoiceCandidates(state, job.id);
   const lastMessage = [...state.messages]
-    .filter((m) => m.jobId === job.id || (m.contactId === job.contactId && !m.jobId))
+    .filter((m) => m.jobId === job.id || (job.contactId !== null && m.contactId === job.contactId && !m.jobId))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
 
   const draftId = jobInvoiceDraftId(job.id);
@@ -71,7 +71,7 @@ export default function JobPage() {
         <ListRow key="vehicle" title="Fahrzeug" value={vehicle ? `${vehicle.model} · ${vehicle.plate}` : '–'} />
         <ListRow key="service" title="Leistung" value={job.service} />
         <ListRow key="location" title="Standort" value={LOCATION_LABEL[job.location]} />
-        <ListRow key="customer" href={`/zulassung/kunden/${job.contactId}`} title="Kunde" value={name} />
+        <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
         <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{job.portalData && job.priceCents === 0 ? '–' : formatEuro(job.priceCents)}</span>} />
         {job.notes ? <ListRow key="notes" title="Notiz" subtitle={job.notes} /> : null}
       </ListGroup>
