@@ -176,3 +176,23 @@ test('Anleitung nennt Coexistence, Webhook und die Felder', () => {
   expect(HOW_TO.whatsapp_kunden).toMatch(/WHATSAPP_VERIFY_TOKEN/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/nichts gesendet/);
 });
+
+describe('Absendername aus dem WhatsApp-Profil', () => {
+  test('profile.name landet als fromName an der eingehenden Nachricht und bleibt beim Merge', () => {
+    const parsed = parseWhatsAppWebhook(payload([{
+      field: 'messages',
+      value: {
+        metadata: meta,
+        contacts: [{ profile: { name: 'Max Muster' }, wa_id: CUSTOMER }],
+        messages: [text('wamid.p1', CUSTOMER, 'Hallo')],
+      },
+    }]));
+    expect(parsed.batch.messages[0].fromName).toBe('Max Muster');
+    const merged = mergeBatch(createEmptyState(), parsed.batch, () => 'id-p1');
+    expect(merged.state.messages[0].fromName).toBe('Max Muster');
+    const later = parseWhatsAppWebhook(payload([{
+      field: 'messages', value: { metadata: meta, messages: [text('wamid.p1', CUSTOMER, 'Hallo')] },
+    }]));
+    expect(mergeBatch(merged.state, later.batch, () => 'x').state.messages[0].fromName).toBe('Max Muster');
+  });
+});

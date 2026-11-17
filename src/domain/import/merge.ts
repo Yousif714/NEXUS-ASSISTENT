@@ -114,7 +114,9 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
       const linked = contactIdForMail(counterpart, contacts) ?? matched.contactId;
       const done = old?.doneManually === true;
       const subject = next.subject || old?.subject;
+      const fromName = next.fromName || old?.fromName;
       return {
+        ...(fromName ? { fromName } : {}),
         channel: next.channel,
         connectionId: next.connectionId,
         externalId: next.externalId,

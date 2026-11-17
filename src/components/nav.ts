@@ -4,9 +4,10 @@ import { IconAssistant, IconCar, IconChat, IconGear, IconLink, IconLog, IconNexu
 
 export type NavItem = { key: string; href: string; label: string; Icon: ComponentType<SVGProps<SVGSVGElement> & { size?: number }> };
 
-/** Die drei Haupt-Tabs (mobil unten, am Desktop oben in der Seitenleiste). */
+/** Die vier Haupt-Tabs (mobil unten, am Desktop oben in der Seitenleiste). */
 export const PRIMARY_NAV: NavItem[] = [
   { key: 'heute', href: '/', label: 'Heute', Icon: IconToday },
+  { key: 'nachrichten', href: '/nachrichten', label: 'Nachrichten', Icon: IconChat },
   { key: 'nexus', href: '/nexus', label: 'NEXUS', Icon: IconNexus },
   { key: 'zulassung', href: '/zulassung', label: 'Zulassungsdienst', Icon: IconCar },
 ];
@@ -20,8 +21,8 @@ export const SECONDARY_NAV: NavItem[] = [
   { key: 'einstellungen', href: '/einstellungen', label: 'Einstellungen', Icon: IconGear },
 ];
 
-/** Aktiver Bereich für einen Pfad: Heute umfasst Startseite, Nachrichten und Hinweise. */
+/** Aktiver Bereich für einen Pfad: Heute umfasst Startseite und Hinweise. */
 export function isActive(href: string, pathname: string): boolean {
-  if (href === '/') return pathname === '/' || pathname.startsWith('/nachrichten') || pathname.startsWith('/hinweise');
+  if (href === '/') return pathname === '/' || pathname.startsWith('/hinweise');
   return pathname === href || pathname.startsWith(`${href}/`);
 }
