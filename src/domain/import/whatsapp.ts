@@ -107,6 +107,19 @@ function readBody(m: Obj): string | null {
   return null;
 }
 
+/** WhatsApp-Profilnamen aus `value.contacts` (wa_id → Name), Nummer in E.164. */
+function profileNames(list: unknown): Map<string, string> {
+  const names = new Map<string, string>();
+  if (!Array.isArray(list)) return names;
+  for (const c of list) {
+    if (!isObj(c)) continue;
+    const name = isObj(c.profile) ? str(c.profile.name)?.trim().slice(0, 120) : undefined;
+    const phone = e164(str(c.wa_id) ?? '');
+    if (name && phone) names.set(phone, name);
+  }
+  return names;
+}
+
 /**
  * Cloud-API-Webhook → Import-Stapel. Idempotent über die WhatsApp-Nachrichten-ID.
  * Echos aus der Business-App (`smb_message_echoes`) werden ausgehend. Historie und
@@ -139,12 +152,13 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
         needsReply: direction === 'out' ? false : next.needsReply,
         sentAt: next.sentAt || prev.sentAt,
         threadId: next.threadId || prev.threadId,
+        ...(next.fromName || prev.fromName ? { fromName: next.fromName || prev.fromName } : {}),
       });
     }
     if (!cursor || next.sentAt > cursor) cursor = next.sentAt;
   };
 
-  const build = (m: Obj, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean): ImportedMessage | null => {
+  const build = (m: Obj, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean, names: Map<string, string>): ImportedMessage | null => {
     if (str(m.group_id)) return null;
     const externalId = (str(m.id) ?? '').slice(0, 500);
     const sentAt = sentAtOf(m.timestamp);
@@ -174,14 +188,15 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       body: bodyRaw.replace(/\u0000/g, '').slice(0, 2_400),
       sentAt,
       needsReply: direction === 'in' && !seen,
+      ...(direction === 'in' && from && names.get(from) ? { fromName: names.get(from) } : {}),
     };
   };
 
-  const takeList = (list: unknown, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean) => {
+  const takeList = (list: unknown, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean, names: Map<string, string> = new Map()) => {
     if (!Array.isArray(list)) return;
     for (const item of list) {
       if (!isObj(item)) continue;
-      const msg = build(item, business, mode, threadHint, fromHistory);
+      const msg = build(item, business, mode, threadHint, fromHistory, names);
       if (msg) put(msg);
     }
   };
@@ -224,7 +239,7 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       if (field === 'history' || Array.isArray(value.history)) takeHistory(value.history, business);
       const echoes = Array.isArray(value.message_echoes) ? value.message_echoes : field === 'smb_message_echoes' && Array.isArray(value.echoes) ? value.echoes : null;
       if (echoes) takeList(echoes, business, 'out', '', false);
-      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false);
+      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false, profileNames(value.contacts));
       // statuses und state_sync (Kontakte der App): zur Kenntnis, ohne neue Zeilen.
     }
   }

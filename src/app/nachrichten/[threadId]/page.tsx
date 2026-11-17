@@ -15,6 +15,8 @@ import { useAppStore } from '@/data/store';
 import { replyAction, replyActionId } from '@/domain/action-factory';
 import { formatBerlin, now, todayBerlin } from '@/domain/clock';
 import type { Action, AppState, Contact, Message } from '@/domain/types';
+import { DOC_LABEL, classifyJobMessage, jobActivity } from '@/domain/matching/job-messages';
+import { toE164 } from '@/domain/matching/messages';
 import { contractsOfContact, membershipContractOf } from '@/domain/ledger/contracts';
 
 const CHANNEL_LABEL: Record<Message['channel'], string> = { whatsapp: 'WhatsApp', email: 'E-Mail' };
@@ -27,10 +29,24 @@ function contactHref(s: AppState, c: Contact): string | null {
 
 function BackLink() {
   return (
-    <Link href="/" className="nav-button back-button">
+    <Link href="/nachrichten" className="nav-button back-button">
       <IconChevron className="back-chevron" size={20} />
-      <span>Heute</span>
+      <span>Nachrichten</span>
     </Link>
+  );
+}
+
+/** Erkannte Unterlagen bzw. Auftrag als kleine Marken unter einer eingehenden Blase. */
+function MessageTags({ body, incoming }: { body: string; incoming: boolean }) {
+  if (!incoming) return null;
+  const { kind, docs } = classifyJobMessage(body);
+  if (!kind) return null;
+  return (
+    <div className="imsg-tags" data-testid="message-tags">
+      {docs.length === 0
+        ? <span className="chip">{kind === 'auftrag' ? 'Auftrag' : 'Nachweis'}</span>
+        : docs.map((d) => <span key={d} className="chip">{DOC_LABEL[d]}</span>)}
+    </div>
   );
 }
 
@@ -46,9 +62,8 @@ export default function ThreadPage() {
   const lastIn = messages.filter((m) => m.direction === 'in').at(-1);
   const contactId = messages.find((m) => m.contactId)?.contactId ?? null;
   const contact = state.contacts.find((c) => c.id === contactId) ?? null;
-  const jobId = [...messages].reverse().find((m) => m.jobId)?.jobId ?? null;
-  const job = state.jobs.find((j) => j.id === jobId);
-  const vehicle = job && state.vehicles.find((v) => v.id === job.vehicleId);
+  const threadSource = { messages, vehicles: state.vehicles, contacts: state.contacts };
+  const jobs = state.jobs.filter((j) => jobActivity(j, threadSource).length > 0);
 
   const actionId = lastIn ? replyActionId(lastIn.id) : null;
   const stored = state.actions.find((a) => a.id === actionId);
@@ -79,8 +94,11 @@ export default function ThreadPage() {
     );
   }
 
-  const name = contact?.name ?? lastIn?.from ?? last.to;
+  const fromName = messages.findLast((m) => m.direction === 'in' && m.fromName)?.fromName;
+  const name = contact?.name ?? fromName ?? lastIn?.from ?? last.to;
   const channel = (lastIn ?? last).channel;
+  const rawPhone = channel === 'whatsapp' ? toE164(lastIn?.from ?? last.to) : '';
+  const phone = /^\+\d{6,15}$/.test(rawPhone) ? rawPhone : null;
 
   let action: Action | null = stored ?? null;
   if (!action && lastIn && actionId && draft?.forId === lastIn.id) {
@@ -108,7 +126,11 @@ export default function ThreadPage() {
 
   return (
     <>
-      <PageHeader title={name} subtitle={CHANNEL_LABEL[channel]} trailing={<BackLink />} />
+      <PageHeader title={name} trailing={<BackLink />} subtitle={<>
+        {CHANNEL_LABEL[channel]}
+        {phone && <> · <a className="thread-phone" href={`tel:${phone}`} data-testid="thread-phone">{phone}</a></>}
+        {phone && contact && fromName && fromName !== contact.name && <> · „{fromName}“</>}
+      </>} />
 
       <ol className="imsg-list" data-testid="thread-messages">
         {placeMessages(messages, (m) => m.direction, (m) => m.sentAt).map((p) => (
@@ -116,16 +138,21 @@ export default function ThreadPage() {
             {p.stamp && <TimeStamp dateTime={p.item.sentAt}>{time(p.item)}</TimeStamp>}
             <li className="imsg-row" data-side={p.side} data-first={p.first}>
               <Bubble side={p.side} tail={p.tail}><RichText text={p.item.body} /></Bubble>
+              <MessageTags body={p.item.body} incoming={p.item.direction === 'in'} />
             </li>
           </Fragment>
         ))}
       </ol>
 
-      {(job || contactLink) && (
+      {(jobs.length > 0 || contactLink) && (
         <ListGroup>
-          {job && (
-            <ListRow key="job" href={`/zulassung/auftraege/${job.id}`} title={`Auftrag: ${job.service}`} subtitle={vehicle ? `${vehicle.model} · ${vehicle.plate}` : undefined} />
-          )}
+          {jobs.map((job) => {
+            const vehicle = state.vehicles.find((v) => v.id === job.vehicleId);
+            return (
+              <ListRow key={job.id} href={`/zulassung/auftraege/${job.id}`} testId={`thread-job-${job.id}`} title={`Auftrag: ${job.service}`}
+                subtitle={[vehicle && `${vehicle.model} · ${vehicle.plate}`, job.portalStatus].filter(Boolean).join(' · ') || undefined} />
+            );
+          })}
           {contact && contactLink && <ListRow key="contact" href={contactLink} title={contact.name} subtitle="Kontakt ansehen" />}
         </ListGroup>
       )}

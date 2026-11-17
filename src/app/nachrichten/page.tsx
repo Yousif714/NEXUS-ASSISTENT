@@ -1,0 +1,98 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+
+import { ListGroup } from '@/components/ListGroup';
+import { ListRow } from '@/components/ListRow';
+import { PageHeader } from '@/components/PageHeader';
+import { Segmented } from '@/components/Segmented';
+import { useAppStore } from '@/data/store';
+import { formatBerlin, now, todayBerlin } from '@/domain/clock';
+import { buildInbox, filterInbox, initialsOf, type InboxFilter } from '@/domain/inbox';
+import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
+
+const FILTERS: { value: InboxFilter; label: string }[] = [
+  { value: 'all', label: 'Alle' },
+  { value: 'waiting', label: 'Wartet' },
+  { value: 'orders', label: 'Aufträge' },
+];
+
+export default function InboxPage() {
+  const { state } = useAppStore();
+  const at = now();
+  const today = todayBerlin(at);
+  const [filter, setFilter] = useState<InboxFilter>('all');
+  const [query, setQuery] = useState('');
+
+  const rows = buildInbox(state, at, state.settings.replyThresholdHours);
+  const shown = filterInbox(rows, filter, query);
+  const waiting = rows.filter((r) => r.waitingHours !== null).length;
+  const newOrders = unlinkedOrderMessages(state);
+  const time = (iso: string) => {
+    const d = new Date(iso);
+    return todayBerlin(d) === today ? formatBerlin(d, 'HH:mm') : formatBerlin(d, 'dd.MM.');
+  };
+
+  return (
+    <>
+      <PageHeader title="Nachrichten" subtitle={waiting > 0 ? `${waiting} warten auf Antwort` : 'Alles beantwortet'} />
+
+      {newOrders.length > 0 && (
+        <ListGroup title="Neu aus WhatsApp – noch kein Auftrag" testId="inbox-new-orders">
+          {newOrders.map((e) => (
+            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`new-order-${e.messageId}`}
+              title={<span className="wrap-text">{e.body}</span>}
+              subtitle={<span className="wrap-text">
+                {e.kind === 'auftrag' ? 'Auftrag' : 'Nachweis'}{e.docs.length ? ` (${e.docs.map((d) => DOC_LABEL[d]).join(', ')})` : ''}
+                {' · '}{e.senderName ?? 'Unbekannt'}{e.senderPhone ? ` · ${e.senderPhone}` : ''}
+                {e.plates.length ? ` · ${e.plates.join(', ')}` : ''}
+              </span>}
+              value={time(e.sentAt)} />
+          ))}
+        </ListGroup>
+      )}
+
+      <div className="inbox-tools">
+        <label className="field inbox-search">Suche
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, Nummer oder Kennzeichen"
+            autoComplete="off" data-testid="inbox-search" />
+        </label>
+        <Segmented name="inbox-filter" legend="Filter" value={filter} options={FILTERS} onChange={setFilter} />
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="empty-state">{rows.length === 0 ? 'Noch keine Nachrichten.' : 'Nichts passt zum Filter.'}</div>
+      ) : (
+        <ul className="inbox-list" data-testid="inbox-list">
+          {shown.map((r) => (
+            <li key={`${r.channel}|${r.threadId}`}>
+              <Link href={`/nachrichten/${r.threadId}`} className="inbox-row" data-testid="inbox-row"
+                data-waiting={r.waitingHours !== null} data-overdue={r.overdue}>
+                <span className="inbox-avatar" aria-hidden="true">{initialsOf(r.name)}</span>
+                <span className="inbox-main">
+                  <span className="inbox-top">
+                    <span className="inbox-name">{r.name}</span>
+                    <time className="inbox-time" dateTime={r.lastAt}>{time(r.lastAt)}</time>
+                  </span>
+                  <span className="inbox-preview">
+                    {r.lastDirection === 'out' && <span className="inbox-you">Du: </span>}{r.preview}
+                  </span>
+                  <span className="inbox-meta">
+                    {r.channel === 'email' && <span className="chip">E-Mail</span>}
+                    {r.phone && r.name !== r.phone && <span className="inbox-phone">{r.phone}</span>}
+                    {r.hasOrder && <span className="chip" data-kind="order">Auftrag</span>}
+                    {r.docs.map((d) => <span key={d} className="chip" data-kind="doc">{DOC_LABEL[d]}</span>)}
+                    {r.waitingHours !== null && (
+                      <span className="inbox-wait" data-testid="inbox-wait">wartet {r.waitingHours < 1 ? '< 1' : r.waitingHours} Std.</span>
+                    )}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}

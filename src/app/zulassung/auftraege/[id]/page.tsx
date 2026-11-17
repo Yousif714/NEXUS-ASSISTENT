@@ -18,6 +18,7 @@ import { jobBilling } from '@/domain/billing';
 import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
 import { mdcVorgang } from '@/domain/import/mydigitalcar';
 import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
+import { DOC_LABEL, jobActivity } from '@/domain/matching/job-messages';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
 
@@ -54,6 +55,8 @@ export default function JobPage() {
   const lastMessage = [...state.messages]
     .filter((m) => m.jobId === job.id || (job.contactId !== null && m.contactId === job.contactId && !m.jobId))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
+  const activity = jobActivity(job, state);
+  const docsReceived = [...new Set(activity.filter((e) => e.direction === 'in').flatMap((e) => e.docs))];
 
   const draftId = jobInvoiceDraftId(job.id);
   const draft = state.actions.find((a) => a.id === draftId);
@@ -98,6 +101,24 @@ export default function JobPage() {
         )}
         {job.doneAt && <p className="confirm-line">Erledigt am {formatBerlin(new Date(job.doneAt), 'dd.MM.yyyy, HH:mm')} Uhr</p>}
       </section>
+
+      {activity.length > 0 && (
+        <ListGroup title="WhatsApp zu diesem Auftrag" testId="job-whatsapp">
+          {docsReceived.length > 0 ? (
+            <ListRow key="docs" testId="job-docs-received" title="Erhaltene Unterlagen"
+              subtitle={<span className="wrap-text">{docsReceived.map((d) => DOC_LABEL[d]).join(' · ')}</span>} />
+          ) : null}
+          {activity.map((e) => (
+            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`job-msg-${e.messageId}`}
+              title={<span className="wrap-text">{e.body}</span>}
+              subtitle={<>
+                {e.kind === 'auftrag' ? 'Auftrag · ' : e.kind === 'nachweis' ? 'Nachweis · ' : ''}
+                {e.senderName ?? 'Unbekannt'}{e.senderPhone ? ` · ${e.senderPhone}` : ''}
+              </>}
+              value={formatBerlin(new Date(e.sentAt), 'dd.MM. HH:mm')} />
+          ))}
+        </ListGroup>
+      )}
 
       <ListGroup title="Letzte Kommunikation">
         {lastMessage ? (
