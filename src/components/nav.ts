@@ -2,14 +2,14 @@ import type { ComponentType, SVGProps } from 'react';
 
 import { IconAssistant, IconCar, IconChat, IconGear, IconHome, IconLink, IconLog, IconNexusN } from './Icons';
 
-export type NavItem = { key: string; href: string; label: string; Icon: ComponentType<SVGProps<SVGSVGElement> & { size?: number }> };
+export type NavItem = { key: string; href: string; label: string; /** Kurzname für die Tab-Leiste. */ short?: string; Icon: ComponentType<SVGProps<SVGSVGElement> & { size?: number }> };
 
 /** Die vier Haupt-Tabs (mobil unten, am Desktop oben in der Seitenleiste). */
 export const PRIMARY_NAV: NavItem[] = [
   { key: 'heute', href: '/', label: 'Heute', Icon: IconHome },
   { key: 'nachrichten', href: '/nachrichten', label: 'Nachrichten', Icon: IconChat },
   { key: 'nexus', href: '/nexus', label: 'NEXUS', Icon: IconNexusN },
-  { key: 'zulassung', href: '/zulassung', label: 'Zulassungsdienst', Icon: IconCar },
+  { key: 'zulassung', href: '/zulassung', label: 'Zulassungsdienst', short: 'Zulassung', Icon: IconCar },
 ];
 
 /** Weitere Bereiche: am Desktop in der Seitenleiste, mobil über „Mehr“ auf Heute. */

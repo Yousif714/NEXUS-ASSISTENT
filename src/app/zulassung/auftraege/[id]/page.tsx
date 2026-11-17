@@ -77,6 +77,17 @@ export default function JobPage() {
     <>
       <PageHeader title={job.service} subtitle={<>{name}{vehicle?.plate.trim() ? <> · {vehicle.plate}</> : null}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
 
+      <section className="list-group" aria-labelledby="status-title">
+        <h2 id="status-title" className="list-group-title">Status</h2>
+        {isSwitchable(job.status) ? (
+          <Segmented name="job-status" legend="Auftragsstatus" value={job.status} options={SWITCH_OPTIONS}
+            onChange={(status) => dispatch({ type: 'setJobStatus', jobId: job.id, status })} />
+        ) : (
+          <p className="note-card" data-testid="job-status">{JOB_STATUS_LABEL[job.status]}</p>
+        )}
+        {job.doneAt && <p className="confirm-line">Erledigt am {formatBerlin(new Date(job.doneAt), 'dd.MM.yyyy, HH:mm')} Uhr</p>}
+      </section>
+
       <ListGroup title="Auftrag" testId="job-details">
         <ListRow key="vehicle" title="Fahrzeug" testId="job-vehicle" value={vehicle ? portalVehicleTitle(vehicle) : '–'} />
         <ListRow key="service" title="Leistung" value={job.service} />
@@ -84,25 +95,6 @@ export default function JobPage() {
         <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
         <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{job.portalData && job.priceCents === 0 ? '–' : formatEuro(job.priceCents)}</span>} />
         {job.notes ? <ListRow key="notes" title="Notiz" subtitle={job.notes} /> : null}
-      </ListGroup>
-
-      <ListGroup title="Absender" testId="job-sender" sectionId="job-sender" defaultOpen>
-        {(job.receipts ?? []).length === 0
-          ? <ListRow key="none" title="Noch kein erkannter Eingang." />
-          : job.receipts!.map((r) => (
-            <ListRow key={r.messageId} href={`/nachrichten/${encodeURIComponent(state.messages.find((m) => m.id === r.messageId)?.threadId ?? '')}`} testId={`job-receipt-${r.messageId}`}
-              title={<>{r.senderName} · {r.kind === 'order' ? 'Auftrag' : 'Nachweis'}</>}
-              subtitle={receiptLine(r)} />
-          ))}
-      </ListGroup>
-
-      <ListGroup title="Verlauf" testId="job-activity" sectionId="job-activity" defaultOpen>
-        {(job.activities ?? []).length === 0
-          ? <ListRow key="none" title="Noch kein Verlauf." />
-          : [...job.activities!].reverse().map((a) => (
-            <ListRow key={a.id} testId={`job-activity-${a.id}`} title={<span className="wrap-text">{a.text}</span>}
-              subtitle={`${a.actor === 'owner' ? 'Inhaber' : 'System'} · ${formatBerlin(new Date(a.at), 'dd.MM.yyyy, HH:mm')}`} />
-          ))}
       </ListGroup>
 
       {job.portalSource && (
@@ -119,25 +111,14 @@ export default function JobPage() {
         </ListGroup>
       )}
 
-      <section className="list-group" aria-labelledby="status-title">
-        <h2 id="status-title" className="list-group-title">Status</h2>
-        {isSwitchable(job.status) ? (
-          <Segmented name="job-status" legend="Auftragsstatus" value={job.status} options={SWITCH_OPTIONS}
-            onChange={(status) => dispatch({ type: 'setJobStatus', jobId: job.id, status })} />
-        ) : (
-          <p className="note-card" data-testid="job-status">{JOB_STATUS_LABEL[job.status]}</p>
-        )}
-        {job.doneAt && <p className="confirm-line">Erledigt am {formatBerlin(new Date(job.doneAt), 'dd.MM.yyyy, HH:mm')} Uhr</p>}
-      </section>
-
       {activity.length > 0 && (
         <ListGroup title="WhatsApp zu diesem Auftrag" testId="job-whatsapp">
           {docsReceived.length > 0 ? (
             <ListRow key="docs" testId="job-docs-received" title="Erhaltene Unterlagen"
               subtitle={<span className="wrap-text">{docsReceived.map((d) => DOC_LABEL[d]).join(' · ')}</span>} />
           ) : null}
-          {activity.map((e) => (
-            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={`job-msg-${e.messageId}`}
+          {activity.map((e, i) => (
+            <ListRow key={e.messageId} href={`/nachrichten/${e.threadId}`} testId={i === 0 ? 'last-message' : `job-msg-${e.messageId}`}
               title={<span className="wrap-text">{e.body}</span>}
               subtitle={<>
                 {e.kind === 'auftrag' ? 'Auftrag · ' : e.kind === 'nachweis' ? 'Nachweis · ' : ''}
@@ -148,6 +129,7 @@ export default function JobPage() {
         </ListGroup>
       )}
 
+      {activity.length === 0 && (
       <ListGroup title="Letzte Kommunikation">
         {lastMessage ? (
           <ListRow key="msg" href={`/nachrichten/${lastMessage.threadId}`} testId="last-message"
@@ -156,6 +138,17 @@ export default function JobPage() {
           <ListRow key="none" title="Keine Nachrichten." />
         )}
       </ListGroup>
+      )}
+
+      {(job.receipts ?? []).length > 0 && (
+      <ListGroup title="Absender" testId="job-sender" sectionId="job-sender" defaultOpen>
+        {job.receipts!.map((r) => (
+            <ListRow key={r.messageId} href={`/nachrichten/${encodeURIComponent(state.messages.find((m) => m.id === r.messageId)?.threadId ?? '')}`} testId={`job-receipt-${r.messageId}`}
+              title={<>{r.senderName} · {r.kind === 'order' ? 'Auftrag' : 'Nachweis'}</>}
+              subtitle={receiptLine(r)} />
+          ))}
+      </ListGroup>
+      )}
 
       <ListGroup title="Verknüpfte Rechnungen" testId="linked-invoices">
         {linked.length === 0
@@ -194,6 +187,14 @@ export default function JobPage() {
             )}
           </div>
         </div>
+      )}
+      {(job.activities ?? []).length > 0 && (
+      <ListGroup title="Verlauf" testId="job-activity" sectionId="job-activity" defaultOpen={false}>
+        {[...job.activities!].reverse().map((a) => (
+            <ListRow key={a.id} testId={`job-activity-${a.id}`} title={<span className="wrap-text">{a.text}</span>}
+              subtitle={`${a.actor === 'owner' ? 'Inhaber' : 'System'} · ${formatBerlin(new Date(a.at), 'dd.MM.yyyy, HH:mm')}`} />
+          ))}
+      </ListGroup>
       )}
     </>
   );

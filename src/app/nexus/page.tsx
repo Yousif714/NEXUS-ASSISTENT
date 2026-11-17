@@ -40,7 +40,8 @@ export default function NexusPage() {
     <>
       <PageHeader title="NEXUS" />
 
-      <Figures title="Überblick" columns={4}>
+      <div className="top-row">
+      <Figures columns={4}>
         <CountFigure label="Mitglieder" value={members.length} testId="kpi-members" />
         <CountFigure label="Überfällig" value={overdueRows.length} testId="kpi-overdue" />
         <CountFigure label="Zuordnen" value={toMatch} testId="kpi-match" />
@@ -50,13 +51,14 @@ export default function NexusPage() {
       <section className="money-cards" aria-label="Geld">
         <MoneyCard company="nexus" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaUnreliable(MONEY_SOURCES.nexus, state.connections, at)} />
       </section>
+      </div>
 
       <ListGroup title="Mitglieder" testId="members">
         {openProposals > 0 ? (
           <ListRow key="proposals" href="/nexus/mitglieder/vorschlaege" testId="proposals-card"
             title={openProposals === 1 ? '1 Vertrag zum Bestätigen' : `${openProposals} Verträge zum Bestätigen`} />
         ) : null}
-        <ListRow href="/nexus/vertraege" testId="members-link" title="Mitglieder"
+        <ListRow href="/nexus/vertraege" testId="members-link" title="Alle Mitglieder"
           subtitle={<span className="wrap-text">{peopleSummary(overdueRows.length, [...new Set(overdueRows.map((r) => r.name))], 'Niemand überfällig')}</span>}
           value={members.length} />
         <ListRow key="open" href="/nexus/offen" title={`Offen (${formatEuro(receivables.totalCents)})`} testId="open-link" />

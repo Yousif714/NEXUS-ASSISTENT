@@ -79,7 +79,8 @@ export default function HeutePage() {
       {header}
 
       <section data-testid="feed-heute">
-        <Figures title="Auf einen Blick">
+        <div className="top-row">
+        <Figures>
           <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" />
           <CountFigure label="Kunde wartet" value={replies.length} testId="figure-replies" />
           <CountFigure label="Überfällig" value={overdueCount} testId="figure-overdue" alert={overdueCount > 0} />
@@ -91,7 +92,10 @@ export default function HeutePage() {
               stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
           ))}
         </section>
+        </div>
 
+        <div className="heute-cols">
+        <div className="heute-main">
         <ListGroup title="Wichtig heute" testId="top-insights">
           {briefing.top.length === 0
             ? <ListRow key="empty" title="Alles erledigt." />
@@ -99,19 +103,7 @@ export default function HeutePage() {
                 onLater={() => onLater(i.dedupeKey)} />)}
           <ListRow key="all" href="/hinweise" title={`Alle Hinweise (${allOpen.length})`} testId="all-insights-link" />
         </ListGroup>
-
-        <ListGroup title="Termine heute" testId="events-today">
-          {briefing.events.length === 0 && todayCalls.length === 0 && <ListRow key="empty" title="Keine Termine heute." />}
-          {briefing.events.map((e) => (
-            <ListRow key={e.id} title={e.title} subtitle={e.location} value={formatBerlin(new Date(e.startAt), 'HH:mm')} />
-          ))}
-          {todayCalls.map((c) => (
-            <ListRow key={c.id} href={`/nexus/calls/${c.id}`} title={c.topic} subtitle="Call" value={formatBerlin(new Date(c.startsAt), 'HH:mm')} />
-          ))}
-        </ListGroup>
-
         {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
-
         <ListGroup title="Nachrichten" testId="replies" sectionId="heute-nachrichten" defaultOpen>
           {replies.length === 0
             ? <ListRow key="empty" title="Keine offenen Antworten." />
@@ -121,16 +113,27 @@ export default function HeutePage() {
                 subtitle={m.body} value={`${waitingHours} Std.`} />
             ))}
         </ListGroup>
-
+          {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater}
+        defaultOpen={section.id === 'ueberfaellig' ? section.entries.length <= 5 : undefined} />)}
+        </div>
+        <aside className="heute-side">
+        <ListGroup title="Termine heute" testId="events-today">
+          {briefing.events.length === 0 && todayCalls.length === 0 && <ListRow key="empty" title="Keine Termine heute." />}
+          {briefing.events.map((e) => (
+            <ListRow key={e.id} title={e.title} subtitle={e.location} value={formatBerlin(new Date(e.startAt), 'HH:mm')} />
+          ))}
+          {todayCalls.map((c) => (
+            <ListRow key={c.id} href={`/nexus/calls/${c.id}`} title={c.topic} subtitle="Call" value={formatBerlin(new Date(c.startsAt), 'HH:mm')} />
+          ))}
+        </ListGroup>
         {coachTip && (
           <CoachTip key={coachTip.dedupeKey} tip={coachTip}
             onTake={() => dispatch({ type: 'dismissInsight', key: coachTip.dedupeKey })}
             onLater={() => dispatch({ type: 'snoozeInsight', key: coachTip.dedupeKey })}
             onNever={() => dispatch({ type: 'suppressCoach', key: coachTip.dedupeKey })} />
         )}
-
         <section className="briefing">
-          <ListGroup title="Briefing" testId="briefing-group">
+          <ListGroup testId="briefing-group">
             <button key="toggle" type="button" className="list-row heute-briefing-toggle" aria-expanded={showBriefing} aria-controls={briefingId}
               onClick={() => setShowBriefing((v) => !v)}>
               <span className="list-row-text"><span className="list-row-title">{showBriefing ? 'Morgenbriefing ausblenden' : 'Morgenbriefing ansehen'}</span></span>
@@ -140,10 +143,9 @@ export default function HeutePage() {
             {renderBriefingText(briefing)}
           </div>
         </section>
+        </aside>
+        </div>
       </section>
-
-      {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater}
-        defaultOpen={section.id === 'ueberfaellig' ? section.entries.length <= 5 : undefined} />)}
     </>
   );
 }
