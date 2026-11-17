@@ -144,3 +144,17 @@
     background: #d70015;
   }
 }
+
+/* Filter bündig unter der Suche, Feldbeschriftung nur für Screenreader */
+.inbox-tools .wa-filters {
+  margin: 0;
+}
+
+.inbox-search {
+  font-size: 0;
+}
+
+.inbox-search input {
+  margin-top: 0;
+  font-size: 15px;
+}

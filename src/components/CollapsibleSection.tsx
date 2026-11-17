@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 
 import { IconChevron } from './Icons';
 
@@ -69,8 +69,12 @@ export function CollapsibleSection({
 }) {
   const open = useSectionOpen(id, defaultOpen);
   const nav = variant === 'nav';
+  const ref = useRef<HTMLDetailsElement>(null);
+  useJumpTarget(testId, id, ref);
   return (
     <details
+      ref={ref}
+      id={testId}
       className={nav ? 'nav-group' : 'fold list-group'}
       data-testid={testId}
       open={open}
@@ -88,4 +92,19 @@ export function CollapsibleSection({
       <div className={nav ? 'nav-group-body' : 'collapse-body'}>{children}</div>
     </details>
   );
+}
+
+/** Sprung per Link (`#testId`): Abschnitt öffnen und in den Blick holen. */
+function useJumpTarget(anchor: string | undefined, id: string, ref: React.RefObject<HTMLDetailsElement | null>) {
+  useEffect(() => {
+    if (!anchor) return;
+    const jump = () => {
+      if (window.location.hash !== `#${anchor}`) return;
+      write(id, true);
+      requestAnimationFrame(() => ref.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    };
+    jump();
+    window.addEventListener('hashchange', jump);
+    return () => window.removeEventListener('hashchange', jump);
+  }, [anchor, id, ref]);
 }

@@ -160,7 +160,7 @@ export default function JobPage() {
       </ListGroup>
 
       <Figures title="Abrechnung">
-        <Figure label="Abgerechnet" cents={invoicedCents} testId="job-invoiced" />
+        <Figure label="Abgerechnet" cents={invoicedCents} testId="job-invoiced" href="#linked-invoices" />
         <Figure label="Rest" cents={rest} testId="job-rest" strong />
       </Figures>
 

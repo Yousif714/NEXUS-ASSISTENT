@@ -81,14 +81,14 @@ export default function HeutePage() {
       <section data-testid="feed-heute">
         <div className="top-row">
         <Figures>
-          <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" />
-          <CountFigure label="Kunde wartet" value={replies.length} testId="figure-replies" />
-          <CountFigure label="Überfällig" value={overdueCount} testId="figure-overdue" alert={overdueCount > 0} />
+          <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" href="#top-insights" />
+          <CountFigure label="Kunde wartet" value={replies.length} testId="figure-replies" href="/nachrichten?filter=waiting" />
+          <CountFigure label="Überfällig" value={overdueCount} testId="figure-overdue" alert={overdueCount > 0} href="#feed-ueberfaellig" />
         </Figures>
 
         <section className="money-cards" aria-label="Geld">
           {briefing.money.map((m) => (
-            <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
+            <MoneyCard key={m.company} company={m.company} href={m.company === 'nexus' ? '/nexus/offen' : '/zulassung/kunden'} openCents={m.openCents} overdueCents={m.overdueCents}
               stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
           ))}
         </section>

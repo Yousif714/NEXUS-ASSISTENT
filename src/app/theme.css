@@ -1,0 +1,863 @@
+/* ==================================================================
+   Theme „Clean“ – liegt über globals.css (zuletzt geladen).
+   Neutral, hell, dünne Rahmen, Abschnitte als Karte mit grauem Kopfstreifen
+   und weißer Innenkarte. Dunkles Marineblau als Hauptfarbe. Hell + Dunkel.
+   ================================================================== */
+:root {
+  --bg: #f6f6f7;
+  --surface: #ffffff;
+  --tray: #f1f1f3;
+  --border: #e4e4e8;
+  --border-strong: #d4d4da;
+  --label: #111827;
+  --label-2: #5b6270;
+  --label-3: #a0a6b1;
+  --primary: #1f2430;
+  --on-primary: #ffffff;
+  --tint: #1d4ed8;
+  --tint-graphic: #2563eb;
+  --tint-fill: #1f2430;
+  --red: #c81e1e;
+  --orange: #b45309;
+  --green: #15803d;
+  --fill: rgba(17, 24, 39, 0.05);
+  --separator: #ececf0;
+  --bg-elevated: var(--surface);
+  --bg-pressed: #f3f4f6;
+  --bar: rgba(255, 255, 255, 0.92);
+  --sidebar: #fafafb;
+  --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-float: 0 4px 16px rgba(17, 24, 39, 0.12);
+  --radius-group: 14px;
+  --radius-inner: 11px;
+  --radius-card: 14px;
+  --tabbar-h: 56px;
+  --sidebar-w: 248px;
+  --page-pad: 12px;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Alt-Namen aus der Glas-Phase, damit Seiten-CSS weiter passt */
+  --glass: var(--surface);
+  --glass-strong: var(--surface);
+  --glass-edge: var(--border);
+  --glass-shadow: var(--shadow-card);
+  --glass-shine: 0 0 #0000;
+  --glass-blur: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0c0e;
+    --surface: #17171a;
+    --tray: #111113;
+    --border: #2a2a30;
+    --border-strong: #3a3a42;
+    --label: #f4f4f5;
+    --label-2: #a1a1aa;
+    --label-3: #63636d;
+    --primary: #f4f4f5;
+    --on-primary: #111113;
+    --tint: #8ab4ff;
+    --tint-graphic: #8ab4ff;
+    --tint-fill: #2563eb;
+    --red: #f87171;
+    --orange: #fbbf24;
+    --green: #4ade80;
+    --fill: rgba(255, 255, 255, 0.06);
+    --separator: #222228;
+    --bg-pressed: #1f1f24;
+    --bar: rgba(23, 23, 26, 0.92);
+    --sidebar: #0f0f11;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-float: 0 4px 16px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ------------------------------------------------------------------ Basis */
+html,
+body {
+  background: var(--bg);
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: -0.15px;
+}
+
+/* ------------------------------------------------------------------ Seitenrahmen: schmale Ränder am iPhone */
+.shell-content {
+  max-width: 1180px;
+  padding: 0 var(--page-pad);
+}
+
+.shell-main {
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 76px);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-pad: 28px;
+  }
+
+  .shell-main {
+    margin-left: var(--sidebar-w);
+    padding-bottom: 64px;
+  }
+}
+
+/* ------------------------------------------------------------------ Kopf */
+.page-header-bar {
+  min-height: 34px;
+}
+
+.page-header-row {
+  justify-content: flex-start;
+  padding: 0 2px;
+}
+
+.page-subtitle {
+  margin: 2px 0 0;
+  padding: 0 2px;
+  max-width: none;
+  text-align: left;
+  font-size: 14px;
+}
+
+.page-header > :last-child {
+  margin-bottom: 16px;
+}
+
+.large-title {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 650;
+  letter-spacing: -0.6px;
+}
+
+@media (min-width: 768px) {
+  .large-title {
+    font-size: 30px;
+    line-height: 36px;
+  }
+}
+
+/* ------------------------------------------------------------------ Abschnitte: grauer Kopfstreifen + weiße Innenkarte */
+.list-group,
+.fold {
+  margin: 0 0 14px;
+}
+
+.fold,
+.list-group:has(> .list-group-title) {
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-group);
+  background: var(--tray);
+}
+
+.list-group-title,
+.feed-heading {
+  margin: 0;
+  padding: 7px 10px 9px;
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.1px;
+  text-align: left;
+  text-transform: none;
+}
+
+.collapse-summary {
+  min-height: 0;
+  padding: 7px 10px 9px;
+  gap: 6px;
+  border-radius: 10px;
+}
+
+.fold:not([open]) > .collapse-summary {
+  padding-bottom: 7px;
+}
+
+.collapse-title {
+  flex: 0 1 auto;
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.1px;
+  text-transform: none;
+}
+
+.collapse-summary .collapse-chevron {
+  order: 2;
+  width: 14px;
+  height: 14px;
+  color: var(--label-3);
+  transform: rotate(0deg);
+}
+
+.fold[open] > .collapse-summary .collapse-chevron {
+  transform: rotate(90deg);
+}
+
+.collapse-summary .collapse-count,
+.collapse-count {
+  order: 3;
+  margin-left: auto;
+  min-width: 22px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--label-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.collapse-summary:hover .collapse-title {
+  color: var(--label-2);
+}
+
+.list-group-body,
+.inbox-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* Liste ohne Titel: eine einfache Karte */
+.list-group:not(:has(> .list-group-title)) > .list-group-body {
+  border-radius: var(--radius-group);
+}
+
+.list-group-body > li + li::before {
+  left: 0;
+  background: var(--separator);
+}
+
+.list-group-body > li:has(> .task-row:not(.task-row-plain))::before {
+  left: 0;
+}
+
+.list-row {
+  min-height: 46px;
+  padding: 10px 12px;
+  font-size: 15px;
+}
+
+.list-row-subtitle {
+  font-size: 13px;
+  letter-spacing: -0.05px;
+}
+
+a.list-row:hover,
+button.list-row:hover {
+  background: var(--bg-pressed);
+}
+
+.chevron {
+  width: 16px;
+  height: 16px;
+}
+
+/* ------------------------------------------------------------------ Kennzahlen: Kachel mit Kopfstreifen, anklickbar */
+.figures {
+  gap: 8px;
+}
+
+.figures:has(> :nth-child(3):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.figure {
+  position: relative;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-group);
+  background: var(--tray);
+  text-align: left;
+}
+
+.figure dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 5px 8px 7px;
+  color: var(--label-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.figure dd {
+  margin: 0;
+  padding: 10px 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+  color: var(--label);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 28px;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.figure[data-strong="true"] dd {
+  color: var(--tint);
+}
+
+.figure[data-tone="alert"] dd {
+  color: var(--red);
+}
+
+/* Ganze Kachel ist ein Link */
+.tile-link {
+  color: inherit;
+}
+
+.tile-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.figure:has(.tile-link),
+.money-card:has(.tile-link) {
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.figure:has(.tile-link):hover,
+.money-card:has(.tile-link):hover {
+  border-color: var(--border-strong);
+}
+
+.figure:has(.tile-link):active,
+.money-card:has(.tile-link):active {
+  transform: scale(0.98);
+}
+
+.figure:has(.tile-link) dt::after,
+.money-card:has(.tile-link) .money-card-head::after {
+  content: "›";
+  margin-left: auto;
+  color: var(--label-3);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.figure:has(.tile-link:focus-visible),
+.money-card:has(.tile-link:focus-visible) {
+  outline: 2px solid var(--tint-graphic);
+  outline-offset: 2px;
+}
+
+.tile-link:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 559px) {
+  .figure dt {
+    font-size: 12px;
+    padding: 4px 6px 6px;
+  }
+
+  .figure dd {
+    padding: 8px 8px 9px;
+    font-size: 21px;
+    line-height: 25px;
+  }
+}
+
+/* ------------------------------------------------------------------ Geld: gleiche Kachel wie Kennzahlen */
+.money-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.money-card,
+.money-card[data-company="nexus"],
+.money-card[data-company="zulassung"] {
+  position: relative;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-group);
+  background: var(--tray);
+  box-shadow: none;
+  color: var(--label);
+  text-align: left;
+}
+
+.money-card::after {
+  display: none;
+}
+
+.money-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 5px 8px 7px;
+  color: var(--label-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  opacity: 1;
+}
+
+.money-card-head::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #6366f1;
+}
+
+.money-card[data-company="zulassung"] .money-card-head::before {
+  background: #14b8a6;
+}
+
+.money-card-body {
+  padding: 9px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+}
+
+.money-card-label {
+  margin: 0;
+  color: var(--label-2);
+  font-size: 12px;
+  opacity: 1;
+}
+
+.money-card-amount {
+  color: var(--label);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+}
+
+.money-card-overdue {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 0;
+  min-height: 0;
+  background: none;
+  color: var(--red);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.money-card .stale-notice {
+  margin-top: 8px;
+  background: var(--fill);
+  color: var(--label);
+}
+
+.money-card .stale-notice svg {
+  color: var(--orange);
+}
+
+.money-card .stale-notice-sources {
+  color: var(--label-2);
+}
+
+@media (max-width: 559px) {
+  .money-card-amount {
+    font-size: clamp(17px, 5.2vw, 21px);
+  }
+}
+
+/* Kennzahlen + Geld in einer Zeile ab Desktop */
+.top-row > .list-group,
+.top-row > .money-cards {
+  margin-bottom: 8px;
+}
+
+@media (min-width: 1100px) {
+  .top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 14px;
+  }
+
+  .top-row > .list-group,
+  .top-row > .money-cards {
+    margin: 0;
+  }
+
+  .top-row .money-cards {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  }
+}
+
+/* ------------------------------------------------------------------ Karten, Notizen, Briefing */
+.coach-card,
+.briefing-panel,
+.note-card,
+.steps,
+.empty-card,
+.glass-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-group);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.coach-card,
+.briefing,
+.briefing-panel,
+.confirm-line,
+.settings-status,
+.empty-card {
+  text-align: left;
+}
+
+.coach-buttons,
+.list-group-headline,
+.chat-suggestions,
+.wa-tools,
+.action-sheet-result {
+  justify-content: flex-start;
+}
+
+.briefing-panel {
+  margin-top: 8px;
+  padding: 12px 14px;
+}
+
+/* ------------------------------------------------------------------ Knöpfe, Umschalter, Chips, Felder */
+.btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--label);
+}
+
+.btn-plain {
+  color: var(--tint);
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.segmented-option {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.segmented-option[data-checked="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: none;
+}
+
+.segmented-option span {
+  display: inline-block;
+}
+
+.segmented-option span::first-letter {
+  text-transform: uppercase;
+}
+
+.wa-chip {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--label);
+}
+
+.wa-chip[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.chip {
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--label-2);
+  font-size: 11.5px;
+}
+
+.field input,
+.field select,
+.field textarea,
+.settings-input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--label);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--border-strong);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--fill);
+}
+
+/* ------------------------------------------------------------------ Tab-Leiste: volle Breite, schlicht */
+.tabbar {
+  inset: auto 0 0 0;
+  height: auto;
+  padding: 4px var(--safe-right) var(--safe-bottom) var(--safe-left);
+  gap: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bar);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: none;
+}
+
+.tabbar-item {
+  height: 50px;
+  padding: 4px 0 2px;
+  border-radius: 0;
+  background: none;
+  color: var(--label-2);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.tabbar-item[aria-current="page"] {
+  background: none;
+  color: var(--label);
+}
+
+.tabbar-item[aria-current="page"] svg {
+  color: var(--label);
+}
+
+/* Assistent */
+.assistant-button {
+  right: calc(var(--safe-right) + 14px);
+  bottom: calc(56px + var(--safe-bottom) + 14px);
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: var(--shadow-float);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (min-width: 768px) {
+  .assistant-button {
+    right: 28px;
+    bottom: 28px;
+  }
+}
+
+/* ------------------------------------------------------------------ Seitenleiste */
+@media (min-width: 768px) {
+  .sidebar {
+    inset: 0 auto 0 0;
+    width: var(--sidebar-w);
+    padding: 18px 12px 14px;
+    border: 0;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--sidebar);
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 6px 18px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.sidebar-title::before {
+  content: "N";
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sidebar-primary::before,
+.sidebar-more::before {
+  display: block;
+  margin: 0 8px 6px;
+  color: var(--label-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.sidebar-primary::before {
+  content: "Arbeit";
+}
+
+.sidebar-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-more {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-item {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--label-2);
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+.sidebar-item svg {
+  color: var(--label-2);
+}
+
+.sidebar-item:hover {
+  background: var(--fill);
+  color: var(--label);
+}
+
+.sidebar-item[aria-current="page"] {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--label);
+  font-weight: 600;
+}
+
+.sidebar-item[aria-current="page"] svg {
+  color: var(--label);
+}
+
+.nav-group-label {
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ Menü „Mehr“ */
+.more-menu {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+
+/* Modus-Leiste (Demo) kleiner */
+.mode-bar {
+  font-size: 12px;
+}
+
+/* Sprungziele nicht unter der klebenden Kopfzeile verstecken */
+.fold,
+.list-group,
+[id="auftraege"] {
+  scroll-margin-top: 52px;
+}
+
+/* Kennzahlen mit Überschrift: keine zweite Karte drumherum */
+.list-group:has(> .figures) {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.list-group:has(> .figures) > .list-group-title {
+  padding: 0 2px 8px;
+}
+
+/* Heute am iPhone: Termine direkt nach „Wichtig heute“, eingeklappte Listen ans Ende */
+@media (max-width: 1099px) {
+  .heute-cols {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .heute-main,
+  .heute-side {
+    display: contents;
+  }
+
+  .heute-cols [data-testid="top-insights"] { order: 1; }
+  .heute-cols [data-testid="events-today"] { order: 2; }
+  .heute-cols [data-testid="feed-faellig"] { order: 3; }
+  .heute-cols [data-testid="replies"] { order: 4; }
+  .heute-cols .fold[data-testid^="feed-"]:not([data-testid="feed-faellig"]) { order: 6; }
+  .heute-cols [data-testid="coach-tip"],
+  .heute-cols .briefing { order: 5; }
+}
+
+.coach-card {
+  margin-bottom: 8px;
+}
+
+/* Hinweise in einer verlinkten Kachel bleiben selbst bedienbar */
+.money-card .stale-notice,
+.figure dd a:not(.tile-link) {
+  position: relative;
+  z-index: 1;
+}

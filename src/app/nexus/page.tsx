@@ -42,14 +42,14 @@ export default function NexusPage() {
 
       <div className="top-row">
       <Figures columns={4}>
-        <CountFigure label="Mitglieder" value={members.length} testId="kpi-members" />
-        <CountFigure label="Überfällig" value={overdueRows.length} testId="kpi-overdue" />
-        <CountFigure label="Zuordnen" value={toMatch} testId="kpi-match" />
-        <Figure label="Offen" cents={receivables.totalCents} testId="kpi-open-cents" />
+        <CountFigure label="Mitglieder" value={members.length} testId="kpi-members" href="/nexus/vertraege" />
+        <CountFigure label="Überfällig" value={overdueRows.length} testId="kpi-overdue" href="/nexus/offen" />
+        <CountFigure label="Zuordnen" value={toMatch} testId="kpi-match" href="/nexus/zuordnen" />
+        <Figure label="Offen" cents={receivables.totalCents} testId="kpi-open-cents" href="/nexus/offen" />
       </Figures>
 
       <section className="money-cards" aria-label="Geld">
-        <MoneyCard company="nexus" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaUnreliable(MONEY_SOURCES.nexus, state.connections, at)} />
+        <MoneyCard company="nexus" href="/nexus/offen" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaUnreliable(MONEY_SOURCES.nexus, state.connections, at)} />
       </section>
       </div>
 

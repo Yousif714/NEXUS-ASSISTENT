@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { formatEuro } from '@/domain/money';
 import type { Company, ConnectionId } from '@/domain/types';
 
@@ -8,16 +10,17 @@ import { CountUp } from './CountUp';
 
 export const COMPANY_LABEL: Record<Company, string> = { nexus: 'NEXUS', zulassung: 'Zulassungsdienst' };
 
-type Props = { company: Company; openCents: number; overdueCents: number; stale: ConnectionId[] };
+type Props = { company: Company; openCents: number; overdueCents: number; stale: ConnectionId[]; /** Ziel beim Antippen der Kachel. */ href?: string };
 
-/** Wallet-artige Karte: offene Beträge einer Firma. Bei veralteten Quellen (`stale` nicht leer) ohne Urteil zur Überfälligkeit. */
-export function MoneyCard({ company, openCents, overdueCents, stale }: Props) {
+/** Geld-Kachel: offene Beträge einer Firma. Bei veralteten Quellen (`stale` nicht leer) ohne Urteil zur Überfälligkeit. */
+export function MoneyCard({ company, openCents, overdueCents, stale, href }: Props) {
   const isStale = stale.length > 0;
   return (
     <section className="money-card" data-company={company} data-stale={isStale} data-testid={`money-card-${company}`}>
       <div className="money-card-head">
-        <span>{COMPANY_LABEL[company]}</span>
+        {href ? <Link href={href} className="tile-link">{COMPANY_LABEL[company]}</Link> : <span>{COMPANY_LABEL[company]}</span>}
       </div>
+      <div className="money-card-body">
       <div className="money-card-label">Offen</div>
       <div className="money-card-amount"><CountUp value={openCents} format={formatEuro} /></div>
       {isStale ? (
@@ -30,6 +33,7 @@ export function MoneyCard({ company, openCents, overdueCents, stale }: Props) {
           </div>
         )
       )}
+      </div>
     </section>
   );
 }
