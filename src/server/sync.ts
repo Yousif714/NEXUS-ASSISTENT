@@ -5,13 +5,14 @@ import type { ConnectionId } from '@/domain/types';
 import type { LexwareConnection } from '@/domain/import/lexware';
 import type { Repos } from './db/repository';
 import { pullQonto } from './connectors/qonto';
+import { pullCalendar } from './connectors/calendar';
 import { pullLexware } from './connectors/lexware';
 import { pullStripe } from './connectors/stripe';
 import { ConnectorError, type PullContext, type PullResult } from './connectors/types';
 import { readInvoices } from './read-invoices';
 import { dispatchEvents } from './state-service';
 
-export type SyncId = 'stripe_nexus' | 'lexware_nexus' | 'bank_qonto' | 'lexware_zulassung';
+export type SyncId = 'stripe_nexus' | 'lexware_nexus' | 'bank_qonto' | 'lexware_zulassung' | 'calendar';
 export type ConnectorKeys = Partial<Record<SyncId, string>>;
 export interface SyncDeps {
   at: () => Date;
@@ -27,14 +28,14 @@ export interface SyncDeps {
 }
 export type SyncOutcome = 'ok' | 'partial' | 'error' | 'skipped';
 
-const ORDER: SyncId[] = ['stripe_nexus', 'lexware_nexus', 'bank_qonto', 'lexware_zulassung'];
+const ORDER: SyncId[] = ['stripe_nexus', 'lexware_nexus', 'bank_qonto', 'lexware_zulassung', 'calendar'];
 
-/** Alle zu maskierenden Geheimnisse: jeder Schlüssel und jeder Teil von 'login:secret' (≥ 8 Zeichen). */
+/** Alle zu maskierenden Geheimnisse: jeder Schlüssel, jeder Teil von 'login:secret' und jede einzelne Kalenderadresse (≥ 8 Zeichen). */
 export function syncSecrets(keys: ConnectorKeys, more: readonly string[] = []): string[] {
   const out = new Set<string>();
   for (const k of Object.values(keys)) {
     if (!k) continue;
-    for (const part of [k, ...k.split(':')]) if (part.length >= 8) out.add(part);
+    for (const part of [k, ...k.split(':'), ...k.split('\n')]) if (part.length >= 8) out.add(part);
   }
   for (const s of more) if (s) out.add(s);
   return [...out];
@@ -66,7 +67,7 @@ export async function syncConnections(repos: Repos, deps: SyncDeps): Promise<Par
         continue;
       }
       const known = new Map<string, string | undefined>(
-        id === 'bank_qonto' ? []
+        id === 'bank_qonto' || id === 'calendar' ? []
           : id === 'stripe_nexus' ? state.payments.filter((p) => p.connectionId === id).map((p) => [p.externalId, undefined])
           : [...state.invoices, ...(state.orderConfirmations ?? [])].filter((i) => i.connectionId === id).map((i) => [i.externalId, i.sourceUpdatedAt]),
       );
@@ -74,6 +75,7 @@ export async function syncConnections(repos: Repos, deps: SyncDeps): Promise<Par
       const cursor = conn.sync?.cursor ?? null;
       const r: PullResult = id === 'stripe_nexus' ? await pullStripe(cursor, ctx)
         : id === 'bank_qonto' ? await pullQonto(cursor, ctx)
+        : id === 'calendar' ? await pullCalendar(cursor, ctx)
         : await pullLexware(id as LexwareConnection, cursor, ctx);
       await dispatchEvents(repos, [{ type: 'importBatch', connectionId: id, batch: r.batch, cursor: r.cursor, complete: r.complete, ...(r.warning ? { warning: sanitizeError(new ConnectorError(r.warning), secrets) } : {}) }], { at: deps.at, provider: deps.provider });
       out[id] = r.complete ? 'ok' : 'partial';
