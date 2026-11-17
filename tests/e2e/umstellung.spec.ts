@@ -121,6 +121,7 @@ test('Links zum Verschicken: Sammelseite, Kopieren, als gesendet markieren', asy
   await expect(links.getByTestId('links-sent').getByText(/^gesendet \d{2}\.\d{2}\.\d{4}$/)).toBeVisible();
   // Startseite: Hinweis auf noch nicht gesendete Links, Link springt zum Abschnitt.
   await page.goto('/nexus');
+  await page.getByTestId('nexus-tools').locator('summary').click();
   const row = page.getByTestId('takeover-link');
   await expect(row).toContainText(`${n - 1} Links noch nicht gesendet`);
   await expect(row).toHaveAttribute('href', '/nexus/umstellung#links');

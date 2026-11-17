@@ -103,7 +103,8 @@ test('NEXUS-Übersicht: Filter überfällig, Zuordnen-Einstieg, Content-Board', 
   await expect(page.getByTestId('forecast')).toContainText('wackelig');
   await expect(page.locator('[data-testid^="member-row-"]')).toHaveCount(0);
   await expect(page.getByTestId('members-link')).toContainText('überfällig');
-  await expect(page.getByRole('link', { name: /Zuordnen \(\d+\)/ })).toBeVisible();
+  await page.getByTestId('nexus-tools').locator('summary').click();
+  await expect(page.getByRole('link', { name: /Zahlungen zuordnen \(\d+\)/ })).toBeVisible();
   await page.getByTestId('members-link').click();
   await expect(page).toHaveURL(/\/nexus\/vertraege$/);
   const all = await page.locator('[data-testid^="member-row-"]').count();
