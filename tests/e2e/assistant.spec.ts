@@ -25,13 +25,11 @@ test('Chat: freie Frage und Link-Chip führt zur Seite', async ({ page }) => {
 
 test('Abnahme 9: gebrochene Zusage', async ({ page }) => {
   await page.goto('/?reset=1');
-  const demir = page.getByText(/Herr Demir.*Rechnung/);
   await expect(page.getByTestId('all-insights-link')).toBeVisible();
-  if ((await demir.count()) === 0) {
-    await page.getByTestId('all-insights-link').click();
-    await expect(page).toHaveURL(/\/hinweise/);
-  }
-  await expect(demir.first()).toBeVisible(); // auf Heute oder über „Alle Hinweise“
+  const overdue = page.getByTestId('feed-ueberfaellig');
+  await overdue.locator('summary').click();
+  await expect(overdue.getByText('Herr Demir').first()).toBeVisible();
+  await expect(overdue.getByText(/Rechnung/).first()).toBeVisible();
 });
 
 test('Alle Hinweise: nach Priorität gruppiert, Zahl stimmt mit Heute überein', async ({ page }) => {
@@ -43,7 +41,7 @@ test('Alle Hinweise: nach Priorität gruppiert, Zahl stimmt mit Heute überein',
   // Next behält die vorige Seite versteckt im DOM: nur die Gruppen dieser Seite zählen.
   await expect(page.locator('[data-testid^="insights-"] [data-testid="insight-row"]')).toHaveCount(n);
   await expect(page.getByTestId('insights-now').getByTestId('insight-row').first()).toBeVisible();
-  await expect(page.locator('[data-key="commit:c-demir"]')).toBeVisible();
+  await expect(page.getByTestId('insights-today').locator('[data-key="commit:c-demir"]')).toBeVisible();
 });
 
 test('Abnahme 10: WhatsApp-Assistent', async ({ page }) => {
