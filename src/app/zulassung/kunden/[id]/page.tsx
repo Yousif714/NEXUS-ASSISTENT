@@ -53,7 +53,7 @@ export default function CustomerPage() {
       <ListGroup title="Fahrzeuge" testId="vehicles">
         {vehicles.length === 0
           ? <ListRow key="none" title="Keine Fahrzeuge." />
-          : vehicles.map((v) => <ListRow key={v.id} title={v.plate} subtitle={[`${v.model} · FIN ${v.vin}`, v.hsn || v.tsn ? `HSN/TSN ${v.hsn ?? '–'}/${v.tsn ?? '–'}` : ''].filter(Boolean).join(' · ')} />)}
+          : vehicles.map((v) => <ListRow key={v.id} title={v.plate.trim() || (v.vin.trim() ? `FIN ${v.vin}` : 'ohne Kennzeichen')} subtitle={[`${v.model} · FIN ${v.vin || '–'}`, v.hsn || v.tsn ? `HSN/TSN ${v.hsn ?? '–'}/${v.tsn ?? '–'}` : ''].filter(Boolean).join(' · ')} />)}
       </ListGroup>
 
       <section className="list-group" aria-label="Portalfilter">
@@ -74,7 +74,7 @@ export default function CustomerPage() {
             return (
               <ListRow key={j.id} href={`/zulassung/auftraege/${j.id}`} testId={`job-row-${j.id}`}
                 title={<>{j.service} {jobPortalBadge(j)}</>}
-                subtitle={`${v ? `${v.plate} · ` : ''}${portalJobSubtitle(JOB_STATUS_LABEL[j.status], j)}`}
+                subtitle={`${v?.plate.trim() ? `${v.plate} · ` : ''}${portalJobSubtitle(JOB_STATUS_LABEL[j.status], j)}`}
                 value={<span className="amount">{amount}</span>} />
             );
           })}

@@ -37,7 +37,7 @@ export const HOW_TO: Record<ConnectionId, string> = {
   portal_nexus: 'Mitgliederliste auf portal.nexusnetzwerk.de/mitglieder kopieren (oder als CSV speichern) und unter NEXUS → Portal-Mitglieder → „Mitgliederliste einfügen“ übernehmen.',
   claude_invoices: 'Schlüssel als Vercel-Variable ANTHROPIC_API_KEY hinterlegen. Claude liest dann offene NEXUS-Rechnungen auf Ratenvereinbarungen (Monatslimit 100 €).',
   mydigitalcar: 'Vorgänge auf web.mydigitalcar.de als CSV exportieren (Semikolon, UTF-8, eine Kopfzeile) und unter Zulassungsdienst bei myDigitalCar hochladen. Dieselbe Datei kann das MCP-Werkzeug import_portal_csv mit source mydigitalcar übernehmen. Große Exporte dürfen in Portionen kommen, jede Portion mit derselben Kopfzeile.',
-  nextoz: 'nextOZ ist eine eigene Quelle neben myDigitalCar, nicht darin enthalten. Den Export unter Zulassungsdienst bei nextOZ hochladen (MCP: import_portal_csv mit source nextoz). Die Spaltenzuordnung folgt, sobald das Format feststeht; bis dahin wird nichts übernommen.',
+  nextoz: 'nextOZ ist eine eigene Quelle neben myDigitalCar. Die Anträge-Liste von dashboard.nextoz.de als CSV speichern (Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr) und unter Zulassungsdienst bei nextOZ hochladen. Dieselbe Datei kann das MCP-Werkzeug import_portal_csv mit source nextoz übernehmen. Schlüssel ist die Auftragsnummer ohne #, Nr ist nur die Listenposition.',
 };
 
 /** True, wenn alle genannten Quellen noch nicht verbunden sind (Status 'missing'). */

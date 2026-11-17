@@ -8,7 +8,7 @@ import { Figure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { PageHeader } from '@/components/PageHeader';
-import { PortalBadge } from '@/components/PortalImport';
+import { PortalBadge, portalVehicleTitle } from '@/components/PortalImport';
 import { Segmented } from '@/components/Segmented';
 import { INVOICE_STATUS_LABEL, JOB_STATUS_LABEL, LOCATION_LABEL } from '@/components/zulassung-labels';
 import { invoiceCandidates } from '@/data/selectors';
@@ -65,10 +65,10 @@ export default function JobPage() {
 
   return (
     <>
-      <PageHeader title={job.service} subtitle={<>{name}{vehicle && <> · {vehicle.plate}</>}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
+      <PageHeader title={job.service} subtitle={<>{name}{vehicle?.plate.trim() ? <> · {vehicle.plate}</> : null}</>} badge={<>{job.portalSource && <PortalBadge source={job.portalSource} />}{mode === 'demo' ? <DemoBadge /> : null}</>} trailing={back} />
 
       <ListGroup title="Auftrag" testId="job-details">
-        <ListRow key="vehicle" title="Fahrzeug" value={vehicle ? `${vehicle.model} · ${vehicle.plate}` : '–'} />
+        <ListRow key="vehicle" title="Fahrzeug" testId="job-vehicle" value={vehicle ? portalVehicleTitle(vehicle) : '–'} />
         <ListRow key="service" title="Leistung" value={job.service} />
         <ListRow key="location" title="Standort" value={LOCATION_LABEL[job.location]} />
         <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
@@ -81,9 +81,11 @@ export default function JobPage() {
           <ListRow key="source" title="Portal" value={<span data-testid="job-portal-source">{PORTAL_LABEL[job.portalSource]}</span>} />
           <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(job) ?? '–'}</span>} />
           <ListRow key="pstatus" title="Portalstatus" value={<span data-testid="job-portal-status" className={job.portalProblem ? 'arrears-value' : undefined}>{job.portalStatus || '–'}</span>} />
+          {job.requestedOn ? <ListRow key="datum" title="Vorgangsdatum" testId="job-portal-date" value={formatIsoDe(job.requestedOn)} /> : null}
+          {job.portalData?.Fehler ? <ListRow key="fehler" title="Fehlertext" testId="job-portal-error" value={job.portalData.Fehler} /> : null}
           {job.portalProblem ? <ListRow key="problem" title="Problem" testId="job-portal-problem" value="Portal meldet Fehler oder Ablehnung" /> : null}
           {Object.entries(job.portalData ?? {})
-            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status')
+            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status' && k !== 'Auftragsnummer' && !(k === 'Datum' && job.requestedOn) && !(k === 'Fehler' && job.portalData?.Fehler))
             .map(([k, v]) => <ListRow key={k} title={k.replace(/_/g, ' ')} value={v} testId={`portal-field-${k}`} />)}
         </ListGroup>
       )}
