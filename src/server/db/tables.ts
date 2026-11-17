@@ -90,14 +90,39 @@ export function fromRows(input: Partial<Record<TableName, Row[]>>): AppState {
   return { ...m, connections };
 }
 
+/**
+ * Löschen in der Mitte darf die übrigen Zeilen nicht neu nummerieren: sonst schreibt ein Aufräumen
+ * tausende Aufträge nur wegen `ord` neu und `apply_changes` läuft in das Statement-Timeout.
+ * Umordnen oder Einfügen vor eine bestehende Zeile nummeriert wie bisher neu.
+ */
+function stableOrds(prev: Row[], next: Row[]): Row[] {
+  const oldOrd = new Map(prev.map((r) => [r.id, r.ord]));
+  let last = -Infinity;
+  let seenNew = false;
+  for (const row of next) {
+    const ord = oldOrd.get(row.id);
+    if (ord === undefined) { seenNew = true; continue; }
+    if (seenNew || ord < last) return next;
+    last = ord;
+  }
+  let max = prev.reduce((m, r) => Math.max(m, r.ord), -1);
+  return next.map((row) => {
+    const ord = oldOrd.get(row.id);
+    if (ord !== undefined) return ord === row.ord ? row : { ...row, ord };
+    max += 1;
+    return { ...row, ord: max };
+  });
+}
+
 export function diffState(prev: AppState, next: AppState): ChangeSet {
   const a = toRows(prev);
   const b = toRows(next);
   const out = {} as ChangeSet;
   for (const t of TABLE_NAMES) {
+    const rows = stableOrds(a[t], b[t]);
     const old = new Map(a[t].map((x) => [x.id, JSON.stringify(x)]));
-    const upsert = b[t].filter((x) => old.get(x.id) !== JSON.stringify(x));
-    const keep = new Set(b[t].map((x) => x.id));
+    const upsert = rows.filter((x) => old.get(x.id) !== JSON.stringify(x));
+    const keep = new Set(rows.map((x) => x.id));
     out[t] = { upsert, delete: a[t].filter((x) => !keep.has(x.id)).map((x) => x.id) };
   }
   return out;

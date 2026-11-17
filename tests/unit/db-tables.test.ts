@@ -78,6 +78,17 @@ describe('tables', () => {
     const n = { ...s, contacts: [...s.contacts].reverse() };
     if (s.contacts.length > 1) expect(diffState(s, n).contacts.upsert.length).toBeGreaterThan(0);
   });
+  it('Löschen in der Mitte schreibt die übrigen Zeilen nicht neu', () => {
+    const s = createEmptyState();
+    s.jobs = [0, 1, 2].map((i) => ({
+      id: `j${i}`, vehicleId: null, contactId: null, service: 'Zulassung', location: 'online', priceCents: 100,
+      status: 'done', doneAt: null, invoiceIds: [],
+    }));
+    const n = { ...s, jobs: s.jobs.filter((j) => j.id !== 'j1') };
+    const d = diffState(s, n);
+    expect(d.jobs.delete).toEqual(['j1']);
+    expect(d.jobs.upsert).toEqual([]);
+  });
   it('diffState(s, s) ist leer', () => {
     const s = demo();
     for (const c of Object.values(diffState(s, s))) expect(c).toEqual({ upsert: [], delete: [] });

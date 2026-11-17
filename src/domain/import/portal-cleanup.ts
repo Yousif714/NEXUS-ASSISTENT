@@ -144,6 +144,14 @@ export function applyPortalCleanup(s: AppState): { state: AppState; counts: Port
   return { state: { ...s, jobs, vehicles, contacts, insights }, counts };
 }
 
+/** Echte Fehlermeldung für das Werkzeug, gekürzt. `conflict` bleibt der bekannte Hinweis. */
+export function portalCleanupFailure(err: unknown): string {
+  if (err instanceof Error && err.message === 'conflict') return 'Gleichzeitige Änderung, bitte erneut versuchen';
+  const raw = err instanceof Error ? err.message : '';
+  const clean = raw.replace(/\s+/g, ' ').trim().slice(0, 300);
+  return clean || 'Aufräumen fehlgeschlagen';
+}
+
 export function portalCleanupText(counts: PortalCleanupCounts, dryRun: boolean): string {
   const verb = dryRun ? 'würde löschen' : 'gelöscht';
   return `Portal-Aufräumen (${dryRun ? 'Probe' : 'ausgeführt'}): ${counts.jobs} Aufträge ${verb}, ${counts.vehicles} Fahrzeuge, ${counts.contacts} Kontakte, ${counts.notices} Hinweise`;
