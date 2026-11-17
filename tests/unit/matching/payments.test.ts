@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { amountFitsContract, classifyBankTx, contactNameMatches, matchBankPayment, nameMatches, normalizeName, referenceHasNumber, type MatchResult } from '@/domain/matching/payments';
+import { amountFitsContract, classifyBankTx, contactNameMatches, invoiceNumbersInReference, matchBankPayment, nameMatches, normalizeName, referenceHasNumber, type MatchResult } from '@/domain/matching/payments';
 import { importKey, mergeImported, upsertImported } from '@/domain/matching/imports';
 import { IBAN_KAYA, contacts, ctx, expected, ibanLinks, tx } from '../helpers';
 
@@ -90,6 +90,36 @@ describe('Rechnungsnummer', () => {
   });
   test.each([['RE-110', false], ['RE-11012', false], ['xRE-1101', false], ['RE1101', true]])('Verwendungszweck %s passt: %s', (ref, ok) =>
     expect(referenceHasNumber(ref, 'RE-1101')).toBe(ok));
+  test('Rechnungsnummer.: 2584 trifft RE-2584', () => {
+    const inv = { id: 'i-2584', number: 'RE-2584', contactId: 'm-sven', openCents: 14900, contractId: null, dueDate: '2026-09-26', totalCents: 14900 };
+    expect(matchBankPayment(tx({ reference: 'Rechnungsnummer.: 2584', amountCents: 14900 }), { ...ctx, invoices: [inv] }))
+      .toMatchObject({ confidence: 'high', target: { kind: 'invoice', id: 'i-2584' } });
+  });
+});
+describe('Rechnungsnummern aus dem Verwendungszweck', () => {
+  test.each([
+    ['Rechnungsnummer.: 2584', ['RE2584']],
+    ['Rechnungsnr. 2584', ['RE2584']],
+    ['ReNr: 2584', ['RE2584']],
+    ['Rechnung 2584', ['RE2584']],
+    ['RE2347,2534,2535,...', ['RE2347', 'RE2534', 'RE2535']],
+    ['RE2347, 2534 und 2535', ['RE2347', 'RE2534', 'RE2535']],
+    ['/INV/RE2347 RE2534', ['RE2347', 'RE2534']],
+    ['SVWZ+/INV/RE2347/RE2535', ['RE2347', 'RE2535']],
+    ['GA 2370', []],
+    ['GA NR0002370 12.11. 10:15', []],
+    ['PP.2782.PP', []],
+    ['PAYPAL PP.2782.PP IHR EINKAUF', []],
+    ['Rechnung 03.11.2026', []],
+  ] as const)('%s → %j', (text, nums) => expect(invoiceNumbersInReference(text)).toEqual([...nums]));
+  test('Geldautomat und PayPal werden keiner Rechnung zugeordnet', () => {
+    const ga = { id: 'i-ga', number: 'RE2370', contactId: 'm-sven', openCents: 5000, contractId: null, dueDate: '2026-11-01', totalCents: 5000 };
+    const bare = { ...ga, id: 'i-bare', number: '2370' };
+    const pp = { ...ga, id: 'i-pp', number: 'RE2782', openCents: 2782, totalCents: 2782 };
+    const ppBare = { ...pp, id: 'i-ppb', number: '2782' };
+    expect(matchBankPayment(tx({ reference: 'GA 2370', amountCents: 5000 }), { ...ctx, invoices: [ga, bare] }).confidence).toBe('low');
+    expect(matchBankPayment(tx({ reference: 'PP.2782.PP . PAYPAL', amountCents: 2782 }), { ...ctx, invoices: [pp, ppBare] }).confidence).toBe('low');
+  });
 });
 describe('Stripe-Auszahlung eng', () => {
   test.each([['Stripe Technologies Europe Ltd', '', 'stripe_payout'], ['STRIPE PAYMENTS UK LTD', 'STRIPE PAYOUT', 'stripe_payout'],
