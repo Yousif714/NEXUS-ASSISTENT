@@ -41,6 +41,7 @@ test('Antwort-Hinweis abhaken → Kunde verschwindet auch aus „Nachrichten“'
 
 /** Wischt eine Zeile waagerecht von `from` nach `to` (Anteile der Breite). */
 async function swipe(page: import('@playwright/test').Page, row: import('@playwright/test').Locator, from: number, to: number) {
+  await row.scrollIntoViewIfNeeded();
   const box = (await row.boundingBox())!;
   const y = box.y + Math.min(30, box.height / 2);
   await page.mouse.move(box.x + box.width * from, y);
