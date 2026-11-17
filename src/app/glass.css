@@ -406,3 +406,62 @@ a.list-row:hover {
     --glass-blur: none;
   }
 }
+
+/* ------------------------------------------------------------------ iPhone: kompakte Kacheln */
+.figures:has(> :nth-child(3):last-child) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 559px) {
+  .figures {
+    gap: 8px;
+  }
+
+  .figure {
+    padding: 10px 12px;
+  }
+
+  .figure dt {
+    font-size: 12px;
+    line-height: 15px;
+  }
+
+  .figure dd {
+    margin-top: 2px;
+    font-size: 22px;
+  }
+
+  .money-cards {
+    gap: 8px;
+  }
+
+  .money-card {
+    padding: 12px 14px;
+  }
+
+  .money-card-head {
+    font-size: 12px;
+  }
+
+  .money-card-label {
+    display: none;
+  }
+
+  .money-card-amount {
+    margin-top: 4px;
+    font-size: clamp(17px, 5.4vw, 22px);
+    line-height: 1.2;
+    letter-spacing: -0.4px;
+  }
+
+  .money-card-overdue {
+    min-height: 22px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .large-title {
+    font-size: 32px;
+    line-height: 38px;
+  }
+}
