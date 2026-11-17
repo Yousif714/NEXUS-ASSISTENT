@@ -20,6 +20,8 @@ export interface ServerEnv {
   qontoLogin?: string;
   qontoSecretKey?: string;
   anthropicApiKey?: string;
+  /** Optionaler Schlüssel für den externen MCP-Connector. Fehlt er, bleibt `/api/mcp` geschlossen. */
+  mcpApiKey?: string;
 }
 
 const SUPABASE = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
@@ -52,5 +54,6 @@ export function readEnv(e: Record<string, string | undefined> = process.env): Se
     qontoLogin: val('QONTO_LOGIN'),
     qontoSecretKey: val('QONTO_SECRET_KEY'),
     anthropicApiKey: val('ANTHROPIC_API_KEY'),
+    mcpApiKey: val('MCP_API_KEY'),
   };
 }

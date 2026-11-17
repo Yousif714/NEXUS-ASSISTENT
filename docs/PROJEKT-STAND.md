@@ -70,5 +70,6 @@ Kernziele:
 - **Regel (Vorfall 14.11.):** Ein Live-Stripe-Schlüssel war versehentlich Session-Credential (nur Leseabfragen, vom Inhaber gelöscht). Stripe-Schreibaktionen aus der Session nur nach `livemode:false`-Prüfung.
 - **Vercel-Connector** ist richtig verbunden (frühere Notiz „falsches Konto“ war ein Irrtum: `list_projects` des MCP lieferte leer, die API zeigt das Projekt `nexus`).
 - **Repo** wurde auf GitHub nach `Yousif714/NEXUS-ASSISTENT` umbenannt (Push läuft über die Weiterleitung).
+- **MCP:** `/api/mcp` (Streamable HTTP) für den externen Assistenten. Bleibt zu (503), bis `MCP_API_KEY` in Vercel Production gesetzt und neu deployt ist. Anleitung im README.
 - **Offen sonst:** Backlog „Offen aus 2b-3“, „Sparkasse-Upload“, „Rechnungen lesen“; Feldnamen mit echten Daten; Supabase Pro; zweite WhatsApp-Nummer (2e).
 - Daten: Echte Mitgliederliste nie ins Repo (öffentlich). Banken: Qonto (NEXUS), Sparkasse Essen (Zulassung, Upload).
