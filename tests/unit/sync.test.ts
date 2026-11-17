@@ -121,6 +121,31 @@ describe('syncConnections', () => {
     expect(calls.some((c) => c.startsWith('/v1/order-confirmations/'))).toBe(false);
     expect((await repos.state.load()).state.orderConfirmations).toHaveLength(3);
   });
+  test('Reihenfolge: ältester Stand zuerst, Rechnungslesen erst nach allen Quellen', async () => {
+    const order: string[] = [];
+    const f = fixtureFetch({ ...stripeRoutes, ...lexwareRoutes, ...qontoRoutes });
+    await syncConnections(repos, deps({ keys: { stripe_nexus: 'SK', lexware_nexus: 'LK', bank_qonto: 'Q:S' } }));
+    // Danach Qonto künstlich alt, Stripe und Lexware frisch: Qonto muss zuerst laufen.
+    const { state, revision } = await repos.state.load();
+    const aged = { ...state, connections: state.connections.map((c) => c.id === 'bank_qonto' ? { ...c, lastSuccessAt: '2026-11-12T08:00:00.000Z' } : c) };
+    const { diffState } = await import('@/server/db/tables');
+    await repos.state.save(diffState(state, aged), revision);
+    await syncConnections(repos, deps({
+      keys: { stripe_nexus: 'SK', lexware_nexus: 'LK', bank_qonto: 'Q:S' },
+      reader: { ...demoInvoiceReader, read: async (...a: Parameters<typeof demoInvoiceReader.read>) => { order.push('claude_invoices'); return demoInvoiceReader.read(...a); } },
+      fetch: (async (i: RequestInfo | URL, o?: RequestInit) => {
+        const u = String(i);
+        const id = u.includes('qonto') ? 'bank_qonto' : u.includes('stripe') ? 'stripe_nexus' : 'lexware_nexus';
+        if (order.at(-1) !== id) order.push(id);
+        return f(i, o);
+      }) as typeof fetch,
+    }));
+    expect(order[0]).toBe('bank_qonto');
+    const read = order.indexOf('claude_invoices');
+    expect(read).toBeGreaterThan(-1);
+    expect(order.lastIndexOf('stripe_nexus')).toBeLessThan(read);
+    expect(order.lastIndexOf('bank_qonto')).toBeLessThan(read);
+  });
   test('only begrenzt auf eine Verbindung', async () => {
     expect(Object.keys(await syncConnections(repos, deps({ only: ['stripe_nexus'] })))).toEqual(['stripe_nexus']);
   });
