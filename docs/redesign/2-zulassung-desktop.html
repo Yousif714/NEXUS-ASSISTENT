@@ -1,0 +1,81 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><link rel="stylesheet" href="mockup.css">
+<style>
+body{width:1440px;height:860px;overflow:hidden;position:relative}
+.side{position:absolute;left:16px;top:16px;bottom:16px;width:240px;padding:20px 12px}
+.side .logo{font-size:22px;font-weight:700;padding:0 10px 18px}
+.nav{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;font-weight:500;font-size:15px}
+.nav i{width:20px;height:18px;border:2px solid currentColor;border-radius:6px;opacity:.8}
+.nav.on{background:rgba(10,132,255,.13);color:var(--tint);font-weight:600}
+.nav .c{margin-left:auto;font-size:12px;color:var(--l2)}
+.side .bottom{position:absolute;bottom:18px;left:12px;right:12px;border-top:.5px solid var(--sep);padding-top:10px}
+.main{position:absolute;left:280px;right:24px;top:28px}
+.head{display:flex;align-items:flex-end;justify-content:space-between}
+.seg{display:flex;padding:3px;border-radius:12px;background:rgba(120,120,128,.12)}
+.seg span{padding:6px 14px;font-size:13.5px;font-weight:600;border-radius:9px;color:var(--l2)}
+.seg span.on{background:#fff;color:var(--label);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.kpis{grid-template-columns:repeat(4,1fr) 1.3fr;margin-top:20px}
+.money{padding:14px 18px;background:linear-gradient(135deg,rgba(31,157,138,.85),rgba(16,96,92,.85));color:#fff}
+.money .k{color:rgba(255,255,255,.8)}
+.cols{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font-size:12px;color:var(--l2);font-weight:600;padding:10px 16px;border-bottom:.5px solid var(--sep)}
+td{white-space:nowrap;padding:11px 16px;border-bottom:.5px solid var(--sep)}
+tr:last-child td{border-bottom:0}
+.plate{font-family:"SF Mono",ui-monospace,monospace;font-size:13px;background:rgba(120,120,128,.1);padding:2px 6px;border-radius:6px}
+.search{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:rgba(120,120,128,.12);color:var(--l2);font-size:14px;width:300px}
+.btn{white-space:nowrap}.portal{display:flex;align-items:center;gap:14px;padding:14px 18px}
+.portal+.btn{white-space:nowrap}.portal{border-top:.5px solid var(--sep)}
+.plogo{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+</style></head><body><div class="bg"></div>
+<div class="glass side">
+ <div class="logo">Nexus</div>
+ <div class="nav"><i></i>Heute<span class="c">4</span></div>
+ <div class="nav"><i></i>Nachrichten<span class="c">1</span></div>
+ <div class="nav"><i></i>NEXUS</div>
+ <div class="nav on"><i></i>Zulassungsdienst</div>
+ <div class="bottom"><div class="nav" style="color:var(--l2)"><i></i>Einstellungen &amp; Quellen</div></div>
+</div>
+
+<div class="main">
+ <div class="head"><div><div class="sub" style="font-weight:600">Donnerstag, 12. November</div><h1>Zulassungsdienst</h1></div>
+  <div style="display:flex;gap:10px;align-items:center"><div class="search">⌕ Kunde, Kennzeichen, FIN …</div><button class="btn">+ Auftrag</button></div></div>
+
+ <div class="kpis">
+  <div class="glass kpi"><div class="v">0</div><div class="k">Heute erledigt</div></div>
+  <div class="glass kpi"><div class="v">0</div><div class="k">Offen</div></div>
+  <div class="glass kpi"><div class="v" style="color:var(--orange)">1</div><div class="k">Wartet auf Kunde</div></div>
+  <div class="glass kpi"><div class="v" style="color:var(--red)">1</div><div class="k">Nicht abgerechnet</div></div>
+  <div class="glass kpi money"><div class="k">Offen · überfällig</div><div class="v">729 € <span style="font-size:15px;opacity:.85">· 640 €</span></div></div>
+ </div>
+
+ <div class="cols">
+  <div>
+   <div class="sec"><h2>Aufträge <span class="chev"></span></h2><div class="seg"><span class="on">Aktiv 2</span><span>Erledigt 1</span><span>Abgerechnet 2</span><span>Bezahlt 3</span></div></div>
+   <div class="glass" style="overflow:hidden">
+    <table><tr><th>Kunde</th><th>Fahrzeug</th><th>Leistung</th><th>Status</th><th>Quelle</th><th style="text-align:right">Preis</th></tr>
+     <tr><td><b>Autohaus Schmidt</b></td><td><span class="plate">GE-AS 123</span></td><td>Ummeldung</td><td><span class="pill o">Wartet auf Kunde</span></td><td><span class="pill">MDC</span></td><td class="amt" style="text-align:right">89 €</td></tr>
+     <tr><td><b>Autohaus Müller</b></td><td><span class="plate">BOT-MK 45</span></td><td>Neuzulassung</td><td><span class="pill r">Nicht abgerechnet</span></td><td><span class="pill">nextOZ</span></td><td class="amt" style="text-align:right">390 €</td></tr>
+    </table>
+   </div>
+   <div class="sec"><h2>Kunden <span class="chev r"></span></h2><span class="count">1</span></div>
+   <div class="sec" style="margin-top:4px"><h2>Zahlungen zuordnen <span class="chev r"></span></h2><span class="count">0</span></div>
+  </div>
+  <div>
+   <div class="sec"><h2>Neu aus WhatsApp <span class="chev"></span></h2><span class="count">2</span></div>
+   <div class="glass">
+    <div class="row"><div class="avatar" style="background:#7c8190">MM</div><div class="grow"><div class="t">Bitte ummelden: HER-Q 77</div><div class="s">Max Muster · +49 160 5550000</div></div><span class="pill b">Auftrag</span></div>
+    <div class="row"><div class="avatar" style="background:#7c8190">AB</div><div class="grow"><div class="t">Fahrzeugschein, eVB</div><div class="s">Anna Beispiel · zu BOT-AB 123</div></div><span class="pill g">Nachweis</span></div>
+   </div>
+   <div class="sec"><h2>Portale &amp; Import <span class="chev"></span></h2><span class="count">2</span></div>
+   <div class="glass">
+    <div class="portal"><div class="plogo" style="background:#2563eb">MDC</div><div class="grow"><div class="t" style="font-weight:600">myDigitalCar</div><div class="s" style="color:var(--l2);font-size:13px">Stand 17.11., 02:46 · 2.419</div></div><button class="btn s">CSV hochladen</button></div>
+    <div class="portal"><div class="plogo" style="background:#0f766e">OZ</div><div class="grow"><div class="t" style="font-weight:600">nextOZ</div><div class="s" style="color:var(--l2);font-size:13px">Noch kein Import</div></div><button class="btn s">CSV hochladen</button></div>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="note" data-n="1" style="top:10px;left:900px;max-width:420px">Eine Zahlenzeile statt Kacheln + Riesenkarte</div>
+<div class="note" data-n="2" style="top:560px;left:300px;max-width:300px">Aufträge als Tabelle mit Status-Umschalter statt 4 Listen</div>
+<div class="note" data-n="3" style="top:750px;right:40px;max-width:300px">MDC &amp; nextOZ unten rechts: kompakt, Stand + ein Knopf</div>
+<div class="note" data-n="4" style="bottom:110px;left:30px;max-width:200px">Quellen &amp; Einstellungen unten in der Seitenleiste</div>
+</body></html>
