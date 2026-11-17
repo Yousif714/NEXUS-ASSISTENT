@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { EmailFolder } from '@/components/EmailFolder';
 import { CountFigure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
@@ -63,6 +64,8 @@ export default function ZulassungPage() {
             statuses={[...new Set(state.jobs.map((j) => j.portalStatus).filter((s): s is string => !!s))]} />
         </div>
       </section>
+
+      <EmailFolder />
 
       <ListGroup title="Zahlungen" testId="zulassung-payments">
         <ListRow href="/zulassung/zuordnen" testId="zulassung-match-row" title="Zahlungen zuordnen" subtitle="Sparkassen-Auszug hochladen und zuordnen"
