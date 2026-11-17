@@ -186,9 +186,10 @@ export function matchBankPayment(p: Payment, ctx: MatchContext): MatchResult {
     ...ctx.invoices.filter((i) => i.contactId === contactId && i.contractId === null && i.openCents > 0).map(invoiceTarget),
   ];
 
-  if (p.reference) {
-    const extracted = invoiceNumbersInReference(p.reference);
-    const hits = ctx.invoices.filter((i) => referenceMentionsInvoice(p.reference, i.number, extracted));
+  const reference = p.reference;
+  if (reference) {
+    const extracted = invoiceNumbersInReference(reference);
+    const hits = ctx.invoices.filter((i) => referenceMentionsInvoice(reference, i.number, extracted));
     if (hits.length > 0) {
       // Offene und in Lexware schon bezahlte Rechnungen: Summe aus offenem Rest bzw. Gesamtbetrag.
       const amountOf = (i: MatchInvoice) => (i.paidInLexware ? i.totalCents : i.openCents);
