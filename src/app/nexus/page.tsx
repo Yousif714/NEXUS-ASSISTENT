@@ -52,6 +52,10 @@ export default function NexusPage() {
       </section>
 
       <ListGroup title="Mitglieder" testId="members">
+        {openProposals > 0 ? (
+          <ListRow key="proposals" href="/nexus/mitglieder/vorschlaege" testId="proposals-card"
+            title={openProposals === 1 ? '1 Vertrag zum Bestätigen' : `${openProposals} Verträge zum Bestätigen`} />
+        ) : null}
         <ListRow href="/nexus/vertraege" testId="members-link" title="Mitglieder"
           subtitle={<span className="wrap-text">{peopleSummary(overdueRows.length, [...new Set(overdueRows.map((r) => r.name))], 'Niemand überfällig')}</span>}
           value={members.length} />
@@ -76,10 +80,6 @@ export default function NexusPage() {
           <ListRow key="match" href="/nexus/zuordnen" title={`Zahlungen zuordnen (${toMatch})`} testId="match-link" />
           <ListRow key="portal" href="/nexus/mitglieder" testId="portal-link" title={`Portal-Mitglieder (${portal.total})`}
             value={portal.total === 0 ? 'Liste einfügen' : `${portal.noInvoice} ohne Rechnung`} />
-          {openProposals > 0 ? (
-            <ListRow key="proposals" href="/nexus/mitglieder/vorschlaege" testId="proposals-card"
-              title={openProposals === 1 ? '1 Vertrag zum Bestätigen' : `${openProposals} Verträge zum Bestätigen`} />
-          ) : null}
           <ListRow key="takeover" href={unsentLinks > 0 ? '/nexus/umstellung#links' : '/nexus/umstellung'} testId="takeover-link" title="Umstellung auf Stripe"
             subtitle={unsentLinks > 0 ? (unsentLinks === 1 ? '1 Link noch nicht gesendet' : `${unsentLinks} Links noch nicht gesendet`) : undefined}
             value={switchable === 0 ? undefined : `${switchable} umstellbar`} />

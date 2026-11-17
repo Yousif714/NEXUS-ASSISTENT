@@ -39,11 +39,11 @@ test('Einrichtung: Passkey anlegen, 10 Codes, danach leerer Echtmodus', async ()
   await expect(page.getByTestId('reply-row')).toHaveCount(0);
 });
 
-test('Verbindungen: Einrichtungs-Liste mit 13 offenen Einträgen', async () => {
+test('Verbindungen: Einrichtungs-Liste mit 15 offenen Einträgen (inkl. myDigitalCar und nextOZ)', async () => {
   await page.goto('/verbindungen');
   const list = page.getByTestId('setup-checklist');
   await expect(list.getByRole('heading', { name: 'Einrichtung' })).toBeVisible();
-  await expect(list.locator('li')).toHaveCount(13);
+  await expect(list.locator('li')).toHaveCount(15);
   await expect(list.getByTestId('setup-check')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /simulieren|Wieder verbinden/ })).toHaveCount(0);
 });
@@ -116,8 +116,8 @@ test('Echtmodus: Verwerfen bleibt verworfen, Lexware-Vertrag zeigt „Bank nicht
   await expect(page.getByTestId('proposal-stripe_nexus:sub_E')).toHaveCount(0);
   await page.getByTestId('proposal-lexware_nexus:c-77').getByRole('button', { name: 'Übernehmen' }).click();
   await expect(page.getByTestId('bank-missing')).toHaveText(/Bank nicht verbunden/);
-  await page.goto('/nexus');
-  await expect(page.getByText('Überweisung · Bank nicht verbunden')).toBeVisible();
+  await page.goto('/nexus/vertraege');
+  await expect(page.getByText('Überweisung · Bank nicht verbunden').first()).toBeVisible();
 });
 
 test('Echtmodus: Qonto-Import → Vorschlag → Ja → zweite Zahlung derselben IBAN automatisch; Offen ohne Doppelzählung', async () => {
