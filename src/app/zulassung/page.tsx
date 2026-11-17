@@ -7,12 +7,13 @@ import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
 import { PageHeader } from '@/components/PageHeader';
+import { peopleSummary } from '@/components/people-summary';
 import { filterPortalJobs, jobPortalBadge, PORTAL_LIST_CAP, portalJobSubtitle, PortalCsvUpload, PortalSourceFilter, PortalStatusFilter } from '@/components/PortalImport';
-import { CONTACT_KIND_LABEL, JOB_STATUS_LABEL, JOB_STATUS_ORDER } from '@/components/zulassung-labels';
-import { unallocatedBankPayments, zulassungKpis } from '@/data/selectors';
+import { JOB_STATUS_LABEL, JOB_STATUS_ORDER } from '@/components/zulassung-labels';
+import { unallocatedBankPayments, zulassungCustomers, zulassungKpis } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
-import { formatBerlinDe, now } from '@/domain/clock';
+import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable } from '@/domain/freshness';
 import { formatEuro } from '@/domain/money';
 import type { Job } from '@/domain/types';
@@ -25,10 +26,14 @@ export default function ZulassungPage() {
   const [portal, setPortal] = useState('all');
   const [portalStatus, setPortalStatus] = useState('all');
   const [caps, setCaps] = useState<Record<string, number>>({});
+  const today = todayBerlin(at);
   const kpis = zulassungKpis(state, at);
   const money = buildBriefing(state, 'morning', at).money.find((m) => m.company === 'zulassung')!;
   const contactName = (id: string) => state.contacts.find((c) => c.id === id)?.name ?? 'Unbekannt';
-  const customers = state.contacts.filter((c) => c.company === 'zulassung').sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const customers = zulassungCustomers(state, today);
+  const overdueCustomers = customers
+    .filter((c) => c.overdueCents > 0)
+    .sort((a, b) => b.overdueCents - a.overdueCents || a.name.localeCompare(b.name, 'de'));
 
   return (
     <>
@@ -92,13 +97,9 @@ export default function ZulassungPage() {
       })}
 
       <ListGroup title="Kunden" testId="customers">
-        {customers.map((c) => {
-          const n = state.jobs.filter((j) => j.contactId === c.id).length;
-          return (
-            <ListRow key={c.id} href={`/zulassung/kunden/${c.id}`} testId={`customer-row-${c.id}`} title={c.name}
-              subtitle={`${CONTACT_KIND_LABEL[c.kind]} · ${n === 1 ? '1 Auftrag' : `${n} Aufträge`}`} />
-          );
-        })}
+        <ListRow href="/zulassung/kunden" testId="customers-link" title="Kunden"
+          subtitle={<span className="wrap-text">{peopleSummary(overdueCustomers.length, overdueCustomers.map((c) => c.name), 'Keine überfälligen Kunden')}</span>}
+          value={customers.length} />
       </ListGroup>
     </>
   );

@@ -1870,3 +1870,80 @@ a.task-body:active {
 .share-card-empty { margin: 0; padding: 12px 16px; color: var(--label-2); }
 .share-sent { padding: 0; margin: 0 0 16px; }
 .share-sent summary { padding: 0 16px; }
+
+/* Heute: Kapitel und zugeklappte Abschnitte */
+.feed-heading {
+  margin: 28px 16px 12px;
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.08px;
+  line-height: 18px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.feed-heading-first {
+  margin-top: 0;
+}
+
+.feed-section {
+  margin: 0;
+}
+
+.feed-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: 28px 0 35px;
+  padding: 11px 16px;
+  border-radius: var(--radius-group);
+  background: var(--bg-elevated);
+  color: var(--label);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.43px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.feed-summary::-webkit-details-marker {
+  display: none;
+}
+
+.feed-section[open] > .feed-summary {
+  margin: 28px 16px 12px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  justify-content: center;
+  gap: 8px;
+  color: var(--label-2);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.08px;
+  text-transform: uppercase;
+}
+
+.feed-summary-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--label-2);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-chevron {
+  color: var(--label-3);
+}
+
+.feed-section[open] .feed-chevron {
+  transform: rotate(90deg);
+}
+
+.customer-search {
+  margin: 0 16px 20px;
+}

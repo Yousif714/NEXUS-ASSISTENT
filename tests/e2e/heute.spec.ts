@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('Abnahme 1: wartender Kunde → Antwort senden → Protokoll, Hinweis zu', async ({ page }) => {
   await page.goto('/?reset=1');
-  const rows = page.getByTestId('insight-row'); expect(await rows.count()).toBeLessThanOrEqual(3);
+  const rows = page.getByTestId('top-insights').getByTestId('insight-row'); expect(await rows.count()).toBeLessThanOrEqual(3);
   await page.locator('[data-key="reply:m-schmidt-in-1"]').click();
   await expect(page).toHaveURL(/\/nachrichten\/t-schmidt/);
   await expect(page.getByTestId('draft-text')).not.toBeEmpty();
@@ -77,4 +77,27 @@ test('Hinweis: kurzes Wischen springt zurück; „Zurückstellen“ per Tastatur
   await expect(later).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(row).toHaveCount(0);
+});
+
+test('Heute zeigt unter dem Tag auch Überfälliges, Offenes, Demnächst und Quellen', async ({ page }) => {
+  await page.goto('/?reset=1');
+  await expect(page.getByTestId('feed-heute')).toBeVisible();
+  await expect(page.getByTestId('events-today')).toContainText('SEELE');
+  await expect(page.getByTestId('events-today')).toContainText('Zulassungsstelle Bottrop');
+
+  const overdue = page.getByTestId('feed-ueberfaellig');
+  await expect(overdue).toContainText('Überfällig');
+  await overdue.locator('summary').click();
+  await expect(overdue.getByTestId('feed-invoice:i-z-290')).toBeVisible();
+  await expect(overdue.getByTestId('feed-commitment:c-demir')).toContainText('Herr Demir');
+
+  const open = page.getByTestId('feed-offen');
+  await open.locator('summary').click();
+  await expect(open.getByTestId('feed-invoice:i-z-311')).toBeVisible();
+  await expect(open.getByTestId('feed-payment:p-yilmaz-1')).toContainText('S. Yilmaz');
+
+  await expect(page.getByTestId('feed-demnaechst')).toContainText('Händlertermin Autohaus Müller');
+  await expect(page.getByTestId('feed-demnaechst')).not.toContainText('Zulassungsstelle');
+  await expect(page.getByTestId('feed-quellen')).toContainText('Sparkasse (Zulassung)');
+  await expect(page.getByTestId('feed-quellen')).toContainText('Nicht verbunden');
 });
