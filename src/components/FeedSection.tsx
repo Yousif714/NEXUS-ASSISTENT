@@ -45,14 +45,16 @@ export function FeedList({ entries, onDone, onLater, overdue = false, title, tes
 }
 
 /** Abschnitt mit Pfeil und Zähler. Überfällig startet offen, der Rest zu. Der Zustand wird gemerkt. */
-export function FeedSection({ section, onDone, onLater }: {
+export function FeedSection({ section, onDone, onLater, defaultOpen }: {
   section: HeuteSection;
   onDone: (key: string) => void;
   onLater: (key: string) => void;
+  /** Überschreibt den Standard (z. B. Überfällig zu bei vielen Einträgen). */
+  defaultOpen?: boolean;
 }) {
   return (
     <CollapsibleSection id={`feed-${section.id}`} title={section.title} count={section.entries.length}
-      defaultOpen={DEFAULT_OPEN[section.id]} testId={`feed-${section.id}`}>
+      defaultOpen={defaultOpen ?? DEFAULT_OPEN[section.id]} testId={`feed-${section.id}`}>
       <FeedList entries={section.entries} onDone={onDone} onLater={onLater} overdue={section.id === 'ueberfaellig'} />
     </CollapsibleSection>
   );

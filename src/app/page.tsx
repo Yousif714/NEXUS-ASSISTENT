@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useId, useState } from 'react';
 
 import { FeedList, FeedSection } from '@/components/FeedSection';
+import { CountFigure, Figures } from '@/components/Figures';
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
@@ -20,12 +21,14 @@ import { areaUnreliable } from '@/domain/freshness';
 import { openReplies } from '@/domain/matching/messages';
 import type { StoredInsight } from '@/domain/types';
 
+import './heute.css';
+
 function CoachTip({ tip, onTake, onLater, onNever }: { tip: StoredInsight; onTake: () => void; onLater: () => void; onNever: () => void }) {
   const href = tip.refs[0]?.href;
   return (
     <section className="list-group" data-testid="coach-tip">
-      <h2 className="list-group-title">Coach-Tipp</h2>
-      <div className="coach-card">
+      <div className="coach-card heute-coach">
+        <div className="heute-coach-label">Coach-Tipp</div>
         <div className="coach-title">{href ? <Link href={href}>{tip.title}</Link> : tip.title}</div>
         {tip.body && <p className="coach-body">{tip.body}</p>}
         <div className="coach-buttons">
@@ -48,6 +51,7 @@ export default function HeutePage() {
   const feed = buildHeuteFeed(state, at);
   const dueToday = feed.find((s) => s.id === 'faellig');
   const later = feed.filter((s) => s.id !== 'faellig');
+  const overdueCount = feed.find((s) => s.id === 'ueberfaellig')?.entries.length ?? 0;
   const allOpen = openInsights(state);
   const coachTip = briefing.coach[0];
   const replies = openReplies(state.messages, at, state.settings.replyThresholdHours);
@@ -75,7 +79,18 @@ export default function HeutePage() {
       {header}
 
       <section data-testid="feed-heute">
-        <h2 className="feed-heading feed-heading-first">Heute</h2>
+        <Figures title="Auf einen Blick">
+          <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" />
+          <CountFigure label="Kunde wartet" value={replies.length} testId="figure-replies" />
+          <CountFigure label="Überfällig" value={overdueCount} testId="figure-overdue" alert={overdueCount > 0} />
+        </Figures>
+
+        <section className="money-cards" aria-label="Geld">
+          {briefing.money.map((m) => (
+            <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
+              stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
+          ))}
+        </section>
 
         <ListGroup title="Wichtig heute" testId="top-insights">
           {briefing.top.length === 0
@@ -97,13 +112,6 @@ export default function HeutePage() {
 
         {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
 
-        <section className="money-cards" aria-label="Geld">
-          {briefing.money.map((m) => (
-            <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
-              stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
-          ))}
-        </section>
-
         <ListGroup title="Nachrichten" testId="replies" sectionId="heute-nachrichten" defaultOpen>
           {replies.length === 0
             ? <ListRow key="empty" title="Keine offenen Antworten." />
@@ -122,16 +130,20 @@ export default function HeutePage() {
         )}
 
         <section className="briefing">
-          <button type="button" className="nav-button" aria-expanded={showBriefing} aria-controls={briefingId} onClick={() => setShowBriefing((v) => !v)}>
-            {showBriefing ? 'Morgenbriefing ausblenden' : 'Morgenbriefing ansehen'}
-          </button>
+          <ListGroup title="Briefing" testId="briefing-group">
+            <button key="toggle" type="button" className="list-row heute-briefing-toggle" aria-expanded={showBriefing} aria-controls={briefingId}
+              onClick={() => setShowBriefing((v) => !v)}>
+              <span className="list-row-text"><span className="list-row-title">{showBriefing ? 'Morgenbriefing ausblenden' : 'Morgenbriefing ansehen'}</span></span>
+            </button>
+          </ListGroup>
           <div id={briefingId} className="briefing-panel" data-testid="briefing-text" hidden={!showBriefing}>
             {renderBriefingText(briefing)}
           </div>
         </section>
       </section>
 
-      {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater} />)}
+      {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater}
+        defaultOpen={section.id === 'ueberfaellig' ? section.entries.length <= 5 : undefined} />)}
     </>
   );
 }
