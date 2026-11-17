@@ -13,6 +13,17 @@ export function validPhone(s: string): string | null {
   return /^\+\d{6,15}$/.test(t) ? t : null;
 }
 
+/**
+ * Kanonische E.164-Form.
+ * Führende 0 wird +49, 00 wird +, reine Ziffern mit Ländervorwahl (so schickt WhatsApp sie) bekommen +.
+ */
+export function toE164(s: string): string {
+  const t = normalizePhone(s);
+  if (t.startsWith('+')) return t;
+  if (/^\d{8,15}$/.test(t)) return `+${t}`;
+  return t;
+}
+
 const PLATE_RE = /(?<![A-Za-zÄÖÜ0-9])([A-ZÄÖÜ]{1,3})[- ]([A-Z]{1,2}) ?(\d{1,4}[EH]?)(?![A-Za-z0-9])/g;
 
 export function extractPlates(text: string): string[] {
@@ -44,8 +55,8 @@ export function matchMessage(
   let contactId: string | null = null;
   let jobId: string | null = null;
 
-  const phone = normalizePhone(counterpart);
-  if (phone) contactId = contacts.find((c) => c.phones.some((p) => normalizePhone(p) === phone))?.id ?? null;
+  const phone = toE164(counterpart);
+  if (/^\+\d{6,15}$/.test(phone)) contactId = contacts.find((c) => c.phones.some((p) => toE164(p) === phone))?.id ?? null;
   if (!contactId) {
     const addr = counterpart.toLowerCase();
     contactId = contacts.find((c) => c.emails.some((e) => e && addr.includes(e.toLowerCase())))?.id ?? null;
