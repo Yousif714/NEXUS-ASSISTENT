@@ -21,7 +21,7 @@ const conn = async (id: string) => (await repos.state.load()).state.connections.
 describe('syncConnections', () => {
   test('ohne Schlüssel bleibt die Verbindung missing; ohne Reader: claude_invoices skipped', async () => {
     const r = await syncConnections(repos, deps({ keys: {} }));
-    expect(r).toEqual({ stripe_nexus: 'skipped', lexware_nexus: 'skipped', bank_qonto: 'skipped', lexware_zulassung: 'skipped', claude_invoices: 'skipped' });
+    expect(r).toEqual({ stripe_nexus: 'skipped', lexware_nexus: 'skipped', bank_qonto: 'skipped', lexware_zulassung: 'skipped', calendar: 'skipped', claude_invoices: 'skipped' });
     expect((await conn('stripe_nexus')).status).toBe('missing');
     expect((await conn('claude_invoices')).status).toBe('missing');
   });
