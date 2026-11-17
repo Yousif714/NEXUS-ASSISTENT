@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { createEmptyState } from '@/data/empty-state';
 import { applyMcpChange } from '@/domain/mcp-changes';
-import { applyPortalCleanup, planPortalCleanup } from '@/domain/import/portal-cleanup';
+import { applyPortalCleanup, planPortalCleanup, portalCleanupFailure } from '@/domain/import/portal-cleanup';
 import type { AppState, Job, StoredInsight, Vehicle } from '@/domain/types';
 
 const at = new Date('2026-11-17T08:00:00.000Z');
@@ -75,5 +75,11 @@ describe('Portal-Aufräumen', () => {
     const kept = applyPortalCleanup(billed);
     expect(kept.state.jobs.map((j) => j.id)).toEqual(['only']);
     expect(kept.state.contacts).toHaveLength(1);
+  });
+
+  test('Fehlermeldung gibt den Datenbanktext zurück', () => {
+    expect(portalCleanupFailure(new Error('conflict'))).toBe('Gleichzeitige Änderung, bitte erneut versuchen');
+    expect(portalCleanupFailure(new Error('Supabase save: canceling statement due to statement timeout'))).toContain('statement timeout');
+    expect(portalCleanupFailure(new Error(''))).toBe('Aufräumen fehlgeschlagen');
   });
 });

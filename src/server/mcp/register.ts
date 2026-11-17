@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { realNow, todayBerlin } from '@/domain/clock';
-import { planPortalCleanup, portalCleanupText, type PortalCleanupCounts } from '@/domain/import/portal-cleanup';
+import { planPortalCleanup, portalCleanupFailure, portalCleanupText, type PortalCleanupCounts } from '@/domain/import/portal-cleanup';
 import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
 import { applyPortalImport, isPortalSource, PORTAL_LABEL, type PortalSource } from '@/domain/import/portal';
 import { deriveProposals } from '@/domain/import/proposals';
@@ -405,7 +405,7 @@ export function registerNexusTools(server: McpServer): void {
     try {
       await dispatchEvents(repos, [{ type: 'mcpChange', change: { op: 'cleanupPortalJobs' } }], { at: realNow, provider: getActionProvider() });
     } catch (err) {
-      const message = err instanceof Error && err.message === 'conflict' ? 'Gleichzeitige Änderung, bitte erneut versuchen' : 'Aufräumen fehlgeschlagen';
+      const message = portalCleanupFailure(err);
       await logMcpTool('cleanup_portal_jobs', message);
       return jsonResult({ error: message }, true);
     }
