@@ -1,13 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-
 import { ListGroup } from '@/components/ListGroup';
 import { ListRow } from '@/components/ListRow';
 import { MoneyCard } from '@/components/MoneyCard';
 import { PageHeader } from '@/components/PageHeader';
-import { Segmented } from '@/components/Segmented';
-import { TrafficDot } from '@/components/TrafficDot';
+import { peopleSummary } from '@/components/people-summary';
 import { linksToShare, memberRows, portalRows, switchableTakeovers, nexusForecast, stripeLexCases, unallocatedBankPayments } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
@@ -18,18 +15,15 @@ import { nexusReceivables } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
 import { portalSummary } from '@/domain/portal';
 
-type Filter = 'all' | 'overdue';
-
 export default function NexusPage() {
   const { state } = useAppStore();
-  const [filter, setFilter] = useState<Filter>('all');
   const at = now();
   const today = todayBerlin(at);
 
   const money = buildBriefing(state, 'morning', at).money.find((m) => m.company === 'nexus')!;
   const forecast = nexusForecast(state, today);
-  const rows = memberRows(state, today).sort((a, b) => b.arrearsCents - a.arrearsCents || a.name.localeCompare(b.name, 'de'));
-  const shown = filter === 'overdue' ? rows.filter((r) => r.traffic !== 'green' && !r.onHold) : rows;
+  const members = memberRows(state, today).sort((a, b) => b.arrearsCents - a.arrearsCents || a.name.localeCompare(b.name, 'de'));
+  const overdueRows = members.filter((r) => r.traffic !== 'green' && !r.onHold);
   const receivables = nexusReceivables(state, today);
   const toMatch = unallocatedBankPayments(state).length + stripeLexCases(state).length;
   const switchable = switchableTakeovers(state, at);
@@ -66,28 +60,11 @@ export default function NexusPage() {
         </ListGroup>
       )}
 
-      <section className="list-group" aria-labelledby="members-title">
-        <div className="list-group-headline">
-          <h2 id="members-title" className="list-group-title">Mitglieder</h2>
-          <Segmented name="member-filter" legend="Mitglieder filtern" value={filter} onChange={setFilter}
-            options={[{ value: 'all', label: 'Alle' }, { value: 'overdue', label: 'Überfällig' }]} />
-        </div>
-        <ul className="list-group-body">
-          {shown.length === 0 && <li><ListRow title="Niemand überfällig." /></li>}
-          {shown.map((r) => (
-            <li key={r.contractId}>
-              <ListRow href={`/nexus/mitglieder/${r.contractId}`} testId={`member-row-${r.contractId}`}
-                leading={r.notConnected ? undefined : <TrafficDot traffic={r.onHold ? 'grey' : r.traffic} />} title={r.name}
-                subtitle={[
-                  ...(r.kindLabel !== 'Mitgliedschaft' ? [r.kindLabel] : []),
-                  r.billing === 'legacy' ? (r.notConnected ? 'Überweisung · Bank nicht verbunden' : 'Überweisung') : (r.notConnected ? 'Stripe · nicht verbunden' : 'Stripe'),
-                  ...(r.onHold ? ['ruht'] : []),
-                ].join(' · ')}
-                value={!r.notConnected && r.arrearsCents > 0 ? <span className="amount arrears-value">{formatEuro(r.arrearsCents)}</span> : undefined} />
-            </li>
-          ))}
-        </ul>
-      </section>
+      <ListGroup title="Mitglieder" testId="members">
+        <ListRow href="/nexus/vertraege" testId="members-link" title="Mitglieder"
+          subtitle={<span className="wrap-text">{peopleSummary(overdueRows.length, [...new Set(overdueRows.map((r) => r.name))], 'Niemand überfällig')}</span>}
+          value={members.length} />
+      </ListGroup>
 
       <ListGroup title="Calls">
         {calls.map((c) => (

@@ -43,6 +43,18 @@ test('Übersicht: Tageszahlen, Aufträge nach Status, Kundenliste', async ({ pag
   await expect(page.getByTestId('money-card-zulassung')).toBeVisible();
   await expect(page.getByTestId('jobs-waiting_customer').getByTestId('job-row-j-schmidt-1')).toBeVisible();
   await expect(page.getByTestId('jobs-done').getByTestId('job-row-j-mueller-1')).toBeVisible();
+  await expect(page.getByTestId('customers').locator('[data-testid^="customer-row-"]')).toHaveCount(0);
+  const card = page.getByTestId('customers-link');
+  await expect(card).toContainText('überfällig');
+  await expect(card).toContainText('Autohaus Müller');
+  await card.click();
+  await expect(page).toHaveURL(/\/zulassung\/kunden$/);
+  await expect(page.locator('[data-testid^="customer-row-"]').first()).toHaveAttribute('data-testid', 'customer-row-d-mueller');
+  await page.getByTestId('customer-search').fill('BOT-MK 456');
+  await expect(page.locator('[data-testid^="customer-row-"]')).toHaveCount(1);
+  await page.getByTestId('customer-search').fill('kein-treffer');
+  await expect(page.getByText('Kein Kunde passt zur Suche.')).toBeVisible();
+  await page.getByTestId('customer-search').fill('');
   await page.getByTestId('customer-row-d-mueller').click();
   await expect(page).toHaveURL(/\/zulassung\/kunden\/d-mueller/);
 });
