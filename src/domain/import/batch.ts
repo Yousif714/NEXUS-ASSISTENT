@@ -26,6 +26,8 @@ export interface ImportBatch {
   orderConfirmations: ImportedOrderConfirmation[];
   messages: ImportedMessage[];
   events: ImportedEvent[];
+  /** Kalender-Abruf: Fenster [fromAt, toAt) der Verbindung. Ihre Termine darin, die der Stapel nicht mehr nennt, entfallen. */
+  eventWindow?: { connectionId: ConnectionId; fromAt: string; toAt: string };
 }
 
 export const emptyBatch = (): ImportBatch => ({

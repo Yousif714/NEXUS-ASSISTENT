@@ -147,7 +147,7 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
     newId,
   );
 
-  const events = mergeEvents(s.events, b.events ?? [], newId);
+  const events = mergeEvents(s.events, b.events ?? [], newId, b.eventWindow);
   const previous = new Set(s.messages.map((m) => m.id));
   const fresh = new Set(msg.items.filter((m) => !previous.has(m.id)).map((m) => m.id));
   const state = applyIntakes(
@@ -163,9 +163,14 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
 }
 
 /** Termine nur anfassen, wenn der Stapel welche bringt. Bestehende ohne Schlüssel bleiben, wie sie sind. */
-function mergeEvents(existing: CalendarEvent[], incoming: ImportedEvent[], newId: () => string): { events: CalendarEvent[]; added: number } {
-  if (incoming.length === 0) return { events: existing, added: 0 };
-  const events = [...existing];
+function mergeEvents(existing: CalendarEvent[], incoming: ImportedEvent[], newId: () => string, window?: ImportBatch['eventWindow']): { events: CalendarEvent[]; added: number } {
+  if (incoming.length === 0 && !window) return { events: existing, added: 0 };
+  // Im Fenster verschwundene Termine dieser Verbindung entfallen; Termine anderer Quellen und außerhalb bleiben.
+  const seen = new Set(incoming.map((n) => `${n.connectionId}:${n.externalId}`));
+  const gone = (e: CalendarEvent): boolean =>
+    !!window && e.connectionId === window.connectionId && !!e.externalId && !seen.has(`${e.connectionId}:${e.externalId}`)
+    && e.startAt < window.toAt && (e.endAt > window.fromAt || (e.endAt === e.startAt && e.startAt >= window.fromAt));
+  const events = existing.filter((e) => !gone(e));
   const index = new Map<string, number>();
   events.forEach((e, i) => {
     if (e.connectionId && e.externalId) index.set(`${e.connectionId}:${e.externalId}`, i);

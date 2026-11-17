@@ -185,7 +185,7 @@ test('Anleitung nennt Coexistence, Webhook und die Felder', () => {
   expect(HOW_TO.whatsapp_kunden).toMatch(/whatsapp_business_app_onboarding/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/whatsapp_business_messaging/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/whatsapp_business_management/);
-  expect(HOW_TO.whatsapp_kunden).toMatch(/https:\/\/nexus-nexus-0349\.vercel\.app\/api\/webhooks\/whatsapp/);
+  expect(HOW_TO.whatsapp_kunden).toMatch(/https:\/\/nexus-iota-gold-96\.vercel\.app\/api\/webhooks\/whatsapp/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/smb_message_echoes/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/WHATSAPP_PHONE_NUMBER_ID/);
   expect(HOW_TO.whatsapp_kunden).toMatch(/WHATSAPP_VERIFY_TOKEN/);
