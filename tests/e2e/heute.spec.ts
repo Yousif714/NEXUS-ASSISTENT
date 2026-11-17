@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { ensureOpen } from './expand';
 
 test('Abnahme 1: wartender Kunde → Antwort senden → Protokoll, Hinweis zu', async ({ page }) => {
   await page.goto('/?reset=1');
@@ -87,17 +88,21 @@ test('Heute zeigt unter dem Tag auch Überfälliges, Offenes, Demnächst und Que
 
   const overdue = page.getByTestId('feed-ueberfaellig');
   await expect(overdue).toContainText('Überfällig');
-  await overdue.locator('summary').click();
+  await ensureOpen(overdue);
   await expect(overdue.getByTestId('feed-invoice:i-z-290')).toBeVisible();
   await expect(overdue.getByTestId('feed-commitment:c-demir')).toContainText('Herr Demir');
 
   const open = page.getByTestId('feed-offen');
-  await open.locator('summary').click();
+  await ensureOpen(open);
   await expect(open.getByTestId('feed-invoice:i-z-311')).toBeVisible();
   await expect(open.getByTestId('feed-payment:p-yilmaz-1')).toContainText('S. Yilmaz');
 
-  await expect(page.getByTestId('feed-demnaechst')).toContainText('Händlertermin Autohaus Müller');
-  await expect(page.getByTestId('feed-demnaechst')).not.toContainText('Zulassungsstelle');
-  await expect(page.getByTestId('feed-quellen')).toContainText('Sparkasse (Zulassung)');
-  await expect(page.getByTestId('feed-quellen')).toContainText('Nicht verbunden');
+  const soon = page.getByTestId('feed-demnaechst');
+  await ensureOpen(soon);
+  await expect(soon).toContainText('Händlertermin Autohaus Müller');
+  await expect(soon).not.toContainText('Zulassungsstelle');
+  const sources = page.getByTestId('feed-quellen');
+  await ensureOpen(sources);
+  await expect(sources).toContainText('Sparkasse (Zulassung)');
+  await expect(sources).toContainText('Nicht verbunden');
 });

@@ -17,7 +17,7 @@ const MAX_ATTEMPTS = 3;
 
 /** Ereignisse, die ein Client senden darf. Ausführer-, Demo-, Verbindungs- und Assistenten-Ereignisse entstehen nur auf dem Server. */
 export const CLIENT_EVENTS: ReadonlySet<StoreEvent['type']> = new Set<StoreEvent['type']>([
-  'confirmPaymentMatch', 'dismissPayment', 'settleInvoice', 'linkInvoiceToJob', 'setJobStatus', 'createAction', 'editAction', 'approveAction',
+  'confirmPaymentMatch', 'dismissPayment', 'settleInvoice', 'linkInvoiceToJob', 'setJobStatus', 'assignThread', 'createAction', 'editAction', 'approveAction',
   'retryAction', 'checkAction', 'dismissInsight', 'snoozeInsight', 'suppressCoach', 'setSlides', 'updateSettings',
   'confirmProposal', 'dismissProposal', 'confirmReadContract', 'correctContract', 'deleteReadContract', 'importPortalList', 'importBankStatement', 'importPortalCsv', 'createPortalContract', 'linkPortalMember', 'ignorePortalMember', 'unignorePortalMember',
   // Umstellung auf Stripe; takeoverSetUp/takeoverPlanChanged kommen nur vom Webhook.
@@ -104,6 +104,7 @@ const SHAPE: Record<string, (e: Record<string, unknown>) => boolean> = {
   settleInvoice: (e) => isStr(e.invoiceId) && isStr(e.paymentId),
   linkInvoiceToJob: (e) => isStr(e.jobId) && isStr(e.invoiceId),
   setJobStatus: (e) => isStr(e.jobId) && isJobStatus(e.status),
+  assignThread: (e) => isStr(e.threadId) && e.threadId.length <= 200 && (e.contactId === null || isStr(e.contactId)) && (e.jobId === null || isStr(e.jobId)),
   // Nur Entwürfe: eine Aktion darf nie ohne Freigabe als „approved“ hereinkommen.
   createAction: (e) => isDraft(e.action),
   editAction: (e) => isStr(e.id) && isObj(e.payload),

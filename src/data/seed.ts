@@ -164,7 +164,10 @@ export function createDemoState(): AppState {
 
   const jobs: Job[] = [
     { id: 'j-schmidt-1', vehicleId: 'v-schmidt-golf', contactId: 'd-schmidt', service: 'Umschreibung', location: 'bottrop', priceCents: 8900, status: 'waiting_customer', doneAt: null, invoiceIds: [], notes: 'eVB-Nummer fehlt noch.' },
-    { id: 'j-mueller-1', vehicleId: 'v-mueller-astra', contactId: 'd-mueller', service: 'Umschreibung', location: 'bottrop', priceCents: 8900, status: 'done', doneAt: at('2026-11-10', '14:00'), invoiceIds: [] },
+    { id: 'j-mueller-1', vehicleId: 'v-mueller-astra', contactId: 'd-mueller', service: 'Umschreibung', location: 'bottrop', priceCents: 8900, status: 'done', doneAt: at('2026-11-10', '14:00'), invoiceIds: [],
+      receipts: [{ messageId: 'm-mueller-proof', kind: 'proof', channel: 'whatsapp', at: at('2026-11-10', '16:10'), contactId: 'd-mueller', senderName: 'Autohaus Müller', phone: '+492041555666', attachments: [{ kind: 'document', filename: 'Zulassungsbescheinigung.pdf', mime: 'application/pdf' }] }],
+      activities: [{ id: 'act-mueller-1', at: at('2026-11-10', '16:10'), actor: 'system', text: 'Nachweis per WhatsApp von Autohaus Müller zugeordnet.', messageId: 'm-mueller-proof' }],
+    },
     { id: 'j-mueller-0a', vehicleId: 'v-mueller-focus', contactId: 'd-mueller', service: 'Neuzulassung inkl. Kennzeichen', location: 'essen', priceCents: 39000, status: 'invoiced', doneAt: at('2026-10-05', '11:00'), invoiceIds: ['i-z-290'] },
     { id: 'j-mueller-0b', vehicleId: 'v-mueller-octavia', contactId: 'd-mueller', service: 'Umschreibung mit Kennzeichen', location: 'bottrop', priceCents: 25000, status: 'invoiced', doneAt: at('2026-10-13', '15:00'), invoiceIds: ['i-z-295'] },
     { id: 'j-krause-1', vehicleId: 'v-krause-bmw', contactId: 'd-krause', service: 'Zulassung vor Ort', location: 'onsite', priceCents: 9900, status: 'paid', doneAt: at('2026-11-03', '10:00'), invoiceIds: ['i-z-301'] },
@@ -208,6 +211,8 @@ export function createDemoState(): AppState {
     wa({ id: 'm-wagner-in-1', threadId: 't-wagner', direction: 'in', contactId: 'p-wagner', sentAt: at('2026-11-11', '08:45'), needsReply: true, body: 'Moin, meine Schwester will ihren Wagen umschreiben. Was muss sie mitbringen?' }),
     wa({ id: 'm-wagner-out-1', threadId: 't-wagner', direction: 'out', contactId: 'p-wagner', sentAt: at('2026-11-11', '09:10'), body: QUICK }),
     wa({ id: 'm-schmidt-in-1', threadId: 't-schmidt', direction: 'in', contactId: 'd-schmidt', jobId: 'j-schmidt-1', sentAt: at('2026-11-12', '06:30'), needsReply: true, body: 'Guten Morgen, ist der Golf GE-AS 123 heute fertig?' }),
+    wa({ id: 'm-mueller-proof', threadId: 't-mueller', direction: 'in', contactId: 'd-mueller', jobId: 'j-mueller-1', sentAt: at('2026-11-10', '16:10'), body: 'Anbei die Zulassungsbescheinigung für BOT-MK 456.', attachments: [{ kind: 'document', filename: 'Zulassungsbescheinigung.pdf', mime: 'application/pdf' }], intake: { kind: 'proof', confidence: 'high', signals: ['Zulassungsbescheinigung'], vins: [], plates: ['BOT-MK 456'], holderName: null, classifiedBy: 'rules' }, intakeChecked: true }),
+    wa({ id: 'm-lea-in', threadId: '+491701112233', direction: 'in', contactId: null, from: '+491701112233', profileName: 'Lea Beispiel', sentAt: at('2026-11-12', '08:40'), needsReply: true, body: 'Bitte Zulassung. FIN WVWZZZ3CZWE123456, Kennzeichen E-AB 1234, Halter: Lea Beispiel. eVB liegt bei.', attachments: [{ kind: 'image', filename: 'ZB-I.jpg', mime: 'image/jpeg', caption: 'ZB I' }], intake: { kind: 'order', confidence: 'high', signals: ['Bitte um Auftrag', 'eVB'], vins: ['WVWZZZ3CZWE123456'], plates: ['E-AB 1234'], holderName: 'Lea Beispiel', classifiedBy: 'rules' }, intakeChecked: true }),
   ];
 
   const commitments: AppState['commitments'] = [

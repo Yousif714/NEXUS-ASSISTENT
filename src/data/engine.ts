@@ -15,6 +15,7 @@ import { stripeAllocations } from '@/domain/matching/stripe';
 import { validateContractDraft, type ContractDraft } from '@/domain/import/contract-draft';
 import { READ_LIMITS, limitReached, planFromReading, readingProposalId, textSearchDismissed } from '@/domain/import/invoice-reading';
 import { invoiceRef, membershipContractOf, retargetAllocations } from '@/domain/ledger/contracts';
+import { activityForStatus, assignThread } from '@/domain/intake/apply';
 import { emptyBatch } from '@/domain/import/batch';
 import { mergeBatch } from '@/domain/import/merge';
 import { applyPortalImport, portalResultText } from '@/domain/import/portal';
@@ -340,10 +341,16 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       const jobs = s.jobs.map((j) => {
         if (j.id !== e.jobId) return j;
         const doneAt = e.status === 'open' || e.status === 'waiting_customer' ? null : (j.doneAt ?? at.toISOString());
-        return { ...j, status: e.status, doneAt };
+        return activityForStatus({ ...j, status: e.status, doneAt }, j.status, e.status, at.toISOString(), ctx.newId());
       });
       const job = s.jobs.find((j) => j.id === e.jobId);
       return owner({ state: { ...s, jobs }, text: `Auftragsstatus geändert: ${contactName(s, job?.contactId)} · ${job?.service ?? e.jobId} → ${e.status}` });
+    }
+    case 'assignThread': {
+      const next = assignThread(s, e.threadId, e.contactId, e.jobId, at.toISOString(), ctx.newId);
+      if (!next) return { state: s };
+      const name = contactName(s, e.contactId) || e.threadId;
+      return owner({ state: next, text: `Unterhaltung zugeordnet: ${name}` });
     }
     case 'createAction':
       // Umstellungen entstehen nur über prepareTakeover (Raten aus dem Stand), nie aus fremden Entwürfen.

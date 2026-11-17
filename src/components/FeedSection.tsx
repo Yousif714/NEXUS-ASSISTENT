@@ -1,12 +1,21 @@
 'use client';
 
-import type { HeuteEntry, HeuteSection } from '@/domain/heute';
+import type { HeuteEntry, HeuteSection, HeuteSectionId } from '@/domain/heute';
 import { formatEuro } from '@/domain/money';
 
-import { IconChevron } from './Icons';
+import { CollapsibleSection } from './CollapsibleSection';
 import { ListGroup } from './ListGroup';
 import { ListRow } from './ListRow';
 import { TaskRow } from './TaskRow';
+
+/** Überfällig und das, was heute fällig ist, starten offen. Der Rest zu. */
+const DEFAULT_OPEN: Record<HeuteSectionId, boolean> = {
+  faellig: true,
+  ueberfaellig: true,
+  offen: false,
+  demnaechst: false,
+  quellen: false,
+};
 
 /** Zeilen eines Heute-Abschnitts: Hinweise bleiben Aufgaben, alles andere eine Listenzeile. */
 export function FeedList({ entries, onDone, onLater, overdue = false, title, testId }: {
@@ -17,46 +26,34 @@ export function FeedList({ entries, onDone, onLater, overdue = false, title, tes
   title?: string;
   testId?: string;
 }) {
-  return (
-    <ListGroup title={title} testId={testId}>
-      {entries.map((e) => (e.kind === 'insight' ? (
-        <TaskRow key={e.insight.dedupeKey} insight={e.insight}
-          onDone={() => onDone(e.insight.dedupeKey)} onLater={() => onLater(e.insight.dedupeKey)} />
-      ) : (
-        <ListRow key={e.key} href={e.href} testId={`feed-${e.key}`} title={e.title}
-          subtitle={<span className="wrap-text">{e.subtitle}</span>}
-          value={e.amountCents !== undefined ? <span className={overdue ? 'amount arrears-value' : 'amount'}>{formatEuro(e.amountCents)}</span> : undefined} />
-      )))}
-    </ListGroup>
-  );
+  const rows = entries.map((e) => (e.kind === 'insight' ? (
+    <TaskRow key={e.insight.dedupeKey} insight={e.insight}
+      onDone={() => onDone(e.insight.dedupeKey)} onLater={() => onLater(e.insight.dedupeKey)} />
+  ) : (
+    <ListRow key={e.key} href={e.href} testId={`feed-${e.key}`} title={e.title}
+      subtitle={<span className="wrap-text">{e.subtitle}</span>}
+      value={e.amountCents !== undefined ? <span className={overdue ? 'amount arrears-value' : 'amount'}>{formatEuro(e.amountCents)}</span> : undefined} />
+  )));
+  if (!title) {
+    return (
+      <ul className="list-group-body">
+        {rows.map((row, i) => <li key={(row as { key?: string | null }).key ?? i}>{row}</li>)}
+      </ul>
+    );
+  }
+  return <ListGroup title={title} testId={testId} sectionId={testId} defaultOpen>{rows}</ListGroup>;
 }
 
-/** Abschnitt mit Überschrift. Lange Listen starten zu, die Anzahl steht daneben. */
+/** Abschnitt mit Pfeil und Zähler. Überfällig startet offen, der Rest zu. Der Zustand wird gemerkt. */
 export function FeedSection({ section, onDone, onLater }: {
   section: HeuteSection;
   onDone: (key: string) => void;
   onLater: (key: string) => void;
 }) {
-  const n = section.entries.length;
-  const list = <FeedList entries={section.entries} onDone={onDone} onLater={onLater} overdue={section.id === 'ueberfaellig'} />;
-  if (!section.collapsed) {
-    return (
-      <section data-testid={`feed-${section.id}`}>
-        <h2 className="feed-heading">{section.title} ({n})</h2>
-        {list}
-      </section>
-    );
-  }
   return (
-    <details className="feed-section" data-testid={`feed-${section.id}`}>
-      <summary className="feed-summary">
-        <span>{section.title}</span>
-        <span className="feed-summary-side">
-          <span className="feed-count">{n}</span>
-          <IconChevron className="feed-chevron" />
-        </span>
-      </summary>
-      {list}
-    </details>
+    <CollapsibleSection id={`feed-${section.id}`} title={section.title} count={section.entries.length}
+      defaultOpen={DEFAULT_OPEN[section.id]} testId={`feed-${section.id}`}>
+      <FeedList entries={section.entries} onDone={onDone} onLater={onLater} overdue={section.id === 'ueberfaellig'} />
+    </CollapsibleSection>
   );
 }

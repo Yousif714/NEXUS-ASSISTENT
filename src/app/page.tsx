@@ -104,7 +104,7 @@ export default function HeutePage() {
           ))}
         </section>
 
-        <ListGroup title="Nachrichten" testId="replies">
+        <ListGroup title="Nachrichten" testId="replies" sectionId="heute-nachrichten" defaultOpen>
           {replies.length === 0
             ? <ListRow key="empty" title="Keine offenen Antworten." />
             : replies.map(({ message: m, waitingHours }) => (

@@ -90,6 +90,9 @@ describe('parseWhatsAppWebhook', () => {
     expect(parsed.batch.messages.map((m) => m.body)).toEqual(['[Bild · image/jpeg] Kennzeichen', '[Dokument · schein.pdf]']);
     const blob = parsed.batch.messages.map((m) => m.body).join('\n');
     expect(blob).not.toContain('media-1');
+    expect(parsed.batch.messages[0].attachments?.[0]).toMatchObject({ kind: 'image', mime: 'image/jpeg', mediaId: 'media-1', caption: 'Kennzeichen' });
+    expect(parsed.batch.messages[1].attachments?.[0]).toMatchObject({ kind: 'document', filename: 'schein.pdf', mediaId: 'media-2' });
+    expect(JSON.stringify(parsed.batch.messages[1].attachments)).not.toContain('http');
     expect(blob).not.toContain('abc123sha');
     expect(blob).not.toContain('http');
   });
@@ -153,6 +156,18 @@ describe('parseWhatsAppWebhook', () => {
       value: { metadata: meta, messages: [text('wamid.x', CUSTOMER, 'Nein')] },
     }], 'waba-fremd'), { wabaId: WABA });
     expect(otherWaba.relevant).toBe(false);
+  });
+
+  test('Profilname aus dem Webhook hängt an der eingehenden Nachricht', () => {
+    const parsed = parseWhatsAppWebhook(payload([{
+      field: 'messages',
+      value: {
+        metadata: meta,
+        contacts: [{ profile: { name: 'Lea Beispiel' }, wa_id: CUSTOMER }],
+        messages: [text('wamid.n', CUSTOMER, 'Hallo')],
+      },
+    }]));
+    expect(parsed.batch.messages[0]).toMatchObject({ profileName: 'Lea Beispiel', threadId: '+491715551234' });
   });
 
   test('Gruppenchat wird nicht übernommen', () => {

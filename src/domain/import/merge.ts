@@ -1,4 +1,5 @@
 import type { ImportBatch, ImportedEvent, ImportedMessage } from '@/domain/import/batch';
+import { applyIntakes } from '@/domain/intake/apply';
 import { contactIdForMail } from '@/domain/import/mail';
 import { classifyBankTx, linkBankReturns, normalizeIban } from '@/domain/matching/payments';
 import { matchMessage } from '@/domain/matching/messages';
@@ -114,6 +115,8 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
       const linked = contactIdForMail(counterpart, contacts) ?? matched.contactId;
       const done = old?.doneManually === true;
       const subject = next.subject || old?.subject;
+      const profileName = next.profileName || old?.profileName;
+      const attachments = next.attachments?.length ? next.attachments : old?.attachments;
       return {
         channel: next.channel,
         connectionId: next.connectionId,
@@ -129,15 +132,27 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
         jobId: matched.jobId ?? old?.jobId ?? null,
         needsReply: done || direction === 'out' ? false : (old ? old.needsReply : next.needsReply),
         ...(done ? { doneManually: true as const } : {}),
+        ...(profileName ? { profileName } : {}),
+        ...(attachments?.length ? { attachments } : {}),
+        ...(old?.intake ? { intake: old.intake } : {}),
+        ...(old?.intakeChecked ? { intakeChecked: true as const } : {}),
+        ...(next.intakeHint ? { intakeHint: next.intakeHint } : {}),
       };
     },
     newId,
   );
 
   const events = mergeEvents(s.events, b.events ?? [], newId);
+  const previous = new Set(s.messages.map((m) => m.id));
+  const fresh = new Set(msg.items.filter((m) => !previous.has(m.id)).map((m) => m.id));
+  const state = applyIntakes(
+    { ...s, contacts, invoices, orderConfirmations, payments: pay.items, subscriptions, messages: msg.items, events: events.events },
+    newId,
+    fresh,
+  );
 
   return {
-    state: { ...s, contacts, invoices, orderConfirmations, payments: pay.items, subscriptions, messages: msg.items, events: events.events },
+    state,
     added: { contacts: addedContacts, invoices: inv.added, payments: pay.added, subscriptions: sub.added, messages: msg.added, events: events.added },
   };
 }

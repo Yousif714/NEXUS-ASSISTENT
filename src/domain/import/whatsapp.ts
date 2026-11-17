@@ -1,6 +1,7 @@
 import type { ImportedMessage } from '@/domain/import/batch';
 import { emptyBatch } from '@/domain/import/batch';
 import { toE164 } from '@/domain/matching/messages';
+import type { MessageAttachment } from '@/domain/types';
 
 /** Kunden-WhatsApp des Zulassungsdienstes. Nur eingehend, nichts wird gesendet. */
 export const WHATSAPP_KUNDEN = 'whatsapp_kunden' as const;
@@ -107,6 +108,40 @@ function readBody(m: Obj): string | null {
   return null;
 }
 
+/** Metadaten eines Mediums. Die ID bleibt am Anhang, nie im Text, und es wird nichts abgerufen. */
+function readAttachment(m: Obj): MessageAttachment | null {
+  const type = str(m.type) ?? '';
+  if (!MEDIA[type]) return null;
+  const media = isObj(m[type]) ? m[type] : null;
+  if (!media) return null;
+  const kind = (type === 'image' || type === 'video' || type === 'audio' || type === 'document' || type === 'sticker' ? type : 'other') as MessageAttachment['kind'];
+  const filename = str(media.filename);
+  const mime = str(media.mime_type);
+  const mediaId = str(media.id);
+  const caption = str(media.caption);
+  return {
+    kind,
+    ...(filename ? { filename } : {}),
+    ...(mime ? { mime } : {}),
+    ...(mediaId ? { mediaId } : {}),
+    ...(caption ? { caption } : {}),
+  };
+}
+
+function profileNames(value: Obj): Map<string, string> {
+  const names = new Map<string, string>();
+  if (!Array.isArray(value.contacts)) return names;
+  for (const c of value.contacts) {
+    if (!isObj(c)) continue;
+    const name = isObj(c.profile) ? str(c.profile.name) : undefined;
+    const id = str(c.wa_id);
+    if (!name || !id) continue;
+    const phone = e164(id);
+    names.set(phone || id, name.slice(0, 200));
+  }
+  return names;
+}
+
 /**
  * Cloud-API-Webhook → Import-Stapel. Idempotent über die WhatsApp-Nachrichten-ID.
  * Echos aus der Business-App (`smb_message_echoes`) werden ausgehend. Historie und
@@ -139,12 +174,16 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
         needsReply: direction === 'out' ? false : next.needsReply,
         sentAt: next.sentAt || prev.sentAt,
         threadId: next.threadId || prev.threadId,
+        ...(next.profileName || prev.profileName ? { profileName: next.profileName || prev.profileName } : {}),
+        ...((next.attachments?.length ? next.attachments : prev.attachments)?.length
+          ? { attachments: next.attachments?.length ? next.attachments : prev.attachments }
+          : {}),
       });
     }
     if (!cursor || next.sentAt > cursor) cursor = next.sentAt;
   };
 
-  const build = (m: Obj, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean): ImportedMessage | null => {
+  const build = (m: Obj, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean, names: Map<string, string>): ImportedMessage | null => {
     if (str(m.group_id)) return null;
     const externalId = (str(m.id) ?? '').slice(0, 500);
     const sentAt = sentAtOf(m.timestamp);
@@ -163,6 +202,8 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
     if (bodyRaw === null || bodyRaw.trim() === '') return null;
     const seen = fromHistory && isObj(m.history_context) && (m.history_context.status === 'read' || m.history_context.status === 'played');
     const threadId = (customer || customerRaw.trim() || externalId).slice(0, 200);
+    const attachment = readAttachment(m);
+    const profileName = direction === 'in' ? names.get(customer) ?? names.get(customerRaw) : undefined;
     return {
       channel: 'whatsapp',
       connectionId: WHATSAPP_KUNDEN,
@@ -174,14 +215,16 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       body: bodyRaw.replace(/\u0000/g, '').slice(0, 2_400),
       sentAt,
       needsReply: direction === 'in' && !seen,
+      ...(profileName ? { profileName } : {}),
+      ...(attachment ? { attachments: [attachment] } : {}),
     };
   };
 
-  const takeList = (list: unknown, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean) => {
+  const takeList = (list: unknown, business: string, mode: 'in' | 'out' | 'auto', threadHint: string, fromHistory: boolean, names: Map<string, string>) => {
     if (!Array.isArray(list)) return;
     for (const item of list) {
       if (!isObj(item)) continue;
-      const msg = build(item, business, mode, threadHint, fromHistory);
+      const msg = build(item, business, mode, threadHint, fromHistory, names);
       if (msg) put(msg);
     }
   };
@@ -194,10 +237,10 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       const meta = isObj(chunk.metadata) ? chunk.metadata : {};
       if (typeof meta.progress === 'number' && meta.progress < 100) complete = false;
       const threads = Array.isArray(chunk.threads) ? chunk.threads : [];
-      if (threads.length === 0 && Array.isArray(chunk.messages)) takeList(chunk.messages, business, 'auto', '', true);
+      if (threads.length === 0 && Array.isArray(chunk.messages)) takeList(chunk.messages, business, 'auto', '', true, new Map());
       for (const thread of threads) {
         if (!isObj(thread)) continue;
-        takeList(thread.messages, business, 'auto', str(thread.id) ?? '', true);
+        takeList(thread.messages, business, 'auto', str(thread.id) ?? '', true, new Map());
       }
     }
   };
@@ -221,10 +264,11 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
       if (opts.phoneNumberId && phoneId !== opts.phoneNumberId) continue;
       relevant = true;
       const business = str(meta.display_phone_number) ?? '';
+      const names = profileNames(value);
       if (field === 'history' || Array.isArray(value.history)) takeHistory(value.history, business);
       const echoes = Array.isArray(value.message_echoes) ? value.message_echoes : field === 'smb_message_echoes' && Array.isArray(value.echoes) ? value.echoes : null;
-      if (echoes) takeList(echoes, business, 'out', '', false);
-      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false);
+      if (echoes) takeList(echoes, business, 'out', '', false, names);
+      if (Array.isArray(value.messages) && field !== 'history') takeList(value.messages, business, field === 'smb_message_echoes' ? 'out' : 'auto', '', false, names);
       // statuses und state_sync (Kontakte der App): zur Kenntnis, ohne neue Zeilen.
     }
   }

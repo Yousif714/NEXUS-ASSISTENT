@@ -66,14 +66,14 @@ export default function NexusPage() {
           value={members.length} />
       </ListGroup>
 
-      <ListGroup title="Calls">
+      <ListGroup title="Calls" sectionId="nexus-calls" defaultOpen={false}>
         {calls.map((c) => (
           <ListRow key={c.id} href={`/nexus/calls/${c.id}`} title={c.topic}
             subtitle={`${formatBerlin(new Date(c.startsAt), 'dd.MM.yyyy, HH:mm')} Uhr`} value={`Folien ${c.slides.length}/${c.slideCount}`} />
         ))}
       </ListGroup>
 
-      <ListGroup title="Content">
+      <ListGroup title="Content" sectionId="nexus-content" defaultOpen={false}>
         <ListRow key="content" href="/nexus/content" title="Content-Board" value={`${contentOpen} in Arbeit`} />
       </ListGroup>
     </>

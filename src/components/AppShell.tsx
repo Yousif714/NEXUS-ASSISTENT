@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="shell-main">
         <div className="shell-content"><ModeBadge />{children}</div>
         {/* Schwebt fixiert; steht im main, damit er in einem Landmark liegt. */}
-        {pathname !== '/chat' && pathname !== '/assistent' && <AssistantButton />}
+        {pathname !== '/chat' && pathname !== '/assistent' && !pathname.startsWith('/nachrichten') && <AssistantButton />}
       </main>
       <TabBar />
     </>

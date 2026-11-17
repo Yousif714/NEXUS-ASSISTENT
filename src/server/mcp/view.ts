@@ -5,7 +5,7 @@ import { contractsOfContact } from '@/domain/ledger/contracts';
 import { invoiceOpenCents } from '@/domain/ledger/receivables';
 import { memberView } from '@/domain/detectors/members';
 import { overdueMembers } from '@/data/selectors';
-import type { AppState, Invoice } from '@/domain/types';
+import type { AppState, Invoice, Job, Message } from '@/domain/types';
 
 export const MCP_PAGE_MAX = 50;
 
@@ -62,6 +62,39 @@ export function shapeContract(s: AppState, id: string, today: string) {
       paidCents: v.status.paidCents, traffic: v.status.traffic, daysOverdue: v.status.daysOverdue,
       oldestUnpaidDue: v.status.oldestUnpaidDue, nextDue: v.status.nextDue,
     },
+  });
+}
+
+/** Nachricht mit Absender und Erkennung. Die Rohfelder bleiben, dazu der lesbare Absender. */
+export function shapeMessage(s: AppState, m: Message) {
+  const name = contactName(s, m.contactId);
+  const address = m.direction === 'in' ? m.from : m.to;
+  return scrub({
+    ...m,
+    contactName: name,
+    sender: {
+      name: name ?? m.profileName ?? address,
+      profileName: m.profileName ?? null,
+      address,
+      channel: m.channel,
+    },
+    intake: m.intake ?? null,
+    attachments: m.attachments ?? [],
+  });
+}
+
+/** Vorgang mit Portalquelle, Absendern und Verlauf. */
+export function shapeJob(s: AppState, job: Job) {
+  const vehicle = s.vehicles.find((v) => v.id === job.vehicleId);
+  return scrub({
+    ...job,
+    contactName: contactName(s, job.contactId),
+    vehicle: vehicle ? { id: vehicle.id, vin: vehicle.vin, plate: vehicle.plate, model: vehicle.model } : null,
+    activities: job.activities ?? [],
+    receipts: job.receipts ?? [],
+    portalSource: job.portalSource ?? null,
+    draft: job.draft === true,
+    origin: job.origin ?? job.portalSource ?? null,
   });
 }
 

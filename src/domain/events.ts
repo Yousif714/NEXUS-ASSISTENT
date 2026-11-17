@@ -20,6 +20,8 @@ export type StoreEvent =
   | { type: 'settleInvoice'; invoiceId: string; paymentId: string }
   | { type: 'linkInvoiceToJob'; jobId: string; invoiceId: string }
   | { type: 'setJobStatus'; jobId: string; status: Job['status'] }
+  /** Zuordnung einer Unterhaltung. Es wird nichts gesendet. `null` löst die Zuordnung. */
+  | { type: 'assignThread'; threadId: string; contactId: string | null; jobId: string | null }
   | { type: 'createAction'; action: Action }
   | { type: 'editAction'; id: string; payload: Record<string, unknown> }
   | { type: 'approveAction'; id: string; version: number; via: 'app' | 'whatsapp'; buttonIssuedAt?: string }
