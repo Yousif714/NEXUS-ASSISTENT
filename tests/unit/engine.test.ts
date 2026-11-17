@@ -6,7 +6,7 @@ import type { StoreEvent } from '@/domain/events';
 import { memberView } from '@/domain/detectors/members';
 import { invoiceOpenCents } from '@/domain/ledger/receivables';
 import { unallocatedBankPayments } from '@/data/selectors';
-import { NOW_0930 as NOW, base, inv, isOpen, sptx, stateWith, tx, workshop } from './helpers';
+import { NOW_0930 as NOW, base, inv, isOpen, member, sptx, stateWith, tx, workshop } from './helpers';
 import { confirmedSub, stripeBatch, stripeState } from './import/helpers';
 
 const IBAN = 'DE02120300000000202051';
@@ -137,8 +137,9 @@ describe('Zuordnung Vertrag/Rechnung (Paket 2b-2)', () => {
     expect(r.ibanLinks.filter((l) => l.iban === 'DE551111').map((l) => l.contactId).sort()).toEqual(['m-kaya', 'm-yilmaz']);
   });
   test('Bestätigen auf nicht offene oder fremde Rechnung wird abgelehnt', () => {
-    const paid = { ...workshop, status: 'paid' as const, openCents: 0 };
-    const r = reducer(stateWith({ invoices: [paid], payments: [tx({ id: 'q1' })] }), { type: 'confirmPaymentMatch', paymentId: 'q1', invoiceId: 'i-ws' });
+    // Bezahlte Mitgliedsrechnung (bezahlte Tickets/Workshops nehmen Zahlungen an, siehe matching/nexus-tickets.test.ts).
+    const paid = { ...member('i-pm'), status: 'paid' as const, openCents: 0 };
+    const r = reducer(stateWith({ invoices: [paid], payments: [tx({ id: 'q1' })] }), { type: 'confirmPaymentMatch', paymentId: 'q1', invoiceId: 'i-pm' });
     expect(r.allocations).toEqual([]);
   });
   test('mehrdeutig → keine Auto-Zuordnung, Hinweis bleibt', () => {

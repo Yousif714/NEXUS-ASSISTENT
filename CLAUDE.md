@@ -4,6 +4,9 @@
 
 **Zuerst lesen:** `docs/PROJEKT-STAND.md` (Ziel, Architektur, Stand, nächste Schritte). Spec: `docs/superpowers/specs/2026-11-12-nexus-assistent-design.md` (verbindlich, besonders 4a), Phase 2: `docs/superpowers/specs/2026-11-12-phase2-design.md`. Offene Punkte: `docs/phase2-backlog.md`.
 
+## Freigabe (Inhaber, 17.11.2026)
+- Pauschale Erlaubnis für alle Werkzeuge und Aktionen: nicht nachfragen, einfach ausführen und danach knapp berichten. Gilt ausdrücklich für SQL/Supabase (auch Datenkorrekturen in Produktion), Migrationen, Commits, Push, PRs und Merge. Jede Datenänderung bleibt nachvollziehbar (Protokolleintrag in `audit`, `meta.revision` hochzählen).
+
 ## Sprache und Ton
 - Antworten an den Inhaber auf Deutsch, kurz und direkt, ohne Moralpredigt. UI-Texte Deutsch.
 

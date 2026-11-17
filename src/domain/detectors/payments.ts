@@ -1,13 +1,13 @@
 import { addDaysIso, todayBerlin } from '../clock';
 import { LEXWARE_OF } from '../connections';
-import { coveringContract, invoiceOpenCents } from '../ledger/receivables';
+import { coveringContract, invoiceOpenCents, paidInvoiceTakesPayments } from '../ledger/receivables';
 import { matchBankPayment, type Expected, type MatchContext, type MatchInvoice } from '../matching/payments';
 import { formatEuro } from '../money';
 import type { AppState, Company, Insight, Invoice } from '../types';
 import { memberView } from './members';
 import { paymentRef } from './refs';
 
-/** Zulassung: so weit zurück werden in Lexware schon bezahlte Rechnungen als Ziel geführt. */
+/** So weit zurück werden in Lexware schon bezahlte Rechnungen als Ziel geführt (NEXUS nur ohne Vertrag). */
 export const PAID_LOOKBACK_DAYS = 180;
 
 /** Zuordnungskontext einer Firma: nur deren Kontakte, IBAN-Zuordnungen, Verträge und Lexware-Rechnungen. */
@@ -37,11 +37,10 @@ export function buildMatchContext(s: AppState, now: Date, company: Company = 'ne
   const invoices: MatchInvoice[] = company === 'nexus'
     ? fromLexware.filter((i) => i.status !== 'paid').map((i) => toMatch(i, invoiceOpenCents(s, i)))
     : fromLexware.filter((i) => invoiceOpenCents(s, i) > 0).map((i) => toMatch(i, invoiceOpenCents(s, i)));
-  if (company === 'zulassung') {
-    const since = addDaysIso(today, -PAID_LOOKBACK_DAYS);
-    for (const i of fromLexware) {
-      if (i.status === 'paid' && i.issuedOn >= since && !s.allocations.some((a) => a.invoiceId === i.id)) invoices.push({ ...toMatch(i, 0), paidInLexware: true });
-    }
+  // In Lexware bezahlt, in der App noch ohne Zahlung: Zulassung alle, NEXUS nur ohne Vertrag (Event-Tickets).
+  const since = addDaysIso(today, -PAID_LOOKBACK_DAYS);
+  for (const i of fromLexware) {
+    if (i.issuedOn >= since && paidInvoiceTakesPayments(s, i) && !s.allocations.some((a) => a.invoiceId === i.id)) invoices.push({ ...toMatch(i, 0), paidInLexware: true });
   }
   return { company, contacts, ibanLinks: s.ibanLinks.filter((l) => contactIds.has(l.contactId)), expected, invoices };
 }

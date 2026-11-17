@@ -81,6 +81,8 @@ Stand nach der Gesamtprüfung von Phase 1 (Vorschau mit Demo-Daten). Die Vorscha
 ## Offen aus dem Portal-Abgleich (Reviews, nicht merge-blockierend)
 - `OPTIONAL_TABLES` in `src/server/db/supabase.ts` entfernen, sobald die Migration `20261115000000_portal.sql` sicher eingespielt ist.
 - Automatischer Abgleich über die Portal-Supabase (Auth-Admin-API + `profiles`), sobald die Agentur URL und service_role-Schlüssel liefert. Bis dahin wird die Excel-Liste hochgeladen.
+- Lexware-Import liest keine E-Mails von Ansprechpartnern in Firmenkontakten (`company.contactPersons[].emailAddress`), Feldname gegen Lexware-Doku prüfen. Würde die E-Mail-Zuordnung zum Portal verbessern.
+- Stripe-Connector liest nur Abos und Rechnungen; Einmalzahlungen über Payment Links/Checkout ohne Rechnung kämen nicht an. Beim Klären des Stripe-Lesezugangs mitprüfen.
 - `unignorePortalMember` prüft nur einen nicht leeren String (keine Längengrenze, keine Existenzprüfung).
 - Übrige Minor-Punkte aus dem Abschlussreview (M1–M8): u. a. `t="d"`-Zellen, Zeitformate, Zip64 im XLSX-Leser, mehrere E-Mails in einer Freitextzeile, Demo-Test für `/nexus/mitglieder`.
 

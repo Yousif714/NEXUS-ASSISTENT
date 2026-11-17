@@ -159,9 +159,15 @@ export type MatchResult = { target: MatchTarget | null; candidates: MatchTarget[
 const same = (a: MatchTarget, b: MatchTarget) => a.kind === b.kind && a.id === b.id;
 const distinct = (l: MatchTarget[]) => l.filter((t, i) => l.findIndex((x) => same(x, t)) === i);
 
+/** NEXUS: „Event“ oder „Ticket“ im Verwendungszweck – nie auf einen Mitgliedsvertrag. */
+export const isEventPayment = (reference: string | undefined): boolean => /(event|ticket)/i.test(reference ?? '');
+
 export function matchBankPayment(p: Payment, ctx: MatchContext): MatchResult {
+  const zulassung = ctx.company === 'zulassung';
+  const eventPayment = !zulassung && isEventPayment(p.reference);
   const result = (candidates: MatchTarget[], confidence: MatchResult['confidence'], reason: string): MatchResult => {
-    const c = distinct(candidates);
+    const c = distinct(eventPayment ? candidates.filter((t) => t.kind !== 'contract') : candidates);
+    if (eventPayment && c.length === 0) return { target: null, candidates: [], confidence: 'low', reason: 'Event-Zahlung: bitte die Ticket-Rechnung wählen, nicht den Mitgliedsbeitrag.' };
     return { target: c.length === 1 ? c[0] : null, candidates: c, confidence: confidence === 'high' && c.length !== 1 ? 'medium' : confidence, reason };
   };
   if (p.kind === 'stripe_payout') return result([], 'low', 'Stripe-Auszahlung wird keinem Mitglied zugeordnet.');
@@ -180,10 +186,10 @@ export function matchBankPayment(p: Payment, ctx: MatchContext): MatchResult {
   // Sammelziel über mehrere Rechnungen eines Kontakts (offen oder in Lexware bezahlt); Summe = Betrag → high.
   const invoicesTarget = (contactId: string, list: MatchInvoice[]): MatchTarget => ({ kind: 'invoices', id: list.map((i) => i.id).join(','), contactId, invoiceIds: list.map((i) => i.id) });
   const sumFits = (list: MatchInvoice[]) => list.reduce((n, i) => n + i.openCents, 0) === p.amountCents;
-  const zulassung = ctx.company === 'zulassung';
   const targetsOf = (contactId: string): MatchTarget[] => [
     ...[...ctx.expected].filter(([, e]) => e.contactId === contactId).map(([id]) => contractTarget(id, contactId)),
-    ...ctx.invoices.filter((i) => i.contactId === contactId && i.contractId === null && i.openCents > 0).map(invoiceTarget),
+    // NEXUS: auch in Lexware bezahlte Rechnungen ohne Vertrag (Event-Tickets), Zulassung nur offene (Sammelzahlung separat).
+    ...ctx.invoices.filter((i) => i.contactId === contactId && i.contractId === null && (i.openCents > 0 || (!zulassung && i.paidInLexware))).map(invoiceTarget),
   ];
 
   const reference = p.reference;

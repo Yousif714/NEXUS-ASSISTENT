@@ -47,8 +47,13 @@ export function customerOpenInvoices(s: AppState, contactId: string): { invoiceI
 }
 
 /** Was einer Zahlung noch zugeordnet werden kann: offen → offener Betrag; Zulassung, in Lexware bezahlt → Gesamtbetrag minus Zuordnungen; sonst 0. */
+/** In Lexware bezahlte Rechnung darf noch Bankzahlungen aufnehmen: Zulassung immer, NEXUS nur ohne Mitgliedschaft und Vertrag (Event-Tickets, Workshops). */
+export const paidInvoiceTakesPayments = (s: AppState, inv: Invoice): boolean =>
+  inv.status === 'paid' && (inv.company === 'zulassung' || (coveringContract(s, inv) === null && (!inv.text || parseMembership(inv.text) === null)));
+
 export function invoiceAllocatableCents(s: AppState, inv: Invoice): number {
-  if (inv.status === 'paid') return inv.company === 'zulassung' ? Math.max(0, inv.totalCents - allocatedCents(s, inv)) : 0;
+  // In Lexware bezahlt: Zulassung immer, NEXUS nur ohne abdeckenden Vertrag (z. B. Event-Ticket) – Rest = noch nicht zugeordneter Betrag.
+  if (inv.status === 'paid') return paidInvoiceTakesPayments(s, inv) ? Math.max(0, inv.totalCents - allocatedCents(s, inv)) : 0;
   return invoiceOpenCents(s, inv);
 }
 

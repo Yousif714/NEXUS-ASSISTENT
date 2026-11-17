@@ -56,6 +56,7 @@ Außerdem will er Zahlungen auch Mitgliedern ohne Rechnung zuordnen können.
   1. Kontakt mit `externalRefs` `portal_nexus:<email>`.
   2. Sonst Kontakt der Firma nexus mit exakt gleicher E-Mail (kleingeschrieben).
   3. Sonst nur der Vorschlag „Ist das …?“ bei strengem Namenstreffer.
+     *(17.11.)* Fehlt der strenge Treffer, reicht ein **eindeutiger** Kontakt, dessen Name oder Ansprechpartner Vor- und Nachname des Mitglieds enthält (Firmenzusatz „Firma – Vorname Nachname“, Zweitname). Hat dieser Kontakt einen Mitgliedsvertrag, zeigt die Liste „Mit Vertrag von … verknüpfen“ (Event `linkPortalMember`: Ref `portal_nexus:<id>` am Kontakt, idempotent, Audit). Grund: Lexware-Kontakte haben oft keine oder eine andere E-Mail.
   4. Sonst bleibt das Mitglied ohne Kontakt.
 - **Status je Portal-Mitglied** (rein abgeleitet in `src/domain/portal.ts`):
   - `contract`: Kontakt hat einen bestätigten Vertrag. Ampel und Rückstand wie bisher.
