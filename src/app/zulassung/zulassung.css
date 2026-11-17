@@ -25,6 +25,9 @@
 
 .zl-jobs-head .list-group-title {
   margin-bottom: 0;
+  padding: 0 2px;
+  font-size: 18px;
+  font-weight: 650;
 }
 
 .zl-filters {
@@ -127,20 +130,7 @@
 
 /* Status-Gruppen unter „Aufträge“: kleiner und dichter */
 .zl-main .fold {
-  margin-bottom: 0;
-}
-
-.zl-main .fold[open] {
-  margin-bottom: 18px;
-}
-
-.zl-main .fold .collapse-title {
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.zl-main > .fold:not(:has(+ .fold)) {
-  margin-bottom: 26px;
+  margin-bottom: 8px;
 }
 
 .zl-clamp {

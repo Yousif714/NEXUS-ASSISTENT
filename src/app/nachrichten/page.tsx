@@ -3,7 +3,7 @@
 import './inbox.css';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PageHeader } from '@/components/PageHeader';
 import { useAppStore } from '@/data/store';
@@ -22,6 +22,13 @@ export default function InboxPage() {
   const at = now();
   const today = todayBerlin(at);
   const [filter, setFilter] = useState<InboxFilter>('all');
+  // Direkter Einstieg aus einer Kachel, z. B. /nachrichten?filter=waiting
+  useEffect(() => {
+    const f = new URLSearchParams(window.location.search).get('filter');
+    // Einmalig nach dem Laden: die Adresse ist erst im Browser bekannt (kein Abgleich beim Vorrendern).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (f === 'waiting' || f === 'orders') setFilter(f);
+  }, []);
   const [query, setQuery] = useState('');
 
   const rows = buildInbox(state, at, state.settings.replyThresholdHours, 'whatsapp');

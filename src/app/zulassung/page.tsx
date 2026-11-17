@@ -48,21 +48,21 @@ export default function ZulassungPage() {
 
       <div className="zl-top">
       <Figures columns={4}>
-        <CountFigure label="Heute erledigt" value={kpis.doneToday} testId="kpi-done-today" />
-        <CountFigure label="Offen" value={kpis.open} testId="kpi-open" />
-        <CountFigure label="Wartet auf Kunde" value={kpis.waiting} testId="kpi-waiting" />
-        <CountFigure label="Nicht abgerechnet" value={kpis.notInvoiced ?? '–'} testId="kpi-not-invoiced" />
+        <CountFigure label="Heute erledigt" value={kpis.doneToday} testId="kpi-done-today" href="#jobs-done" />
+        <CountFigure label="Offen" value={kpis.open} testId="kpi-open" href={kpis.open > 0 ? '#jobs-open' : '#auftraege'} />
+        <CountFigure label="Wartet auf Kunde" value={kpis.waiting} testId="kpi-waiting" href={kpis.waiting > 0 ? '#jobs-waiting_customer' : '#auftraege'} />
+        <CountFigure label="Nicht abgerechnet" value={kpis.notInvoiced ?? '–'} testId="kpi-not-invoiced" href="#jobs-done" />
       </Figures>
 
       <section className="money-cards" aria-label="Geld">
-        <MoneyCard company="zulassung" openCents={money.openCents} overdueCents={money.overdueCents}
+        <MoneyCard company="zulassung" href="/zulassung/kunden" openCents={money.openCents} overdueCents={money.overdueCents}
           stale={areaUnreliable(MONEY_SOURCES.zulassung, state.connections, at)} />
       </section>
       </div>
 
       <div className="zl-cols">
       <div className="zl-main">
-      <div className="zl-jobs-head">
+      <div className="zl-jobs-head" id="auftraege">
         <h2 className="list-group-title">Aufträge</h2>
         <section className="zl-filters" aria-label="Portalfilter" data-testid="portal-filters">
           <PortalSourceFilter value={portal} onChange={setPortal} />
