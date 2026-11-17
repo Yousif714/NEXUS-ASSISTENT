@@ -323,7 +323,7 @@ export function registerNexusTools(server: McpServer): void {
 
   server.registerTool('import_portal_csv', {
     title: 'Portal-CSV importieren',
-    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz ist registriert, die Spaltenzuordnung fehlt noch und es wird nichts geschrieben. Antwort nur Zähler, keine Rohdaten.',
+    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. Antwort nur Zähler, keine Rohdaten. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz: Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr (Anträge-Liste von dashboard.nextoz.de). Idempotent über Auftragsnummer ohne führendes #. Nr ist die Listenposition und keine ID. Kennzeichen Zufällig gilt als kein Kennzeichen. Fehlen FIN und Kennzeichen, wird der Vorgang trotzdem angelegt, ein Fahrzeug nur bei FIN oder echtem Kennzeichen. Halter fehlt in der Datei, der Auftrag bleibt ohne Kontakt. Fahrzeuge werden über FIN oder Kennzeichen mit bestehenden zusammengeführt, auch aus mydigitalcar.',
     inputSchema: z.object({
       source: z.enum(['mydigitalcar', 'nextoz']),
       csv: z.string().min(1).max(MDC_CSV_MAX_CHARS),
