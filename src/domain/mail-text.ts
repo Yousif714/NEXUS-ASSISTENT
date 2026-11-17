@@ -6,9 +6,16 @@ function addresses(value: string): string[] {
   return [...value.toLowerCase().matchAll(EMAIL)].map((m) => m[0]);
 }
 
-const AUTO_LOCAL = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|mailer-daemon|postmaster|bounce|notifications?|newsletter|newsletters?)$/;
+const AUTO_LOCAL = /^(no[-_.]?reply|noreply|do[-_.]?not[-_.]?reply|donotreply|mailer-daemon|postmaster|bounce|notifications?|newsletter|newsletters?|receipts?|e-?receipts?|quittungen?|belege?)$/;
 
-/** Absender, der keine Antwort braucht: No-Reply, Google-Konto, Meta, Newsletter. */
+/** Beleg- und Systemabsender. Subdomains zählen mit (`service.paypal.de`). */
+const SYSTEM_DOMAINS = ['paypal.com', 'paypal.de', 'lexware.de', 'lexoffice.de'];
+
+function systemDomain(domain: string): boolean {
+  return SYSTEM_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
+}
+
+/** Absender, der keine Antwort braucht: No-Reply, Belege, PayPal, Lexware, Google-Konto, Meta, Newsletter. */
 export function isAutomatedMail(m: { channel?: string; from: string; subject?: string; body?: string; automated?: boolean }): boolean {
   if (m.channel && m.channel !== 'email') return false;
   if (m.automated) return true;
@@ -18,6 +25,7 @@ export function isAutomatedMail(m: { channel?: string; from: string; subject?: s
   for (const email of addresses(from)) {
     const [local, domain = ''] = email.split('@');
     if (AUTO_LOCAL.test(local) || local.includes('notification') || local.includes('newsletter')) return true;
+    if (systemDomain(domain)) return true;
     if (domain === 'accounts.google.com' || domain.endsWith('.accounts.google.com')) return true;
     if (domain === 'facebookmail.com' || domain.endsWith('.facebookmail.com')) return true;
     if (domain.startsWith('notifications.') || domain.includes('.notifications.')) return true;

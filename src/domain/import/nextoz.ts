@@ -1,21 +1,29 @@
 import { CONNECTION_CATALOG } from '../connections';
-import type { AppState, Connection, ExternalRef, IsoDate, Job, Vehicle } from '../types';
+import type { AppState, Connection, Contact, ExternalRef, IsoDate, Job, PostalAddress, Vehicle } from '../types';
 import {
-  MDC_CSV_MAX_CHARS, parseSemicolonCsv,
+  MDC_CSV_MAX_CHARS, holderMatchKey, parseSemicolonCsv,
   type EntityCounts, type MdcImportResult, type MdcParseError, type MdcParseResult,
 } from './mydigitalcar';
+import { portalKeepGroup } from './portal-keep';
 import { parseDeAmountCents, parseDotAmountCents } from './sparkasse';
 
 /**
  * nextOZ-Anträge (dashboard.nextoz.de, Liste ohne eigene Exportfunktion, selbst als CSV):
  * Semikolon, UTF-8, eine Kopfzeile.
  * Externe ID = Auftragsnummer ohne führendes '#'. 'Nr' ist nur die Listenposition.
- * Halter fehlt in dieser Liste: Auftrag ohne Kontakt.
+ * Ohne Halter-Spalten bleibt der Auftrag ohne Kontakt.
+ * Optionale Spalten Halter-Typ, Halter-Name, Halter-Strasse, Halter-Hausnummer, Halter-PLZ, Halter-Ort:
+ * bei Halter-Name wird der Kontakt über Name und PLZ gesucht, sonst neu angelegt und mit Auftrag und Fahrzeug verknüpft.
  * Fahrzeug nur bei FIN oder echtem Kennzeichen. 'Zufällig' ist kein Kennzeichen.
  */
 
 export const NEXTOZ_COLUMNS = [
   'Nr', 'Auftragsnummer', 'Kennzeichen', 'FIN', 'Antragsart', 'Datum', 'Status', 'Fehler', 'Amtsgebuehr',
+] as const;
+
+/** Nicht nötig. Wenn Halter-Name gesetzt ist, entsteht oder trifft der Kontakt. */
+export const NEXTOZ_HALTER_COLUMNS = [
+  'Halter-Typ', 'Halter-Name', 'Halter-Strasse', 'Halter-Hausnummer', 'Halter-PLZ', 'Halter-Ort',
 ] as const;
 
 export type NextozColumn = (typeof NEXTOZ_COLUMNS)[number];
@@ -35,8 +43,6 @@ export const NEXTOZ_SERVICE: Record<string, string> = {
 };
 
 const CONNECTION = 'nextoz' as const;
-
-const PROBLEM_STATUS = new Set(['fehler', 'abgelehnt', 'signaturfehler', 'signatur abgelehnt']);
 
 export interface NextozRow {
   line: number;
@@ -59,9 +65,9 @@ export function nextozServiceName(code: string): string {
  * Fehler, Abgelehnt, Signaturfehler und Signatur abgelehnt bleiben offen und sind ein Problem.
  */
 export function mapNextozStatus(raw: string): { status: Job['status']; problem: boolean } {
-  const norm = raw.trim().toLowerCase();
-  if (norm === 'erfolgreich') return { status: 'done', problem: false };
-  if (PROBLEM_STATUS.has(norm)) return { status: 'open', problem: true };
+  const group = portalKeepGroup(raw);
+  if (group === 'genehmigt') return { status: 'done', problem: false };
+  if (group === 'abgelehnt' || group === 'fehler') return { status: 'open', problem: true };
   return { status: 'open', problem: false };
 }
 
@@ -152,6 +158,38 @@ export function parseNextozCsv(csv: string): MdcParseResult {
   return { ok: true, rows, duplicates, errors: [] };
 }
 
+const DEALER_TYP = /firma|unternehmen|gewerbe|händler|haendler|dealer|company|juristisch/;
+
+function nextozHolder(raw: Record<string, string>): { name: string; kind: Contact['kind']; address?: PostalAddress; key: string } | null {
+  const name = cell(raw, 'Halter-Name').replace(/\s+/g, ' ').trim();
+  if (!name) return null;
+  const street = cell(raw, 'Halter-Strasse');
+  const houseNumber = cell(raw, 'Halter-Hausnummer');
+  const postalCode = cell(raw, 'Halter-PLZ');
+  const city = cell(raw, 'Halter-Ort');
+  const address: PostalAddress = {};
+  if (street) address.street = street;
+  if (houseNumber) address.houseNumber = houseNumber;
+  if (postalCode) address.postalCode = postalCode;
+  if (city) address.city = city;
+  return {
+    name,
+    kind: DEALER_TYP.test(cell(raw, 'Halter-Typ').toLowerCase()) ? 'dealer' : 'private',
+    ...(Object.keys(address).length ? { address } : {}),
+    key: holderMatchKey(name, postalCode),
+  };
+}
+
+function fillAddress(prev: PostalAddress | undefined, next: PostalAddress | undefined): PostalAddress | undefined {
+  if (!next) return prev;
+  const merged: PostalAddress = { ...prev };
+  if (!merged.street && next.street) merged.street = next.street;
+  if (!merged.houseNumber && next.houseNumber) merged.houseNumber = next.houseNumber;
+  if (!merged.postalCode && next.postalCode) merged.postalCode = next.postalCode;
+  if (!merged.city && next.city) merged.city = next.city;
+  return Object.keys(merged).length ? merged : prev;
+}
+
 function portalDataOf(raw: Record<string, string>, columns: readonly string[]): Record<string, string> {
   const known = new Set<string>(NEXTOZ_COLUMNS);
   const out: Record<string, string> = {};
@@ -195,12 +233,20 @@ function markConnected(connections: Connection[], at: string): Connection[] {
  */
 export function applyNextozImport(state: AppState, csv: string, newId: () => string, at: string): MdcImportResult {
   const parsed = parseNextozCsv(csv);
-  const blank = { state, rows: 0, duplicates: 0, contacts: zero(), vehicles: zero(), jobs: zero(), errors: [] as MdcParseError[] };
+  const blank = { state, rows: 0, duplicates: 0, contacts: zero(), vehicles: zero(), jobs: zero(), errors: [] as MdcParseError[], skipped: 0 };
   if (!parsed.ok) return { ...blank, error: parsed.error };
 
   const contacts = state.contacts.slice();
   const vehicles = state.vehicles.slice();
   const jobs = state.jobs.slice();
+  const refAt = new Map<string, number>();
+  const nameAt = new Map<string, number>();
+  const indexContact = (i: number) => {
+    const c = contacts[i];
+    for (const r of c.externalRefs ?? []) if (r.connectionId === CONNECTION) refAt.set(r.externalId, i);
+    if (c.company === 'zulassung' && c.address?.postalCode) nameAt.set(holderMatchKey(c.name, c.address.postalCode), i);
+  };
+  contacts.forEach((_, i) => indexContact(i));
   const vinAt = new Map<string, number>();
   const plateAt = new Map<string, number>();
   const jobAt = new Map<string, number>();
@@ -220,9 +266,51 @@ export function applyNextozImport(state: AppState, csv: string, newId: () => str
   });
 
   const counts = { contacts: zero(), vehicles: zero(), jobs: zero() };
+  let skipped = 0;
   const columns = Object.keys(parsed.rows[0]?.raw ?? {});
 
   for (const row of parsed.rows) {
+    const vinEarly = normVin(cell(row.raw, 'FIN'));
+    const plateEarly = nextozPlate(cell(row.raw, 'Kennzeichen'));
+    if (!portalKeepGroup(cell(row.raw, 'Status')) || (!vinEarly && !plateEarly)) {
+      skipped++;
+      continue;
+    }
+    const holder = nextozHolder(row.raw);
+    let contact: Contact | undefined;
+    if (holder) {
+      const ref: ExternalRef = { connectionId: CONNECTION, externalId: holder.key };
+      let ci = refAt.get(holder.key);
+      if (ci === undefined && holder.address?.postalCode) ci = nameAt.get(holder.key);
+      const prevContact = ci === undefined ? undefined : contacts[ci];
+      const address = fillAddress(prevContact?.address, holder.address);
+      contact = prevContact
+        ? {
+          ...prevContact,
+          externalRefs: withRef(prevContact.externalRefs, ref),
+          ...(address ? { address } : {}),
+        }
+        : {
+          id: newId(),
+          company: 'zulassung',
+          kind: holder.kind,
+          name: holder.name,
+          phones: [],
+          emails: [],
+          externalRefs: [ref],
+          ...(address ? { address } : {}),
+        };
+      if (ci === undefined) {
+        ci = contacts.length;
+        contacts.push(contact);
+        bump(counts.contacts, 'created');
+      } else {
+        contacts[ci] = contact;
+        touch(counts.contacts, prevContact, contact, false);
+      }
+      indexContact(ci);
+    }
+
     const vin = normVin(cell(row.raw, 'FIN'));
     const plate = nextozPlate(cell(row.raw, 'Kennzeichen'));
     let vehicle: Vehicle | undefined;
@@ -240,13 +328,14 @@ export function applyNextozImport(state: AppState, csv: string, newId: () => str
       vehicle = prevVehicle
         ? {
           ...prevVehicle,
+          contactId: contact ? contact.id : prevVehicle.contactId,
           vin: prevVehicle.vin.trim() ? prevVehicle.vin : vin,
           plate: prevVehicle.plate.trim() ? prevVehicle.plate : (plate ?? ''),
           externalRefs: withRef(prevVehicle.externalRefs, vehicleRef),
         }
         : {
           id: newId(),
-          contactId: null,
+          contactId: contact?.id ?? null,
           vin,
           plate: plate ?? '',
           model: 'unbekannt',
@@ -280,7 +369,7 @@ export function applyNextozImport(state: AppState, csv: string, newId: () => str
       ? {
         ...prevJob,
         vehicleId: vehicle ? vehicle.id : prevJob.vehicleId,
-        contactId: prevJob.contactId,
+        contactId: contact ? contact.id : prevJob.contactId,
         service: nextozServiceName(cell(row.raw, 'Antragsart')),
         status: keepBilling ? prevJob.status : mapped.status,
         doneAt: keepBilling ? prevJob.doneAt : (mapped.status === 'done' ? prevJob.doneAt : null),
@@ -295,7 +384,7 @@ export function applyNextozImport(state: AppState, csv: string, newId: () => str
       : {
         id: newId(),
         vehicleId: vehicle?.id ?? null,
-        contactId: null,
+        contactId: contact?.id ?? null,
         service: nextozServiceName(cell(row.raw, 'Antragsart')),
         location: 'online',
         priceCents,
@@ -325,5 +414,6 @@ export function applyNextozImport(state: AppState, csv: string, newId: () => str
     duplicates: parsed.duplicates,
     ...counts,
     errors: [],
+    skipped,
   };
 }

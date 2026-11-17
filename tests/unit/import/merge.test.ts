@@ -11,6 +11,12 @@ const lexInv = lexInvoices('nexus').map((d) => mapLexwareInvoice(d, 'lexware_nex
 const lexContactsNexus = mapLexwareContacts(lexContacts('nexus'), 'lexware_nexus');
 const changed = (b: ImportBatch, id: string, patch: object): ImportBatch => ({ ...b, subscriptions: b.subscriptions.map((x) => (x.externalId === id ? { ...x, ...patch } : x)) });
 
+test('neues Abo bekommt eine feste ID, ein bekanntes behält seine', () => {
+  const once = mergeBatch(empty, stripeBatch, seq()).state;
+  expect(once.subscriptions.find((x) => x.externalId === 'sub_A')!.id).toBe('stripe_nexus:sub_A');
+  const custom = { ...once, subscriptions: once.subscriptions.map((x) => (x.externalId === 'sub_A' ? { ...x, id: 'alt-id' } : x)) };
+  expect(mergeBatch(custom, stripeBatch, seq()).state.subscriptions.find((x) => x.externalId === 'sub_A')!.id).toBe('alt-id');
+});
 test('erneuter Import ist idempotent', () => {
   const once = mergeBatch(empty, stripeBatch, seq()).state;
   const twice = mergeBatch(once, stripeBatch, seq());

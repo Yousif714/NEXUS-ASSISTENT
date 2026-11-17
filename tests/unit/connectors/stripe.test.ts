@@ -182,6 +182,33 @@ describe('pullStripe', () => {
     });
   });
 
+  test('HTTP 409 bei der Abo-Liste wird einmal ohne Expand wiederholt', async () => {
+    const calls: string[] = [];
+    const inner = fixtureFetch(stripeRoutes, { calls });
+    let hit = 0;
+    const fetch409: typeof globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes('/v1/subscriptions') && url.includes('expand') && hit++ === 0) return new Response('{}', { status: 409 });
+      return inner(input, init);
+    };
+    const r = await pullStripe(null, ctx({ fetch: fetch409 }));
+    expect(r.batch.subscriptions.length).toBeGreaterThan(0);
+    expect(calls.some((c) => c.startsWith('/v1/subscriptions') && !c.includes('expand'))).toBe(true);
+  });
+
+  test('leere status=all-Liste wird ohne Status noch einmal geholt', async () => {
+    const calls: string[] = [];
+    const inner = fixtureFetch(stripeRoutes, { calls });
+    const fetchEmpty: typeof globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes('/v1/subscriptions') && url.includes('status=all')) return new Response(JSON.stringify({ data: [], has_more: false }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return inner(input, init);
+    };
+    const r = await pullStripe(null, ctx({ fetch: fetchEmpty }));
+    expect(r.batch.subscriptions.length).toBeGreaterThan(0);
+    expect(calls.some((c) => c.startsWith('/v1/subscriptions') && !c.includes('status=all'))).toBe(true);
+  });
+
   test('Fehler tragen den Schlüssel nicht', async () => {
     const f = (async () => new Response('{"error":"Invalid API Key provided: sk_test_SECRET"}', { status: 401 })) as typeof fetch;
     const err = await pullStripe(null, ctx({ fetch: f })).then(() => { throw new Error('kein Fehler'); }, (e: Error) => e);

@@ -86,7 +86,9 @@ export function mapStripe(raw: StripeRaw): ImportBatch {
     });
   }
 
-  const subscriptions: ImportedSubscription[] = (raw.subscriptions as Obj[]).map((s) => {
+  const mappedSubs = new Map<string, ImportedSubscription>();
+  for (const s of raw.subscriptions as Obj[]) {
+    if (typeof s.id !== 'string' || !s.id || mappedSubs.has(s.id)) continue;
     const item = s.items?.data?.[0];
     const price = item?.price ?? {};
     const productId = asStr(price.product);
@@ -100,7 +102,7 @@ export function mapStripe(raw: StripeRaw): ImportBatch {
     const mine = invoices.filter((i) => subscriptionOfInvoice(i) === s.id).sort((a, b) => paidDate(b).localeCompare(paidDate(a)));
     const latest = mine[0];
 
-    return {
+    mappedSubs.set(s.id, {
       connectionId: CONNECTION_ID,
       externalId: s.id,
       stripeCustomerId: asStr(s.customer) ?? '',
@@ -119,8 +121,9 @@ export function mapStripe(raw: StripeRaw): ImportBatch {
       installments: endDate ? billingPeriods(startDate, endDate) : (parseMembership(productName)?.months ?? null),
       status: mapStatus(s.status),
       metadataContractId: typeof s.metadata?.contractId === 'string' && s.metadata.contractId ? s.metadata.contractId : null,
-    };
-  });
+    });
+  }
+  const subscriptions = [...mappedSubs.values()];
 
   const disputes: ImportedDispute[] = (raw.disputes as Obj[]).map((d) => ({ externalId: d.id, invoiceExternalId: d.invoiceId ?? null }));
 

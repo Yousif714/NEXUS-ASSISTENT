@@ -136,7 +136,7 @@ describe('myDigitalCar-CSV', () => {
   test('zweiter Vorgang derselben Person: ein Kontakt, ein Fahrzeug, zwei Aufträge', () => {
     const file = csv([
       line(person),
-      line({ ...person, Ex_Vorgangsnummer: '9002', artDesVorfalls: 'UM', Status: 'Eingereicht', Kennzeichen_Alt: 'E AB 1', Kennzeichen_Neu: '' }),
+      line({ ...person, Ex_Vorgangsnummer: '9002', artDesVorfalls: 'UM', Status: 'Abgelehnt', Kennzeichen_Alt: 'E AB 1', Kennzeichen_Neu: '' }),
     ]);
     const r = applyMydigitalcarImport(createEmptyState(), file, seq(), at);
     expect(r.state.contacts).toHaveLength(1);
@@ -148,7 +148,7 @@ describe('myDigitalCar-CSV', () => {
   });
 
   test('erneuter Import aktualisiert den Status und dupliziert nicht', () => {
-    const first = applyMydigitalcarImport(createEmptyState(), csv([line({ ...person, Status: 'Gespeichert' })]), seq(), at);
+    const first = applyMydigitalcarImport(createEmptyState(), csv([line({ ...person, Status: 'Fehler (B)' })]), seq(), at);
     const second = applyMydigitalcarImport(first.state, csv([line(person)]), seq(), at);
     expect(second.jobs).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(second.state.jobs).toHaveLength(1);
@@ -167,7 +167,7 @@ describe('myDigitalCar-CSV', () => {
       phones: ['+491511111'], emails: ['erika@example.de'], address: { postalCode: '46236', city: 'Bottrop' },
     };
     base.contacts = [existing];
-    const first = applyMydigitalcarImport(base, csv([line({ ...person, Status: 'Gespeichert' })]), seq(), at);
+    const first = applyMydigitalcarImport(base, csv([line({ ...person, Status: 'Fehler' })]), seq(), at);
     expect(first.state.contacts).toHaveLength(1);
     expect(first.state.contacts[0].id).toBe('c-alt');
     expect(first.state.contacts[0].phones).toEqual(['+491511111']);
@@ -186,7 +186,8 @@ describe('myDigitalCar-CSV', () => {
       line(noName),
       line({ ...person, Ex_Vorgangsnummer: '9004', FIN: '', Kennzeichen_Neu: '', Kennzeichen_Alt: '' }),
     ]), seq(), at);
-    expect(first.errors.map((e) => e.message)).toEqual(['Weder FIN noch Kennzeichen']);
+    expect(first.errors).toEqual([]);
+    expect(first.skipped).toBe(1);
     expect(first.contacts.created).toBe(1);
     expect(first.jobs.created).toBe(2);
     const bare = first.state.jobs.find((j) => mdcVorgang(j) === '9003');

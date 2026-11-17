@@ -103,52 +103,42 @@ describe('nextOZ-CSV', () => {
     expect(matchesPortalFilter({ portalStatus: 'In Bearbeitung (Weitergeleitet)' }, 'problem')).toBe(false);
   });
 
-  test('Beispielzeilen werden Vorgänge ohne Kontakt', () => {
+  test('Beispielzeilen: nur Erfolgreich, in Bearbeitung wird übersprungen', () => {
     const r = applyNextozImport(createEmptyState(), csv([line(um), line(ab), line(wg)]), seq(), at);
     expect(r.error).toBeUndefined();
+    expect(r.skipped).toBe(2);
     expect(r.contacts).toEqual({ created: 0, updated: 0, skipped: 0 });
-    expect(r.vehicles.created).toBe(3);
-    expect(r.jobs.created).toBe(3);
+    expect(r.vehicles.created).toBe(1);
+    expect(r.jobs.created).toBe(1);
     expect(r.state.contacts).toHaveLength(0);
     expect(r.state.jobs.every((j) => j.contactId === null && j.portalSource === 'nextoz')).toBe(true);
     const byId = Object.fromEntries(r.state.jobs.map((j) => [j.externalRefs?.[0].externalId, j]));
-    expect(byId['9cc78db5']).toMatchObject({
-      service: 'Ummeldung', status: 'open', portalStatus: 'Signatur läuft', portalProblem: false,
-      priceCents: 0, requestedOn: '2026-11-10', doneAt: null, location: 'online',
-    });
-    expect(byId['9cc78db5'].portalData).toMatchObject({
-      Nr: '1', Auftragsnummer: '#9cc78db5', Kennzeichen: 'OB AS 97', FIN: '5YJXCCE23GF022507',
-      Antragsart: 'UM', Datum: '2026-11-10', Status: 'Signatur läuft', Fehler: '', Amtsgebuehr: '',
-    });
-    expect(byId['15fb2748']).toMatchObject({
-      service: 'Abmeldung', status: 'open', portalStatus: 'In Bearbeitung (Weitergeleitet)', portalProblem: false,
-      requestedOn: '2026-09-29', priceCents: 0,
-    });
+    expect(byId['9cc78db5']).toBeUndefined();
+    expect(byId['15fb2748']).toBeUndefined();
     expect(byId.b6867cee).toMatchObject({
       service: 'Wiederinbetriebsetzung', status: 'done', portalStatus: 'Erfolgreich', portalProblem: false,
       priceCents: 1240, requestedOn: '2025-07-23',
     });
-    expect(mdcVorgang(byId['9cc78db5'])).toBe('#9cc78db5');
+    expect(mdcVorgang(byId.b6867cee)).toBe('#b6867cee');
     expect(byId.b6867cee.portalData?.Antragsart).toBe('WG');
     expect(byId.b6867cee.portalData?.Amtsgebuehr).toBe('12.40');
-    expect(r.state.vehicles.map((v) => v.plate).sort()).toEqual(['BO JD 1003', 'HER KK 157', 'OB AS 97']);
+    expect(r.state.vehicles.map((v) => v.plate)).toEqual(['BO JD 1003']);
     expect(r.state.connections.find((c) => c.id === 'nextoz')).toMatchObject({ status: 'connected', lastSuccessAt: at });
     expect(r.state.connections.find((c) => c.id === 'mydigitalcar')!.status).toBe('missing');
     expect(matchesPortalFilter(byId.b6867cee, 'problem')).toBe(false);
-    expect(jobPortalSource(byId['9cc78db5'])).toBe('nextoz');
+    expect(jobPortalSource(byId.b6867cee)).toBe('nextoz');
   });
 
-  test('Zufällig und fehlende FIN: Vorgang ohne Fahrzeug, Rohwert bleibt', () => {
+  test('Zufällig und fehlende FIN werden übersprungen, Fehler mit FIN bleibt', () => {
     const r = applyNextozImport(createEmptyState(), csv([
       line({ Nr: '2', Auftragsnummer: '#aabbccdd', Kennzeichen: 'Zufällig', FIN: '', Antragsart: 'NZ', Datum: '2026-11-01', Status: 'Entwurf' }),
       line({ Nr: '3', Auftragsnummer: '#onlyfin', Kennzeichen: 'Zufällig', FIN: 'WVWZZZ1KZAW000010', Antragsart: 'HA', Datum: '2026-11-02', Status: 'Signaturfehler', Fehler: 'Unterschrift fehlt', Amtsgebuehr: '12,40' }),
     ]), seq(), at);
-    expect(r.jobs.created).toBe(2);
+    expect(r.skipped).toBe(1);
+    expect(r.jobs.created).toBe(1);
     expect(r.vehicles.created).toBe(1);
     expect(r.state.contacts).toHaveLength(0);
-    const bare = r.state.jobs.find((j) => j.externalRefs?.[0].externalId === 'aabbccdd');
-    expect(bare).toMatchObject({ vehicleId: null, contactId: null, service: 'Neuzulassung', status: 'open', portalProblem: false });
-    expect(bare?.portalData?.Kennzeichen).toBe('Zufällig');
+    expect(r.state.jobs.find((j) => j.externalRefs?.[0].externalId === 'aabbccdd')).toBeUndefined();
     expect(r.state.vehicles).toHaveLength(1);
     expect(r.state.vehicles[0]).toMatchObject({ vin: 'WVWZZZ1KZAW000010', plate: '', contactId: null });
     const problem = r.state.jobs.find((j) => j.externalRefs?.[0].externalId === 'onlyfin');
@@ -161,7 +151,7 @@ describe('nextOZ-CSV', () => {
   });
 
   test('erneuter Import aktualisiert über die Auftragsnummer, Nr darf sich ändern', () => {
-    const first = applyNextozImport(createEmptyState(), csv([line(um)]), seq(), at);
+    const first = applyNextozImport(createEmptyState(), csv([line({ ...um, Status: 'Genehmigt' })]), seq(), at);
     const second = applyNextozImport(first.state, csv([line({ ...um, Nr: '50', Status: 'Erfolgreich', Amtsgebuehr: '12.40' })]), seq(), at);
     expect(second.jobs).toEqual({ created: 0, updated: 1, skipped: 0 });
     expect(second.state.jobs).toHaveLength(1);
@@ -202,8 +192,8 @@ describe('nextOZ-CSV', () => {
     }).join(';')}\n`, ids, at);
     expect(mdc.state.vehicles).toHaveLength(1);
     const merged = applyPortalImport(mdc.state, 'nextoz', csv([
-      line(um),
-      line({ Nr: '8', Auftragsnummer: '#plateonly', Kennzeichen: 'MD CI 100', FIN: '', Antragsart: 'WZ', Datum: '2026-08-01', Status: 'Entwurf' }),
+      line({ ...um, Status: 'Erfolgreich' }),
+      line({ Nr: '8', Auftragsnummer: '#plateonly', Kennzeichen: 'MD CI 100', FIN: '', Antragsart: 'WZ', Datum: '2026-08-01', Status: 'Erfolgreich' }),
     ]), ids, at);
     expect(merged.state.vehicles).toHaveLength(1);
     expect(merged.state.vehicles[0].id).toBe(mdc.state.vehicles[0].id);
@@ -220,7 +210,7 @@ describe('nextOZ-CSV', () => {
   });
 
   test('gleiche Vorgangsnummer eines anderen Portals bleibt ein eigener Auftrag', () => {
-    const oz = applyPortalImport(createEmptyState(), 'nextoz', csv([line({ ...um, Auftragsnummer: '9001' })]), seq(), at);
+    const oz = applyPortalImport(createEmptyState(), 'nextoz', csv([line({ ...um, Auftragsnummer: '9001', Status: 'Genehmigt' })]), seq(), at);
     const foreign: Job = {
       ...oz.state.jobs[0], id: 'mdc-1', portalSource: 'mydigitalcar',
       externalRefs: [{ connectionId: 'mydigitalcar', externalId: '9001' }],
@@ -234,10 +224,55 @@ describe('nextOZ-CSV', () => {
 
   test('Ereignis übernimmt nextOZ und lässt myDigitalCar unverbunden', () => {
     const r = applyEvent(createEmptyState(), { type: 'importPortalCsv', source: 'nextoz', csv: csv([line(ab), line({ ...wg, Status: 'Abgelehnt', Fehler: 'abgelehnt vom Amt' })]) }, ctx);
-    expect(r.state.audit.at(-1)?.text).toMatch(/nextOZ übernommen: 2 Aufträge neu/);
+    expect(r.state.audit.at(-1)?.text).toMatch(/nextOZ übernommen: 1 Aufträge neu/);
+    expect(r.state.audit.at(-1)?.text).toMatch(/1 übersprungen/);
     expect(r.state.connections.find((c) => c.id === 'nextoz')!.status).toBe('connected');
     expect(r.state.connections.find((c) => c.id === 'mydigitalcar')!.status).toBe('missing');
     expect(r.state.jobs.find((j) => j.portalStatus === 'Abgelehnt')).toMatchObject({ portalProblem: true, portalSource: 'nextoz' });
     expect(r.state.jobs.find((j) => j.portalStatus === 'Abgelehnt')?.portalData?.Fehler).toBe('abgelehnt vom Amt');
+  });
+
+  test('optionale Halter-Spalten legen den Kontakt an und verknüpfen Auftrag und Fahrzeug', () => {
+    const cols = [...NEXTOZ_COLUMNS, 'Halter-Typ', 'Halter-Name', 'Halter-Strasse', 'Halter-Hausnummer', 'Halter-PLZ', 'Halter-Ort'];
+    const row = (extra: Record<string, string>) => cols.map((c) => extra[c] ?? (wg as Record<string, string>)[c] ?? '').join(';');
+    const file = `${cols.join(';')}\n${row({
+      'Halter-Typ': 'Person', 'Halter-Name': 'Erika Beispiel', 'Halter-Strasse': 'Hauptstraße',
+      'Halter-Hausnummer': '12', 'Halter-PLZ': '46236', 'Halter-Ort': 'Bottrop',
+    })}\n${row({
+      Nr: '2', Auftragsnummer: '#zweite', Kennzeichen: 'BO XX 1', FIN: 'WVWZZZ1KZAW000099', Antragsart: 'NZ',
+      'Halter-Typ': 'Firma', 'Halter-Name': 'Autohaus Beispiel', 'Halter-PLZ': '45127', 'Halter-Ort': 'Essen',
+    })}\n${row({
+      Nr: '3', Auftragsnummer: '#dritte', Kennzeichen: 'BO YY 2', FIN: 'WVWZZZ1KZAW000098', Antragsart: 'AB',
+      'Halter-Name': 'Erika Beispiel', 'Halter-PLZ': '46236',
+    })}\n`;
+    const first = applyNextozImport(createEmptyState(), file, seq(), at);
+    expect(first.contacts).toMatchObject({ created: 2 });
+    expect(first.state.contacts.map((c) => c.name).sort()).toEqual(['Autohaus Beispiel', 'Erika Beispiel']);
+    expect(first.state.contacts.find((c) => c.name === 'Autohaus Beispiel')).toMatchObject({ kind: 'dealer', address: { postalCode: '45127', city: 'Essen' } });
+    const erika = first.state.contacts.find((c) => c.name === 'Erika Beispiel')!;
+    expect(erika).toMatchObject({ kind: 'private', address: { street: 'Hauptstraße', houseNumber: '12', postalCode: '46236', city: 'Bottrop' } });
+    const linked = first.state.jobs.filter((j) => j.contactId === erika.id);
+    expect(linked).toHaveLength(2);
+    expect(first.state.vehicles.filter((v) => v.contactId === erika.id)).toHaveLength(2);
+    const again = applyNextozImport(first.state, file, seq(), at);
+    expect(again.contacts.created).toBe(0);
+    expect(again.state.contacts).toHaveLength(2);
+    expect(again.state.jobs.find((j) => j.externalRefs?.[0].externalId === 'b6867cee')?.id).toBe(first.state.jobs.find((j) => j.externalRefs?.[0].externalId === 'b6867cee')?.id);
+  });
+
+  test('Halter trifft einen bestehenden Kontakt über Name und PLZ', () => {
+    const cols = [...NEXTOZ_COLUMNS, 'Halter-Name', 'Halter-PLZ'];
+    const file = `${cols.join(';')}\n${cols.map((c) => (c === 'Halter-Name' ? 'Erika Beispiel' : c === 'Halter-PLZ' ? '46236' : (wg as Record<string, string>)[c] ?? '')).join(';')}\n`;
+    const base = createEmptyState();
+    base.contacts = [{
+      id: 'c-alt', company: 'zulassung', kind: 'private', name: 'Erika Beispiel', phones: [], emails: [],
+      address: { postalCode: '46236', city: 'Bottrop' },
+    }];
+    const r = applyNextozImport(base, file, seq(), at);
+    expect(r.contacts.created).toBe(0);
+    expect(r.state.contacts).toHaveLength(1);
+    expect(r.state.jobs[0].contactId).toBe('c-alt');
+    expect(r.state.vehicles[0].contactId).toBe('c-alt');
+    expect(r.state.contacts[0].externalRefs?.[0]).toEqual({ connectionId: 'nextoz', externalId: 'erika beispiel|46236' });
   });
 });
