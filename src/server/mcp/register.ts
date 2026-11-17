@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { realNow, todayBerlin } from '@/domain/clock';
+import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
+import { applyPortalImport, isPortalSource, PORTAL_LABEL, type PortalSource } from '@/domain/import/portal';
 import { deriveProposals } from '@/domain/import/proposals';
 import { applyMcpChange, MCP_ACTION_TYPES, type McpChange } from '@/domain/mcp-changes';
 import { getActionProvider, getRepos } from '@/server/registry';
@@ -316,4 +318,43 @@ export function registerNexusTools(server: McpServer): void {
   write('dismiss_proposal', 'Vorschlag verwerfen', 'Markiert einen Vertragsvorschlag als verworfen, wie in der App.', z.object({
     proposalId: z.string().min(1).max(500),
   }), (a) => ({ op: 'dismissProposal', proposalId: String(a.proposalId) }));
+
+  server.registerTool('import_portal_csv', {
+    title: 'Portal-CSV importieren',
+    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz ist registriert, die Spaltenzuordnung fehlt noch und es wird nichts geschrieben. Antwort nur Zähler, keine Rohdaten.',
+    inputSchema: z.object({
+      source: z.enum(['mydigitalcar', 'nextoz']),
+      csv: z.string().min(1).max(MDC_CSV_MAX_CHARS),
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  }, async (args) => {
+    if (!isPortalSource(args.source)) return jsonResult({ error: 'Unbekannte Quelle' }, true);
+    const source = args.source as PortalSource;
+    const repos = getRepos();
+    const at = realNow();
+    const planned = applyPortalImport(await current(), source, args.csv, () => 'preview', at.toISOString());
+    if (planned.error) {
+      await logMcpTool('import_portal_csv', `${PORTAL_LABEL[source]}: ${planned.error}`);
+      return jsonResult({ error: planned.error, source }, true);
+    }
+    try {
+      await dispatchEvents(repos, [{ type: 'importPortalCsv', source, csv: args.csv }], { at: realNow, provider: getActionProvider() });
+    } catch (err) {
+      const message = err instanceof Error && err.message === 'conflict' ? 'Gleichzeitige Änderung, bitte erneut versuchen' : 'Import fehlgeschlagen';
+      await logMcpTool('import_portal_csv', message);
+      return jsonResult({ error: message, source }, true);
+    }
+    await logMcpTool('import_portal_csv', PORTAL_LABEL[source]);
+    return jsonResult({
+      ok: true,
+      source,
+      rows: planned.rows,
+      duplicates: planned.duplicates,
+      contacts: planned.contacts,
+      vehicles: planned.vehicles,
+      jobs: planned.jobs,
+      errors: planned.errors.slice(0, 50),
+      errorCount: planned.errors.length,
+    });
+  });
 }

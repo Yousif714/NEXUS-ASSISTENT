@@ -4,7 +4,12 @@ import type { Connection, ConnectionId } from './types';
 export const STALE_AFTER_MINUTES = 45;
 
 /** Abweichende Frist je Verbindung: die Portal-Mitgliederliste (30 Tage) und der Sparkasse-Auszug (7 Tage) werden von Hand hochgeladen. */
-export const STALE_AFTER_MINUTES_BY_CONNECTION: Partial<Record<ConnectionId, number>> = { portal_nexus: 30 * 24 * 60, bank_sparkasse: 7 * 24 * 60 };
+export const STALE_AFTER_MINUTES_BY_CONNECTION: Partial<Record<ConnectionId, number>> = {
+  portal_nexus: 30 * 24 * 60,
+  bank_sparkasse: 7 * 24 * 60,
+  mydigitalcar: 30 * 24 * 60,
+  nextoz: 30 * 24 * 60,
+};
 
 export function staleAfterMinutes(id: ConnectionId): number {
   return STALE_AFTER_MINUTES_BY_CONNECTION[id] ?? STALE_AFTER_MINUTES;

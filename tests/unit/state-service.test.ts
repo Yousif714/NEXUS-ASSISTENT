@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
 import { CLIENT_EVENTS, dispatchEvents, isClientEvent, loadState } from '@/server/state-service';
 import { createMemoryRepos } from '@/server/db/memory';
 import { diffState } from '@/server/db/tables';
@@ -158,6 +159,16 @@ describe('Zustands-Dienst', () => {
     expect(isClientEvent({ type: 'dismissPayment' })).toBe(false);
   });
 
+  test('importPortalCsv: mydigitalcar und nextoz, Größengrenze', () => {
+    expect(isClientEvent({ type: 'importPortalCsv', source: 'mydigitalcar', csv: 'Ex_Vorgangsnummer' })).toBe(true);
+    expect(isClientEvent({ type: 'importPortalCsv', source: 'nextoz', csv: 'egal' })).toBe(true);
+    expect(isClientEvent({ type: 'importPortalCsv', source: 'stripe_nexus', csv: 'x' })).toBe(false);
+    expect(isClientEvent({ type: 'importPortalCsv', source: 'mydigitalcar', csv: '' })).toBe(false);
+    expect(isClientEvent({ type: 'importPortalCsv', csv: 'x' })).toBe(false);
+    expect(MDC_CSV_MAX_CHARS).toBeGreaterThanOrEqual(1_500_000);
+    expect(isClientEvent({ type: 'importPortalCsv', source: 'nextoz', csv: 'x'.repeat(MDC_CSV_MAX_CHARS + 1) })).toBe(false);
+  });
+
   test('Review 5: importPortalList nur mit gültiger Form', () => {
     expect(isClientEvent({ type: 'importPortalList', entries: [{ email: 'a@b.de', name: 'A' }] })).toBe(true);
     expect(isClientEvent({ type: 'importPortalList', entries: [] })).toBe(false);
@@ -190,7 +201,7 @@ describe('Zustands-Dienst', () => {
   });
 
   test('isClientEvent: nur erlaubte Ereignisse mit Grundform', () => {
-    expect(CLIENT_EVENTS.size).toBe(32);
+    expect(CLIENT_EVENTS.size).toBe(33);
     expect(isClientEvent({ type: 'approveAction', id: 'a-1', version: 1, via: 'app' })).toBe(true);
     expect(isClientEvent({ type: 'dismissInsight', key: 'reply:m-1' })).toBe(true);
     for (const type of ['actionExecuted', 'actionStarted', 'actionReconciled', 'resetDemo', 'simulateTransfer', 'importBatch', 'syncFailed', 'setConnectionStatus', 'assistantInbound', 'assistantOutbound', 'assistantButton', 'takeoverSetUp', 'takeoverPlanChanged', 'takeoverScheduleCanceled', 'takeoverCustomerMismatch', 'unbekannt']) {

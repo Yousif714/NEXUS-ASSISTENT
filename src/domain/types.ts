@@ -1,12 +1,13 @@
 export type Company = 'nexus' | 'zulassung';
 export type IsoDate = string; // 'YYYY-MM-DD'
-export type ConnectionId = 'lexware_nexus'|'lexware_zulassung'|'stripe_nexus'|'bank_qonto'|'bank_sparkasse'|'gmail'|'icloud'|'info_mail'|'calendar'|'whatsapp_kunden'|'whatsapp_assistent'|'portal_nexus'|'claude_invoices';
+export type ConnectionId = 'lexware_nexus'|'lexware_zulassung'|'stripe_nexus'|'bank_qonto'|'bank_sparkasse'|'gmail'|'icloud'|'info_mail'|'calendar'|'whatsapp_kunden'|'whatsapp_assistent'|'portal_nexus'|'claude_invoices'|'mydigitalcar'|'nextoz';
 export interface ExternalRef { connectionId: ConnectionId; externalId: string }
 export interface Connection { id: ConnectionId; company: Company | null; label: string; status: 'connected'|'missing'|'error'; lastSuccessAt: string | null; lastError?: string; sync?: { cursor: string | null; complete: boolean; failures: number } }
 export interface PortalMember { id: string; connectionId: 'portal_nexus'; externalId: string; email: string; name: string; firstSeenAt: string; lastSeenInListAt: string
   /** Alle Adressen des Mitglieds (Hauptadresse = `email`); fehlt der Wert, gilt `[email]`. */
   emails?: string[]; joinedOn?: string | null; joinedText?: string; lastActiveOn?: string | null; lastActiveText?: string }
-export interface Contact { id: string; company: Company; kind: 'member'|'private'|'dealer'; name: string; phones: string[]; emails: string[]; externalRefs?: ExternalRef[]; contactPersons?: string[]; notes?: string }
+export interface PostalAddress { street?: string; houseNumber?: string; postalCode?: string; city?: string }
+export interface Contact { id: string; company: Company; kind: 'member'|'private'|'dealer'; name: string; phones: string[]; emails: string[]; externalRefs?: ExternalRef[]; contactPersons?: string[]; notes?: string; address?: PostalAddress }
 export type ContractKind = 'membership' | 'ticket' | 'other';
 /** kind fehlt = Mitgliedschaft (alte Daten). readBy = von Claude aus einer Rechnung gelesen. */
 export interface MemberContract { id: string; contactId: string; totalCents: number; installments: number; installmentCents: number; dueDay: number; startDate: IsoDate; billing: 'legacy'|'stripe'; specialTerms?: string; catchUpMode: 'first_rate'|'spread'; origin?: ExternalRef[]; kind?: ContractKind; readBy?: { invoiceId: string; invoiceNumber: string; quote: string; confirmed: boolean };
@@ -33,8 +34,9 @@ export interface Commitment { id: string; messageId: string; contactId: string; 
 export interface CalendarEvent { id: string; title: string; startAt: string; endAt: string; location?: string; connectionId?: ConnectionId; externalId?: string }
 export interface Call { id: string; series: string; startsAt: string; topic: string; slideCount: number; slidesStatus: 'todo'|'draft'|'reviewed'|'copied'; slides: { position: number; title: string; body: string }[] }
 export interface ContentItem { id: string; title: string; stage: 'idea'|'raw'|'edit'|'approval'|'published'; due?: IsoDate }
-export interface Vehicle { id: string; contactId: string; vin: string; plate: string; model: string }
-export interface Job { id: string; vehicleId: string; contactId: string; service: string; location: 'bottrop'|'essen'|'online'|'onsite'; priceCents: number; status: 'open'|'waiting_customer'|'done'|'invoiced'|'paid'; doneAt: string | null; invoiceIds: string[]; notes?: string }
+export interface Vehicle { id: string; contactId: string; vin: string; plate: string; model: string; externalRefs?: ExternalRef[]; hsn?: string; tsn?: string }
+/** `portalSource` trennt myDigitalCar und nextOZ. `portalData` enthält jede Spalte der Zeile. `portalStatus` ist der Rohstatus, `portalProblem` bei Fehler oder Abgelehnt. */
+export interface Job { id: string; vehicleId: string; contactId: string; service: string; location: 'bottrop'|'essen'|'online'|'onsite'; priceCents: number; status: 'open'|'waiting_customer'|'done'|'invoiced'|'paid'; doneAt: string | null; invoiceIds: string[]; notes?: string; externalRefs?: ExternalRef[]; portalSource?: 'mydigitalcar'|'nextoz'; portalStatus?: string; portalProblem?: boolean; portalData?: Record<string, string> }
 export type InsightType = 'reply_waiting'|'member_overdue'|'unmatched_payment'|'stripe_paid_lexware_open'|'double_invoice'|'job_not_invoiced'|'invoice_overdue'|'call_slides_missing'|'commitment_broken'|'stale_source'|'coach_quick_reply'|'coach_due_day'|'coach_onsite_surcharge'|'coach_invoice_delay'|'subscription_changed'|'portal_no_invoice'|'portal_ab_no_invoice'|'contract_read_review'|'read_invoice_changed'|'rate_upcoming'|'takeover_link_unused'|'takeover_plan_changed'|'double_payment'|'takeover_subscription_orphan';
 export interface Ref { kind: 'member'|'message'|'thread'|'invoice'|'job'|'call'|'payment'|'connection'; id: string; href: string; label: string }
 export interface Insight { dedupeKey: string; type: InsightType; company: Company | null; priority: 'now'|'today'|'info'; title: string; body: string; amountCents?: number; refs: Ref[]; nextStep: string; needsSources: ConnectionId[] }

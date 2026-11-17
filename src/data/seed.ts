@@ -59,7 +59,7 @@ export function createDemoState(): AppState {
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
   const digits = (n: number) => Array.from({ length: n }, () => Math.floor(rnd() * 10)).join('');
 
-  const connections: Connection[] = CONNECTION_CATALOG.map(({ id, company, label }) => (id === 'bank_sparkasse'
+  const connections: Connection[] = CONNECTION_CATALOG.map(({ id, company, label }) => (id === 'bank_sparkasse' || id === 'mydigitalcar' || id === 'nextoz'
     ? { id, company, label, status: 'missing' as const, lastSuccessAt: null }
     : { id, company, label, status: 'connected' as const, lastSuccessAt: SYNCED_AT }));
   const contacts: Contact[] = [];

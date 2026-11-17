@@ -17,6 +17,7 @@ import { READ_LIMITS, limitReached, planFromReading, readingProposalId, textSear
 import { invoiceRef, membershipContractOf, retargetAllocations } from '@/domain/ledger/contracts';
 import { emptyBatch } from '@/domain/import/batch';
 import { mergeBatch } from '@/domain/import/merge';
+import { applyPortalImport, portalResultText } from '@/domain/import/portal';
 import { mergePortalList, normalizePortalEntries } from '@/domain/import/portal-list';
 import { deriveProposals, findContactFor, type ContractProposal } from '@/domain/import/proposals';
 import { applyMcpChange } from '@/domain/mcp-changes';
@@ -705,6 +706,12 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       if (r.error) return { state: s, audit: { actor: 'assistant', source: 'mcp', text: `MCP abgelehnt: ${r.error}` } };
       if (r.unchanged) return { state: s };
       return { state: r.state, audit: { actor: 'assistant', source: 'mcp', text: r.text } };
+    }
+    case 'importPortalCsv': {
+      const r = applyPortalImport(s, e.source, e.csv, ctx.newId, at.toISOString());
+      const label = e.source === 'nextoz' ? 'nextOZ' : 'myDigitalCar';
+      if (r.error) return { state: s, audit: { actor: 'owner', text: `${label} nicht übernommen: ${r.error}` } };
+      return owner({ state: r.state, text: portalResultText(e.source, r) });
     }
     case 'resetDemo':
       return { state: createDemoState() };

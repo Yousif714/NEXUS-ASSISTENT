@@ -1,5 +1,6 @@
 /** Obergrenze für den MCP-Request-Body (die SDK-Grenze liegt höher). */
-export const MCP_MAX_BODY_BYTES = 256 * 1024;
+/** myDigitalCar-CSV liegt bei etwa 1,5 MB; JSON-RPC darum herum bleibt unter der Vercel-Grenze von 4,5 MB. */
+export const MCP_MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 /** Anfragen je Minute und Client (gehashte IP), serverlos über `job_runs`. */
 export const MCP_RATE_LIMIT = 120;

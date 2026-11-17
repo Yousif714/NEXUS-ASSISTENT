@@ -15,7 +15,7 @@ Kernziele:
 7. Coach-Tipps
 8. Nichts geht ohne Freigabe raus, alles im Protokoll
 
-**Nicht im Umfang:** Zulassungsportale (i-Kfz, GKS, MyDigitalCar, Nextoz), Portalstatistik, Routen, Mitarbeiter-Logins.
+**Nicht im Umfang:** i-Kfz, GKS, Portalstatistik, Routen, Mitarbeiter-Logins. myDigitalCar- und nextOZ-Vorgänge: CSV-Import (nextOZ-Spalten noch offen).
 
 ## Dokumente (Quelle der Wahrheit)
 | Datei | Inhalt |
@@ -65,6 +65,7 @@ Kernziele:
 
 ## Stand & nächste Schritte
 - **Live** (`https://nexus-iota-gold-96.vercel.app`, Vercel `prj_IiBA31MUemrhPL1GupA2H2NbZkE5`, Supabase `bqnbboopqeilxflnqgiu`). PRs bis #24 gemergt, Migrationen bis `20261118000000_stripe_umstellung.sql` live.
+- **17.11. myDigitalCar / nextOZ:** Zwei getrennte Verbindungen. myDigitalCar-CSV wird zu Kunde, Fahrzeug und Auftrag (alle Spalten am Auftrag, inkl. Sicherheitscodes). nextOZ steht daneben, die Spaltenzuordnung fehlt noch. Keine neue Migration. MCP `import_portal_csv`.
 - **17.11. Portal ↔ Lexware abgeglichen:** 11 Portal-Mitglieder per SQL mit bestehendem Vertrag verknüpft (Lexware-Kontakte ohne bzw. mit anderer E-Mail), 4 Verträge aus Inhaber-PDFs angelegt (Yussef RE0082, Trillig RE0083, Rami Andraws RE0084, Dedaj RE0085). 43 Mitgliedsverträge. PR #20: Namenstreffer mit Firmenzusatz/Ansprechpartner + Knopf „Mit Vertrag verknüpfen“.
 - **17.11. Event-Tickets:** Zahlungen per SQL den Ticket-Rechnungen zugeordnet (Protokoll in `audit`). In Lexware storniert per Rechnungskorrektur GS0001–GS0005 (RE0030/37/39/40/41). RE0087–RE0095 sind Doppel-Rechnungen aus Lieferscheinen (Inhaber: in Lexware lassen), in der App mit den Qonto-Zahlungen verknüpft. PR #24: bezahlte Ticket-Rechnungen bleiben Zuordnungsziel, „Event/Ticket“ im Zweck nie auf Mitgliedsbeitrag. Lexware-NEXUS-Schlüssel als Session-Netzwerk-Secret (`api.lexware.io`) vorhanden.
 - **Offen – Stripe-Lesezugang liefert nichts:** `stripe_nexus` „verbunden“, aber 0 Abos/Zahlungen. Vermutlich `STRIPE_RESTRICTED_KEY` (Production) Test-/Sandbox-Schlüssel oder anderes Konto. Luka Viskic und Mark (Merdeah) sind auf Stripe und haben deshalb keinen Vertrag. Inhaber: Live-`rk_live_…` eintragen oder Werte liefern.
