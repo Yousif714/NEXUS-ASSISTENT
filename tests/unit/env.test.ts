@@ -68,6 +68,39 @@ test('ANTHROPIC_API_KEY optional', () => {
   expect(readEnv({ ...FULL, ANTHROPIC_API_KEY: 'sk-ant-x' }).anthropicApiKey).toBe('sk-ant-x');
 });
 
+describe('IMAP-Umgebung', () => {
+  test('ohne Zugangsdaten bleibt jedes Postfach ungesetzt', () => {
+    const e = readEnv(FULL);
+    expect(e.imapGmail).toBeUndefined();
+    expect(e.imapInfoMail).toBeUndefined();
+    expect(e.imapIcloud).toBeUndefined();
+  });
+  test('Gmail und info@ sind Gmail-IMAP, iCloud hat den Apple-Server', () => {
+    const e = readEnv({
+      ...FULL,
+      IMAP_GMAIL_USER: 'privat@example.de',
+      IMAP_GMAIL_PASSWORD: 'abcd efgh ijkl mnop',
+      IMAP_INFO_MAIL_USER: 'info@example.de',
+      IMAP_INFO_MAIL_PASSWORD: 'info-app-pass',
+      IMAP_ICLOUD_USER: 'icloud@example.de',
+      IMAP_ICLOUD_PASSWORD: 'apple-app-pass',
+    });
+    expect(e.imapGmail).toEqual({ host: 'imap.gmail.com', port: 993, user: 'privat@example.de', password: 'abcdefghijklmnop' });
+    expect(e.imapInfoMail).toEqual({ host: 'imap.gmail.com', port: 993, user: 'info@example.de', password: 'info-app-pass' });
+    expect(e.imapIcloud).toEqual({ host: 'imap.mail.me.com', port: 993, user: 'icloud@example.de', password: 'apple-app-pass' });
+  });
+  test('nur Passwort oder nur Nutzer zählt als nicht verbunden', () => {
+    expect(readEnv({ ...FULL, IMAP_GMAIL_PASSWORD: 'geheim' }).imapGmail).toBeUndefined();
+    expect(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'info@example.de' }).imapInfoMail).toBeUndefined();
+  });
+  test('Host und Port lassen sich überschreiben, Port 143 nicht', () => {
+    expect(readEnv({ ...FULL, IMAP_INFO_MAIL_USER: 'a@example.de', IMAP_INFO_MAIL_PASSWORD: 'pw', IMAP_INFO_MAIL_HOST: 'imap.example.de', IMAP_INFO_MAIL_PORT: '993' }).imapInfoMail)
+      .toMatchObject({ host: 'imap.example.de', port: 993 });
+    expect(() => readEnv({ ...FULL, IMAP_GMAIL_USER: 'a@example.de', IMAP_GMAIL_PASSWORD: 'pw', IMAP_GMAIL_PORT: '143' })).toThrow(/nur TLS/);
+    expect(() => readEnv({ ...FULL, IMAP_GMAIL_USER: 'a@example.de', IMAP_GMAIL_PASSWORD: 'pw', IMAP_GMAIL_PORT: 'kein' })).toThrow(/IMAP_GMAIL_PORT/);
+  });
+});
+
 test('STRIPE_WRITE_KEY optional, PAYMENT_LINK_BASE_URL fällt auf APP_ORIGIN zurück', () => {
   const a = readEnv(FULL);
   expect([a.stripeWriteKey, a.paymentLinkBaseUrl]).toEqual([undefined, 'https://nexus.example']);

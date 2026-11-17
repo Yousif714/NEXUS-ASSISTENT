@@ -102,5 +102,6 @@ export function overview(s: AppState, now: Date) {
     openProposalCount: deriveProposals(s).length,
     repliesOpen: briefing.repliesOpen,
     staleSources: briefing.staleSources,
+    notConnectedSources: briefing.notConnectedSources,
   };
 }

@@ -225,7 +225,7 @@ export function registerNexusTools(server: McpServer): void {
     return paged(rows.map((p) => ({ id: p.id, name: p.name, email: p.email, sourceLabel: p.sourceLabel, billing: p.billing, complete: p.complete, references: p.references })), args);
   });
 
-  read('overview', 'Überblick', 'Offene Rechnungen, überfällige Zahlungen, anstehende Zusagen, Geldbeträge in Cent.', z.object({}), async () => overview(await current(), realNow()));
+  read('overview', 'Überblick', 'Offene Rechnungen, überfällige Zahlungen, anstehende Zusagen, Geldbeträge in Cent. staleSources: verbunden, aber Fehler oder zu alt. notConnectedSources: nicht verbunden.', z.object({}), async () => overview(await current(), realNow()));
 
   write('create_contact', 'Kontakt anlegen', 'Legt einen Kontakt an (nexus oder zulassung, member, private oder dealer).', z.object({
     company, kind: z.enum(['member', 'private', 'dealer']), name: z.string().min(1).max(200),

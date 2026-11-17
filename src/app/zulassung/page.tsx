@@ -10,7 +10,7 @@ import { unallocatedBankPayments, zulassungKpis } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlinDe, now } from '@/domain/clock';
-import { areaStale } from '@/domain/freshness';
+import { areaUnreliable } from '@/domain/freshness';
 import { formatEuro } from '@/domain/money';
 
 export default function ZulassungPage() {
@@ -34,7 +34,7 @@ export default function ZulassungPage() {
 
       <section className="money-cards" aria-label="Geld">
         <MoneyCard company="zulassung" openCents={money.openCents} overdueCents={money.overdueCents}
-          stale={areaStale(MONEY_SOURCES.zulassung, state.connections, at)} />
+          stale={areaUnreliable(MONEY_SOURCES.zulassung, state.connections, at)} />
       </section>
 
       <ListGroup title="Zahlungen" testId="zulassung-payments">

@@ -12,7 +12,7 @@ import { linksToShare, memberRows, portalRows, switchableTakeovers, nexusForecas
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlin, formatBerlinDe, now, todayBerlin } from '@/domain/clock';
-import { areaStale } from '@/domain/freshness';
+import { areaUnreliable } from '@/domain/freshness';
 import { deriveProposals } from '@/domain/import/proposals';
 import { nexusReceivables } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
@@ -44,7 +44,7 @@ export default function NexusPage() {
       <PageHeader title="NEXUS" />
 
       <section className="money-cards" aria-label="Geld">
-        <MoneyCard company="nexus" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaStale(MONEY_SOURCES.nexus, state.connections, at)} />
+        <MoneyCard company="nexus" openCents={money.openCents} overdueCents={money.overdueCents} stale={areaUnreliable(MONEY_SOURCES.nexus, state.connections, at)} />
       </section>
 
       <ListGroup title="Monatsvorschau">

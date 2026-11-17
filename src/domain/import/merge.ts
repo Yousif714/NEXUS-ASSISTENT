@@ -1,9 +1,11 @@
-import type { ImportBatch } from '@/domain/import/batch';
+import type { ImportBatch, ImportedEvent, ImportedMessage } from '@/domain/import/batch';
+import { contactIdForMail } from '@/domain/import/mail';
 import { classifyBankTx, linkBankReturns, normalizeIban } from '@/domain/matching/payments';
+import { matchMessage } from '@/domain/matching/messages';
 import { upsertImported } from '@/domain/matching/imports';
-import type { AppState, Contact, ExternalRef, Invoice, OrderConfirmation, Payment, Subscription } from '@/domain/types';
+import type { AppState, CalendarEvent, Contact, ExternalRef, Invoice, Message, OrderConfirmation, Payment, Subscription } from '@/domain/types';
 
-export interface MergeAdded { contacts: number; invoices: number; payments: number; subscriptions: number }
+export interface MergeAdded { contacts: number; invoices: number; payments: number; subscriptions: number; messages: number; events: number }
 
 const refKey = (r: ExternalRef) => `${r.connectionId}:${r.externalId}`;
 
@@ -99,8 +101,68 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
     );
   }
 
+  const msg = upsertImported<Message, ImportedMessage>(
+    s.messages,
+    b.messages ?? [],
+    (next, old) => {
+      const direction = old?.direction === 'out' || next.direction === 'out' ? 'out' : next.direction;
+      const from = direction === 'out' && next.direction !== 'out' ? (old?.from ?? next.from) : next.from;
+      const to = direction === 'out' && next.direction !== 'out' ? (old?.to ?? next.to) : next.to;
+      const body = next.body || old?.body || '';
+      const matched = matchMessage({ from, to, direction, body }, contacts, s.vehicles, s.jobs);
+      const counterpart = direction === 'in' ? from : to;
+      const linked = contactIdForMail(counterpart, contacts) ?? matched.contactId;
+      const done = old?.doneManually === true;
+      const subject = next.subject || old?.subject;
+      return {
+        channel: next.channel,
+        connectionId: next.connectionId,
+        externalId: next.externalId,
+        threadId: next.threadId || old?.threadId || next.externalId,
+        direction,
+        from,
+        to,
+        ...(subject ? { subject } : {}),
+        body,
+        sentAt: next.sentAt || old?.sentAt || '',
+        contactId: linked ?? old?.contactId ?? null,
+        jobId: matched.jobId ?? old?.jobId ?? null,
+        needsReply: done || direction === 'out' ? false : (old ? old.needsReply : next.needsReply),
+        ...(done ? { doneManually: true as const } : {}),
+      };
+    },
+    newId,
+  );
+
+  const events = mergeEvents(s.events, b.events ?? [], newId);
+
   return {
-    state: { ...s, contacts, invoices, orderConfirmations, payments: pay.items, subscriptions },
-    added: { contacts: addedContacts, invoices: inv.added, payments: pay.added, subscriptions: sub.added },
+    state: { ...s, contacts, invoices, orderConfirmations, payments: pay.items, subscriptions, messages: msg.items, events: events.events },
+    added: { contacts: addedContacts, invoices: inv.added, payments: pay.added, subscriptions: sub.added, messages: msg.added, events: events.added },
   };
+}
+
+/** Termine nur anfassen, wenn der Stapel welche bringt. Bestehende ohne Schlüssel bleiben, wie sie sind. */
+function mergeEvents(existing: CalendarEvent[], incoming: ImportedEvent[], newId: () => string): { events: CalendarEvent[]; added: number } {
+  if (incoming.length === 0) return { events: existing, added: 0 };
+  const events = [...existing];
+  const index = new Map<string, number>();
+  events.forEach((e, i) => {
+    if (e.connectionId && e.externalId) index.set(`${e.connectionId}:${e.externalId}`, i);
+  });
+  let added = 0;
+  for (const next of incoming) {
+    const key = `${next.connectionId}:${next.externalId}`;
+    const at = index.get(key);
+    const location = next.location ? { location: next.location } : {};
+    if (at !== undefined) {
+      const old = events[at];
+      events[at] = { ...old, title: next.title, startAt: next.startAt, endAt: next.endAt, connectionId: next.connectionId, externalId: next.externalId, ...(next.location ? location : old.location ? { location: old.location } : {}) };
+    } else {
+      index.set(key, events.length);
+      events.push({ id: newId(), title: next.title, startAt: next.startAt, endAt: next.endAt, connectionId: next.connectionId, externalId: next.externalId, ...location });
+      added++;
+    }
+  }
+  return { events, added };
 }

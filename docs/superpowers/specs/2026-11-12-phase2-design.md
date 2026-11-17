@@ -113,7 +113,7 @@
 - **Sparkasse:** Upload CAMT.053 (bevorzugt) oder CSV in „Verbindungen“. Der Import geht über `mergeImported` mit `external_id` aus der Bank-Referenz (bzw. einem Hash aus Datum, Betrag, IBAN und Verwendungszweck). finAPI erst, wenn der Upload lästig wird.
 - **Lexware:** zwei Schlüssel, `connection_id` `lexware_nexus` / `lexware_zulassung`. Gelesen werden Rechnungen, Kontakte und Zahlungsstatus.
 - **Stripe:** Restricted Key nur lesend, Webhook-Secret. Zuordnung Stripe-Kunde → Vertrag über Metadaten oder einmalige Bestätigung in „Zuordnen“.
-- **Mail:** Gmail per OAuth (Scope `gmail.readonly`). iCloud und info@ per IMAP mit App-Passwort, nur lesen.
+- **Mail:** Verbraucher-Gmail (privates Postfach und info@, beides @gmail.com) per IMAP mit App-Passwort, `imap.gmail.com:993`, TLS, nur lesen. OAuth (`gmail.readonly`) kann später dazukommen. iCloud-Mail optional per IMAP (`imap.mail.me.com`, App-spezifisches Passwort). Kalender (Google, nur lesen) folgt getrennt, nicht mit dem Mail-Abruf.
 - **Kalender:** Google per OAuth (Scope `calendar.readonly`). iCloud per CalDAV. Die Termine werden auf „Heute“ zusammengeführt.
 - **Vor echten Bankdaten** werden diese Backlog-Punkte erledigt (Teil von 2b):
   - IBAN normalisieren

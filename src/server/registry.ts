@@ -8,6 +8,7 @@ import { createMemoryRepos } from './db/memory';
 import type { Repos } from './db/repository';
 import { createSupabaseRepos } from './db/supabase';
 import { readEnv } from './env';
+import type { ImapAccount, MailSyncId } from './imap-config';
 import type { ConnectionId } from '@/domain/types';
 import { realNow } from '@/domain/clock';
 import type { SyncDeps } from './sync';
@@ -74,5 +75,14 @@ export function getSyncDeps(o: { only?: ConnectionId[]; budgetMs?: number } = {}
     provider: getActionProvider(),
     ...(o.only ? { only: o.only } : {}),
     ...(env.anthropicApiKey ? { reader: createClaudeInvoiceReader({ apiKey: env.anthropicApiKey }) } : {}),
+    ...imapOf(env),
   };
+}
+
+function imapOf(env: ReturnType<typeof readEnv>): { imap?: Partial<Record<MailSyncId, ImapAccount>> } {
+  const imap: Partial<Record<MailSyncId, ImapAccount>> = {};
+  if (env.imapInfoMail) imap.info_mail = env.imapInfoMail;
+  if (env.imapGmail) imap.gmail = env.imapGmail;
+  if (env.imapIcloud) imap.icloud = env.imapIcloud;
+  return Object.keys(imap).length ? { imap } : {};
 }

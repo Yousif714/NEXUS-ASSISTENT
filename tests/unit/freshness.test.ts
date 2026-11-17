@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { ageMinutes, ageText, areaStale, sourceFreshness, staleAfterMinutes } from '@/domain/freshness';
+import { ageMinutes, ageText, areaNotConnected, areaStale, areaUnreliable, sourceFreshness, staleAfterMinutes } from '@/domain/freshness';
 import { NOW_0930, conn } from './helpers';
 
 describe('Datenstand', () => {
@@ -27,6 +27,13 @@ describe('Datenstand', () => {
   test('areaStale liefert die veralteten Quellen', () => {
     const cs = [conn({ id: 'bank_qonto' }), conn({ id: 'gmail', status: 'error' }), conn({ id: 'calendar', lastSuccessAt: '2026-11-12T01:00:00Z' })];
     expect(areaStale(['bank_qonto', 'gmail', 'calendar'], cs, NOW_0930)).toEqual(['gmail', 'calendar']);
+  });
+  test('missing ist nicht veraltet, sondern nicht verbunden', () => {
+    const cs = [conn({ id: 'info_mail', status: 'missing', lastSuccessAt: null }), conn({ id: 'icloud', status: 'error' })];
+    expect(areaStale(['info_mail', 'icloud'], cs, NOW_0930)).toEqual(['icloud']);
+    expect(areaNotConnected(['info_mail', 'icloud'], cs, NOW_0930)).toEqual(['info_mail']);
+    expect(areaUnreliable(['info_mail', 'icloud'], cs, NOW_0930)).toEqual(['info_mail', 'icloud']);
+    expect(areaStale(['unbekannt' as 'gmail'], cs, NOW_0930)).toEqual([]);
   });
   test('ageMinutes: ganze Minuten seit dem letzten Abruf, null ohne Abruf', () => {
     expect(ageMinutes(conn({ lastSuccessAt: '2026-11-12T08:20:00Z' }), NOW_0930)).toBe(10);

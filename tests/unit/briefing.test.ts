@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { MONEY_SOURCES, buildBriefing, renderBriefingText } from '@/domain/briefing';
 import { createDemoState } from '@/data/seed';
+import { createEmptyState } from '@/data/empty-state';
 import { refresh } from '@/data/store';
+import { overview } from '@/server/mcp/view';
 import type { StoredInsight } from '@/domain/types';
 import { invoicePaidCents } from '@/domain/ledger/receivables';
 import { NOW_0930 as NOW, conn, inv, ins, sptx, stateWith } from './helpers';
@@ -30,7 +32,7 @@ describe('Briefing', () => {
     expect(b.top.every((t) => !t.type.startsWith('coach_'))).toBe(true);
     expect(b.coach).toHaveLength(1);
     expect(b.events.map((e) => e.id)).toEqual(['e1', 'e2']);
-    expect(b.money.find((m) => m.company === 'zulassung')).toEqual({ company: 'zulassung', openCents: 15000, overdueCents: 10000, stale: false });
+    expect(b.money.find((m) => m.company === 'zulassung')).toEqual({ company: 'zulassung', openCents: 15000, overdueCents: 10000, stale: false, notConnected: false });
     const t = renderBriefingText(b);
     expect(t).toMatch(/^Guten Morgen/);
     expect(t).toContain('Stand: 09:30');
@@ -58,7 +60,35 @@ describe('Briefing', () => {
     const s = stateWith({ connections: [conn({ id: 'lexware_zulassung', status: 'error' })] });
     const b = buildBriefing(s, 'morning', NOW);
     expect(b.staleSources).toContain('lexware_zulassung');
+    expect(b.notConnectedSources).not.toContain('lexware_zulassung');
     expect(renderBriefingText(b)).toContain('Geld Zulassungsdienst: Datenstand zu alt');
+  });
+  test('fehlende Quelle ist nicht verbunden', () => {
+    const s = stateWith({ connections: [
+      conn({ id: 'lexware_zulassung', status: 'missing', lastSuccessAt: null }),
+      conn({ id: 'gmail', status: 'missing', lastSuccessAt: null }),
+      conn({ id: 'bank_qonto', status: 'connected' }),
+      conn({ id: 'stripe_nexus', status: 'connected' }),
+    ] });
+    const b = buildBriefing(s, 'morning', NOW);
+    expect(b.staleSources).not.toContain('lexware_zulassung');
+    expect(b.staleSources).not.toContain('gmail');
+    expect(b.notConnectedSources).toEqual(expect.arrayContaining(['lexware_zulassung', 'gmail']));
+    expect(renderBriefingText(b)).toContain('Geld Zulassungsdienst: nicht verbunden');
+    expect(renderBriefingText(b)).not.toContain('Geld Zulassungsdienst: Datenstand zu alt');
+    expect(renderBriefingText(b)).toContain('Geld NEXUS: offen');
+  });
+  test('leerer Echt-Stand: Katalog ohne Zeile ist nicht verbunden, nicht veraltet', () => {
+    const b = buildBriefing(createEmptyState(), 'morning', NOW);
+    expect(b.staleSources).toEqual([]);
+    expect(b.notConnectedSources).toContain('info_mail');
+    expect(b.notConnectedSources).toContain('gmail');
+    expect(renderBriefingText(b)).toContain('Geld NEXUS: nicht verbunden');
+    expect(renderBriefingText(b)).toContain('Geld Zulassungsdienst: nicht verbunden');
+    expect(renderBriefingText(b)).not.toContain('Datenstand zu alt');
+    const o = overview(createEmptyState(), NOW);
+    expect(o.staleSources).toEqual([]);
+    expect(o.notConnectedSources).toContain('icloud');
   });
 });
 

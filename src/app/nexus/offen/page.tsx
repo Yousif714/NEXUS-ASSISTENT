@@ -8,7 +8,8 @@ import { TrafficDot } from '@/components/TrafficDot';
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES } from '@/domain/briefing';
 import { formatIsoDe, now, todayBerlin } from '@/domain/clock';
-import { areaStale } from '@/domain/freshness';
+import { notConnected } from '@/domain/connections';
+import { areaUnreliable } from '@/domain/freshness';
 import { nexusReceivables } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
 import { runsViaStripe } from '@/domain/takeover/status';
@@ -17,14 +18,15 @@ export default function OffenPage() {
   const { state } = useAppStore();
   const at = now();
   const { items, totalCents, overdueCents } = nexusReceivables(state, todayBerlin(at));
-  const stale = areaStale([...MONEY_SOURCES.nexus, 'lexware_nexus'], state.connections, at).length > 0;
+  const blocking = areaUnreliable([...MONEY_SOURCES.nexus, 'lexware_nexus'], state.connections, at);
+  const missingOnly = blocking.length > 0 && notConnected(blocking, state.connections);
 
   return (
     <>
       <PageHeader title="Offen" subtitle="Alle offenen Forderungen" trailing={<BackLink href="/nexus" label="NEXUS" />} />
 
-      {stale ? (
-        <p className="note-card" data-testid="stale-note">Datenstand zu alt, um das zu beurteilen.</p>
+      {blocking.length > 0 ? (
+        <p className="note-card" data-testid="stale-note">{missingOnly ? 'Nicht verbunden, um das zu beurteilen.' : 'Datenstand zu alt, um das zu beurteilen.'}</p>
       ) : (
         <>
           <ListGroup title="Summe">

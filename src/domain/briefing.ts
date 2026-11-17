@@ -1,6 +1,6 @@
 import { invoiceOpenCents } from './ledger/receivables';
 import { berlinParts, formatBerlin, todayBerlin } from './clock';
-import { areaStale } from './freshness';
+import { areaNotConnected, areaStale } from './freshness';
 import { memberView, selectTop } from './detectors';
 import { openReplies } from './matching/messages';
 import { formatEuro } from './money';
@@ -11,11 +11,13 @@ export type Briefing = {
   title: string;
   top: StoredInsight[];
   events: CalendarEvent[];
-  money: { company: Company; openCents: number; overdueCents: number; stale: boolean }[];
+  money: { company: Company; openCents: number; overdueCents: number; stale: boolean; notConnected: boolean }[];
   repliesOpen: number;
   coach: StoredInsight[];
   dataAsOf: string;
+  /** Verbunden, aber Fehler oder zu alt. Fehlende Quellen stehen in `notConnectedSources`. */
   staleSources: ConnectionId[];
+  notConnectedSources: ConnectionId[];
 };
 
 /** Quellen, von denen die Geldkarte einer Firma abhängt. */
@@ -46,13 +48,21 @@ export function buildBriefing(s: AppState, kind: 'morning' | 'evening' | 'weekly
     top,
     events: s.events.filter((e) => berlinParts(new Date(e.startAt)).date === today).sort((a, b) => a.startAt.localeCompare(b.startAt)),
     money: [
-      { company: 'nexus', openCents: nexusOpen, overdueCents: nexusOverdue, stale: areaStale(MONEY_SOURCES.nexus, s.connections, now).length > 0 },
-      { company: 'zulassung', openCents: zOpen, overdueCents: zOverdue, stale: areaStale(MONEY_SOURCES.zulassung, s.connections, now).length > 0 },
+      { company: 'nexus', openCents: nexusOpen, overdueCents: nexusOverdue, ...moneyFreshness(MONEY_SOURCES.nexus, s, now) },
+      { company: 'zulassung', openCents: zOpen, overdueCents: zOverdue, ...moneyFreshness(MONEY_SOURCES.zulassung, s, now) },
     ],
     repliesOpen: openReplies(s.messages, now, s.settings.replyThresholdHours).length,
     coach,
     dataAsOf: formatBerlin(now, 'HH:mm'),
     staleSources: areaStale(s.connections.map((c) => c.id), s.connections, now),
+    notConnectedSources: areaNotConnected(s.connections.map((c) => c.id), s.connections, now),
+  };
+}
+
+function moneyFreshness(sources: ConnectionId[], s: AppState, now: Date): { stale: boolean; notConnected: boolean } {
+  return {
+    stale: areaStale(sources, s.connections, now).length > 0,
+    notConnected: areaNotConnected(sources, s.connections, now).length > 0,
   };
 }
 
@@ -67,7 +77,8 @@ export function renderBriefingText(b: Briefing): string {
   if (b.repliesOpen) lines.push(`Offene Antworten: ${b.repliesOpen}`);
   for (const m of b.money) {
     const label = m.company === 'nexus' ? 'Geld NEXUS' : 'Geld Zulassungsdienst';
-    lines.push(m.stale ? `${label}: Datenstand zu alt` : `${label}: offen ${formatEuro(m.openCents)}, überfällig ${formatEuro(m.overdueCents)}`);
+    const stand = m.notConnected ? 'nicht verbunden' : m.stale ? 'Datenstand zu alt' : `offen ${formatEuro(m.openCents)}, überfällig ${formatEuro(m.overdueCents)}`;
+    lines.push(`${label}: ${stand}`);
   }
   lines.push(`Stand: ${b.dataAsOf}`);
   if (b.kind !== 'morning' && b.coach.length) {

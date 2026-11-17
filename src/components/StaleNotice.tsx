@@ -14,7 +14,7 @@ export function StaleNotice({ sources }: { sources: ConnectionId[] }) {
     <div className="stale-notice" data-testid="stale-notice" role="note">
       <IconWarning />
       <div>
-        <div>{notConnected(sources, state.connections) ? 'Noch nicht verbunden' : 'Datenstand zu alt, um das zu beurteilen'}</div>
+        <div>{notConnected(sources, state.connections) ? 'Nicht verbunden, um das zu beurteilen' : 'Datenstand zu alt, um das zu beurteilen'}</div>
         {labels.length > 0 && <div className="stale-notice-sources">Quelle: {labels.join(', ')}</div>}
       </div>
     </div>

@@ -32,10 +32,26 @@ export function ageText(c: Connection, at: Date): string {
   return `Stand vom ${formatBerlin(new Date(c.lastSuccessAt as string), 'dd.MM.yyyy, HH:mm')} Uhr`;
 }
 
-/** Liefert die Quellen, deren Datenstand nicht frisch ist (veraltet, Fehler oder nicht verbunden). Unbekannte IDs werden ignoriert. */
-export function areaStale(sources: ConnectionId[], connections: Connection[], now: Date): ConnectionId[] {
-  return sources.filter((id) => {
+const known = (sources: ConnectionId[], connections: Connection[], take: (c: Connection, now: Date) => boolean, now: Date): ConnectionId[] =>
+  sources.filter((id) => {
     const c = connections.find((x) => x.id === id);
-    return !!c && sourceFreshness(c, now) !== 'fresh';
+    return !!c && take(c, now);
   });
+
+/** Verbunden, aber Fehler oder zu alt. `missing` zählt nicht. Unbekannte IDs werden ignoriert. */
+export function areaStale(sources: ConnectionId[], connections: Connection[], now: Date): ConnectionId[] {
+  return known(sources, connections, (c, at) => {
+    const f = sourceFreshness(c, at);
+    return f === 'stale' || f === 'error';
+  }, now);
+}
+
+/** Katalog-Quellen ohne Zugang (Status `missing`), etwa von ensureCatalogConnections ergänzt. */
+export function areaNotConnected(sources: ConnectionId[], connections: Connection[], now: Date): ConnectionId[] {
+  return known(sources, connections, (c, at) => sourceFreshness(c, at) === 'missing', now);
+}
+
+/** Kein Urteil: nicht verbunden, Fehler oder zu alt. */
+export function areaUnreliable(sources: ConnectionId[], connections: Connection[], now: Date): ConnectionId[] {
+  return known(sources, connections, (c, at) => sourceFreshness(c, at) !== 'fresh', now);
 }
