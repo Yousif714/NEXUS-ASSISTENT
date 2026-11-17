@@ -1,3 +1,4 @@
+import { isAutomatedMail, previewBesideSubject, senderLabel } from '@/domain/mail-text';
 import { classifyJobMessage, type DocKind } from '@/domain/matching/job-messages';
 import { openReplies, toE164 } from '@/domain/matching/messages';
 import type { Contact, Message } from '@/domain/types';
@@ -7,10 +8,14 @@ export interface InboxRow {
   threadId: string;
   channel: Message['channel'];
   contactId: string | null;
-  /** Kontaktname, sonst WhatsApp-Profilname, sonst Nummer bzw. Adresse. */
+  /** Kontaktname, sonst Anzeigename, sonst Nummer bzw. Adresse. */
   name: string;
   phone: string | null;
+  /** Betreff der letzten Mail, sonst leer. */
+  subject: string;
   preview: string;
+  /** Nur automatische Mails. Zählt nicht als offene Antwort. */
+  system: boolean;
   lastAt: string;
   lastDirection: Message['direction'];
   count: number;
@@ -49,25 +54,31 @@ export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: 
     const phone = last.channel === 'whatsapp' ? validPhone(counterpart) : null;
     const named = incoming.findLast((m) => m.fromName || m.profileName);
     const fromName = named?.fromName || named?.profileName;
+    const system = incoming.length > 0 && incoming.every((m) => isAutomatedMail(m));
     const waiting = openReplies(list, at, 0);
     const waitingHours = waiting.length ? Math.max(...waiting.map((w) => w.waitingHours)) : null;
-    const classes = incoming.map((m) => classifyJobMessage(m.body));
-    const name = contact?.name ?? fromName ?? phone ?? counterpart;
+    const classes = incoming.filter((m) => !isAutomatedMail(m)).map((m) => classifyJobMessage(m.body));
+    const label = senderLabel(counterpart, { fromName, profileName: named?.profileName });
+    const name = contact?.name ?? (phone && last.channel === 'whatsapp' ? (fromName || phone) : label);
+    const subject = (incoming.findLast((m) => m.subject)?.subject ?? last.subject ?? '').replace(/\s+/g, ' ').trim();
+    const preview = previewBesideSubject(last.body, subject);
     rows.push({
       threadId: last.threadId,
       channel: last.channel,
       contactId,
       name,
       phone,
-      preview: last.body,
+      subject,
+      preview,
+      system,
       lastAt: last.sentAt,
       lastDirection: last.direction,
       count: list.length,
       waitingHours,
-      overdue: waitingHours !== null && waitingHours >= thresholdHours,
+      overdue: !system && waitingHours !== null && waitingHours >= thresholdHours,
       hasOrder: classes.some((c) => c.kind !== null),
       docs: [...new Set(classes.flatMap((c) => c.docs))],
-      search: [name, fromName ?? '', phone ?? '', counterpart, ...list.map((m) => m.body)].join('\n').toLowerCase(),
+      search: [name, fromName ?? '', phone ?? '', counterpart, subject, ...list.map((m) => m.body)].join('\n').toLowerCase(),
     });
   }
   return rows.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
@@ -78,7 +89,7 @@ export function filterInbox(rows: InboxRow[], filter: InboxFilter, query: string
   const digits = q.replace(/\D/g, '');
   const phoneQuery = digits.length >= 4 && /^[\d\s+\-/()]+$/.test(q) ? (digits.startsWith('0') && !digits.startsWith('00') ? `49${digits.slice(1)}` : digits.replace(/^00/, '')) : null;
   return rows.filter((r) => {
-    if (filter === 'waiting' && r.waitingHours === null) return false;
+    if (filter === 'waiting' && (r.system || r.waitingHours === null)) return false;
     if (filter === 'orders' && !r.hasOrder) return false;
     if (!q) return true;
     if (phoneQuery && r.phone?.replace(/\D/g, '').includes(phoneQuery)) return true;

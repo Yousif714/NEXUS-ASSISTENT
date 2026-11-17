@@ -24,6 +24,9 @@ export const IconCar = (p: IconProps) => (
 export const IconChat = (p: IconProps) => (
   <Svg {...p}><path d="M12 4c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-.9 0-1.8-.1-2.6-.3L5 19.5l1.2-3.4C4.5 14.8 3.5 13 3.5 11c0-3.9 3.8-7 8.5-7z" /></Svg>
 );
+export const IconMail = (p: IconProps) => (
+  <Svg {...p}><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="M4 7l8 6 8-6" /></Svg>
+);
 export const IconAssistant = (p: IconProps) => (
   <Svg {...p}><path d="M12 3.5a8.5 8.5 0 1 1-4.3 15.8L3.5 20.5l1.2-4A8.5 8.5 0 0 1 12 3.5z" /><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.6-2-1-1 .9a3.7 3.7 0 0 1-1.8-1.8l.9-1-1-2-1.6 1z" /></Svg>
 );

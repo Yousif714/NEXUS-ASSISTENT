@@ -28,7 +28,24 @@ describe('buildInbox', () => {
       waitingHours: 3, hasOrder: true, docs: ['zb1'], contactId: 'c1', channel: 'whatsapp',
     });
     expect(rows[0]).toMatchObject({ name: 'Max Muster', waitingHours: null, lastDirection: 'out' });
-    expect(rows[2]).toMatchObject({ channel: 'email', name: 'x@example.de', phone: null });
+    expect(rows[2]).toMatchObject({ channel: 'email', name: 'x@example.de', phone: null, system: false });
+  });
+  test('System-Mail: Anzeigename, Kurztext, zählt nicht als Warten', () => {
+    const url = 'https://accounts.google.com/AccountChooser?Email=very-long-token-that-must-not-stretch-the-card';
+    const raw = msg({
+      id: 'g1', channel: 'email', connectionId: 'gmail', threadId: 'g-1', needsReply: true,
+      from: '"Google" <no-reply@accounts.google.com>',
+      subject: 'Sicherheitswarnung',
+      body: `Sicherheitswarnung\n\n[image: Google] Jemand hat sich angemeldet. ${url} List-Unsubscribe`,
+      sentAt: '2026-11-17T04:10:00.000Z',
+    });
+    const rows = buildInbox({ messages: [raw], contacts: [] }, at, 2);
+    expect(rows[0]).toMatchObject({ name: 'Google', subject: 'Sicherheitswarnung', system: true, waitingHours: null });
+    expect(rows[0].preview).not.toMatch(/https?:/);
+    expect(rows[0].preview).not.toMatch(/\[image:/i);
+    expect(rows[0].preview.length).toBeLessThan(180);
+    expect(filterInbox(rows, 'waiting', '')).toEqual([]);
+    expect(filterInbox(rows, 'all', '').map((r) => r.threadId)).toEqual(['g-1']);
   });
   test('filtern: Warten, Aufträge, Suche nach Name, Nummer, Text', () => {
     const rows = buildInbox({ messages, contacts: [anna] }, at, 2);

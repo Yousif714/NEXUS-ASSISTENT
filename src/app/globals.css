@@ -135,6 +135,8 @@ a {
 /* ------------------------------------------------------------------ Shell */
 .shell-main {
   min-height: 100dvh;
+  min-width: 0;
+  overflow-x: clip;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
   /* Platz für Tab-Leiste + Assistenten-Knopf */
@@ -143,8 +145,10 @@ a {
 
 .shell-content {
   max-width: 760px;
+  min-width: 0;
   margin: 0 auto;
   padding: 0 16px;
+  overflow-x: clip;
 }
 
 @media (min-width: 768px) {
@@ -538,6 +542,12 @@ button.list-row:active {
 }
 
 /* Untertitel, der umbrechen darf (z. B. Verbindungsstand neben einem Knopf). */
+.list-row-subtitle .wrap-text,
+.list-row-title .wrap-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .list-row-subtitle .wrap-text {
   white-space: normal;
 }

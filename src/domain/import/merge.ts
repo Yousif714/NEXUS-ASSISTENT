@@ -1,5 +1,6 @@
 import type { ImportBatch, ImportedEvent, ImportedMessage } from '@/domain/import/batch';
 import { applyIntakes } from '@/domain/intake/apply';
+import { isAutomatedMail } from '@/domain/mail-text';
 import { contactIdForMail } from '@/domain/import/mail';
 import { classifyBankTx, linkBankReturns, normalizeIban } from '@/domain/matching/payments';
 import { matchMessage } from '@/domain/matching/messages';
@@ -118,6 +119,7 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
       const fromName = next.fromName || old?.fromName || next.profileName || old?.profileName;
       const profileName = next.profileName || old?.profileName || fromName;
       const attachments = next.attachments?.length ? next.attachments : old?.attachments;
+      const automated = old?.automated === true || next.automated === true || isAutomatedMail({ channel: next.channel, from, subject, body });
       return {
         ...(fromName ? { fromName } : {}),
         channel: next.channel,
@@ -132,8 +134,9 @@ export function mergeBatch(s: AppState, b: ImportBatch, newId: () => string): { 
         sentAt: next.sentAt || old?.sentAt || '',
         contactId: linked ?? old?.contactId ?? null,
         jobId: matched.jobId ?? old?.jobId ?? null,
-        needsReply: done || direction === 'out' ? false : (old ? old.needsReply : next.needsReply),
+        needsReply: done || direction === 'out' || automated ? false : (old ? old.needsReply : next.needsReply),
         ...(done ? { doneManually: true as const } : {}),
+        ...(automated ? { automated: true as const } : {}),
         ...(profileName ? { profileName } : {}),
         ...(attachments?.length ? { attachments } : {}),
         ...(old?.intake ? { intake: old.intake } : {}),
