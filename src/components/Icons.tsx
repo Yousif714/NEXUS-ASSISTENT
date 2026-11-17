@@ -15,6 +15,13 @@ function Svg({ size = 24, children, ...rest }: IconProps) {
 export const IconToday = (p: IconProps) => (
   <Svg {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M3.5 10h17M8 3v4M16 3v4" /><path d="M8.5 14.5l2.2 2.2 4.8-4.7" /></Svg>
 );
+export const IconHome = (p: IconProps) => (
+  <Svg {...p}><path d="M3.5 11 12 4l8.5 7" /><path d="M5.5 9.5V19a1 1 0 0 0 1 1H10v-5.5h4V20h3.5a1 1 0 0 0 1-1V9.5" /></Svg>
+);
+/** NEXUS: ein „N“ in einem abgerundeten Quadrat. */
+export const IconNexusN = (p: IconProps) => (
+  <Svg {...p}><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><path d="M9 16V8l6 8V8" strokeWidth={2} /></Svg>
+);
 export const IconNexus = (p: IconProps) => (
   <Svg {...p}><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5" /><circle cx="17" cy="9.5" r="2.5" /><path d="M16.5 14.6c2.4.2 4 1.7 4.5 4.4" /></Svg>
 );

@@ -7,6 +7,7 @@ import { registerServiceWorkerScript } from '@/components/sw-register-script';
 import './globals.css';
 import './motion.css';
 import './messages.css';
+import './glass.css';
 
 export const metadata: Metadata = {
   title: 'Nexus Assistent',
