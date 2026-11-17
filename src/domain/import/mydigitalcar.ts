@@ -1,5 +1,6 @@
 import { CONNECTION_CATALOG } from '../connections';
 import type { AppState, Connection, Contact, ExternalRef, Job, PostalAddress, Vehicle } from '../types';
+import { portalKeepGroup } from './portal-keep';
 
 /**
  * myDigitalCar-Export (web.mydigitalcar.de): Semikolon, UTF-8, eine Kopfzeile.
@@ -60,6 +61,8 @@ export interface MdcImportResult {
   vehicles: EntityCounts;
   jobs: EntityCounts;
   errors: MdcParseError[];
+  /** Zeilen ohne die drei Endstatus oder ohne FIN und Kennzeichen. */
+  skipped: number;
   /** Kopfzeile fehlt oder die Datei ist zu groß: Zustand unverändert. */
   error?: string;
 }
@@ -76,9 +79,9 @@ export function serviceName(code: string): string {
  * „wartet auf Kunde“, der Antrag liegt aber bei der Zulassungsstelle. Der Rohstatus bleibt im Feld.
  */
 export function mapMdcStatus(raw: string): { status: Job['status']; problem: boolean } {
-  const norm = raw.trim().toLowerCase();
-  if (norm === 'genehmigt' || norm === 'versandfertig') return { status: 'done', problem: false };
-  if (norm === 'abgelehnt' || norm.startsWith('fehler')) return { status: 'open', problem: true };
+  const group = portalKeepGroup(raw);
+  if (group === 'genehmigt') return { status: 'done', problem: false };
+  if (group === 'abgelehnt' || group === 'fehler') return { status: 'open', problem: true };
   return { status: 'open', problem: false };
 }
 
@@ -112,15 +115,19 @@ export function formatAddress(a?: PostalAddress): string {
   return [street, city].filter(Boolean).join(', ');
 }
 
-export function mdcResultText(r: Pick<MdcImportResult, 'jobs' | 'contacts' | 'vehicles' | 'duplicates' | 'errors'>, label = 'myDigitalCar'): string {
+export function mdcResultText(r: Pick<MdcImportResult, 'jobs' | 'contacts' | 'vehicles' | 'duplicates' | 'errors' | 'skipped'>, label = 'myDigitalCar'): string {
   const extra = [
     r.duplicates ? `${r.duplicates} Dubletten` : '',
+    r.skipped ? `${r.skipped} übersprungen` : '',
     r.errors.length ? `${r.errors.length} Zeilen mit Fehler` : '',
   ].filter(Boolean);
   return `${label} übernommen: ${r.jobs.created} Aufträge neu, ${r.jobs.updated} aktualisiert, ${r.jobs.skipped} unverändert, ${r.contacts.created} Kunden neu, ${r.vehicles.created} Fahrzeuge neu${extra.length ? `, ${extra.join(', ')}` : ''}`;
 }
 
-const holderKey = (name: string, postalCode: string) => `${name.trim().toLowerCase().replace(/\s+/g, ' ')}|${postalCode.trim()}`;
+/** Gleicher Halter: Name und PLZ, klein und ohne doppelte Leerzeichen. */
+export function holderMatchKey(name: string, postalCode: string): string {
+  return `${name.trim().toLowerCase().replace(/\s+/g, ' ')}|${postalCode.trim()}`;
+}
 const normVin = (vin: string) => vin.trim().toUpperCase().replace(/[\s-]/g, '');
 const normPlate = (plate: string) => plate.trim().toUpperCase().replace(/\s+/g, ' ');
 
@@ -221,7 +228,7 @@ function holderOf(raw: Record<string, string>): { name: string; kind: Contact['k
     kind: company ? 'dealer' : 'private',
     ...(person && company ? { person } : {}),
     ...(Object.keys(address).length ? { address } : {}),
-    key: holderKey(name, postalCode),
+    key: holderMatchKey(name, postalCode),
   };
 }
 
@@ -275,7 +282,7 @@ function markConnected(connections: Connection[], at: string): Connection[] {
  */
 export function applyMydigitalcarImport(state: AppState, csv: string, newId: () => string, at: string): MdcImportResult {
   const parsed = parseMydigitalcarCsv(csv);
-  const blank = { state, rows: 0, duplicates: 0, contacts: zero(), vehicles: zero(), jobs: zero(), errors: [] as MdcParseError[] };
+  const blank = { state, rows: 0, duplicates: 0, contacts: zero(), vehicles: zero(), jobs: zero(), errors: [] as MdcParseError[], skipped: 0 };
   if (!parsed.ok) return { ...blank, error: parsed.error };
 
   const contacts = state.contacts.slice();
@@ -290,7 +297,7 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
   const indexContact = (i: number) => {
     const c = contacts[i];
     for (const r of c.externalRefs ?? []) if (r.connectionId === CONNECTION) refAt.set(r.externalId, i);
-    if (c.company === 'zulassung' && c.address?.postalCode) nameAt.set(holderKey(c.name, c.address.postalCode), i);
+    if (c.company === 'zulassung' && c.address?.postalCode) nameAt.set(holderMatchKey(c.name, c.address.postalCode), i);
   };
   contacts.forEach((_, i) => indexContact(i));
   vehicles.forEach((v, i) => {
@@ -309,14 +316,15 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
 
   const counts = { contacts: zero(), vehicles: zero(), jobs: zero() };
   const errors: MdcParseError[] = [];
+  let skipped = 0;
   const columns = Object.keys(parsed.rows[0]?.raw ?? {});
 
   for (const row of parsed.rows) {
     const holder = holderOf(row.raw);
     const vin = normVin(cell(row.raw, 'FIN'));
     const plate = normPlate(cell(row.raw, 'Kennzeichen_Neu') || cell(row.raw, 'Kennzeichen_Alt'));
-    if (!vin && !plate) {
-      errors.push({ line: row.line, vorgang: row.externalId.startsWith('row:') ? undefined : row.externalId, message: 'Weder FIN noch Kennzeichen' });
+    if (!portalKeepGroup(cell(row.raw, 'Status')) || (!vin && !plate)) {
+      skipped++;
       continue;
     }
 
@@ -446,5 +454,6 @@ export function applyMydigitalcarImport(state: AppState, csv: string, newId: () 
     duplicates: parsed.duplicates,
     ...counts,
     errors,
+    skipped,
   };
 }

@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { realNow, todayBerlin } from '@/domain/clock';
+import { planPortalCleanup, portalCleanupText, type PortalCleanupCounts } from '@/domain/import/portal-cleanup';
 import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
 import { applyPortalImport, isPortalSource, PORTAL_LABEL, type PortalSource } from '@/domain/import/portal';
 import { deriveProposals } from '@/domain/import/proposals';
@@ -338,7 +339,7 @@ export function registerNexusTools(server: McpServer): void {
 
   server.registerTool('import_portal_csv', {
     title: 'Portal-CSV importieren',
-    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. Antwort nur Zähler, keine Rohdaten. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz: Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr (Anträge-Liste von dashboard.nextoz.de). Idempotent über Auftragsnummer ohne führendes #. Nr ist die Listenposition und keine ID. Kennzeichen Zufällig gilt als kein Kennzeichen. Fehlen FIN und Kennzeichen, wird der Vorgang trotzdem angelegt, ein Fahrzeug nur bei FIN oder echtem Kennzeichen. Halter fehlt in der Datei, der Auftrag bleibt ohne Kontakt. Fahrzeuge werden über FIN oder Kennzeichen mit bestehenden zusammengeführt, auch aus mydigitalcar.',
+    description: 'Importiert eine Portal-CSV als Kunden, Fahrzeuge und Aufträge. source ist mydigitalcar oder nextoz, beides bleibt getrennt. Antwort nur Zähler, keine Rohdaten. Übernommen werden nur fertige Vorgänge mit Status Genehmigt, Versandfertig, Erfolgreich oder Abgeschlossen, sowie Abgelehnt, Signatur abgelehnt, Fehler, Fehler (B), Fehler (T) und Signaturfehler. Entwurf, leer, in Bearbeitung und Zeilen ohne FIN und ohne Kennzeichen zählen als skipped und werden nicht angelegt. mydigitalcar: Semikolon, UTF-8, Kopfzeile des myDigitalCar-Exports; idempotent über Ex_Vorgangsnummer, auch in Portionen mit derselben Kopfzeile. nextoz: Semikolon, UTF-8, Kopfzeile Nr;Auftragsnummer;Kennzeichen;FIN;Antragsart;Datum;Status;Fehler;Amtsgebuehr (Anträge-Liste von dashboard.nextoz.de). Optionale Spalten Halter-Typ;Halter-Name;Halter-Strasse;Halter-Hausnummer;Halter-PLZ;Halter-Ort. Ist Halter-Name gesetzt, wird der Kontakt über Name und PLZ gesucht, sonst neu angelegt und mit Auftrag und Fahrzeug verknüpft (contactId). Ohne diese Spalten bleibt der Auftrag ohne Kontakt. Idempotent über Auftragsnummer ohne führendes #. Nr ist die Listenposition und keine ID. Kennzeichen Zufällig gilt als kein Kennzeichen. Fahrzeuge werden über FIN oder Kennzeichen mit bestehenden zusammengeführt, auch aus mydigitalcar.',
     inputSchema: z.object({
       source: z.enum(['mydigitalcar', 'nextoz']),
       csv: z.string().min(1).max(MDC_CSV_MAX_CHARS),
@@ -370,9 +371,46 @@ export function registerNexusTools(server: McpServer): void {
       contacts: planned.contacts,
       vehicles: planned.vehicles,
       jobs: planned.jobs,
+      skipped: planned.skipped,
       errors: planned.errors.slice(0, 50),
       errorCount: planned.errors.length,
     });
+  });
+
+  const cleanupPayload = (counts: PortalCleanupCounts, dryRun: boolean) => ({
+    dryRun,
+    deleteByStatus: counts.deleteByStatus,
+    keepByStatus: counts.keepByStatus,
+    keptBecauseInvoice: counts.keptBecauseInvoice,
+    jobs: counts.jobs,
+    vehicles: counts.vehicles,
+    contacts: counts.contacts,
+    notices: counts.notices,
+    text: portalCleanupText(counts, dryRun),
+  });
+
+  server.registerTool('cleanup_portal_jobs', {
+    title: 'Portal-Aufträge aufräumen',
+    description: 'Löscht Portal-Aufträge (mydigitalcar und nextoz), deren Status nicht Genehmigt/Versandfertig/Erfolgreich/Abgeschlossen, Abgelehnt/Signatur abgelehnt oder Fehler/Signaturfehler ist, oder die weder FIN noch Kennzeichen haben. Hinweise nur zu diesen Aufträgen fallen mit weg. Aufträge von Hand und Aufträge mit Rechnung bleiben. Fahrzeuge und Kontakte nur, wenn kein anderer Auftrag, keine Rechnung und kein manueller Eintrag mehr darauf zeigt. dryRun ist standardmäßig true und löscht nichts; die Antwort zählt je Quelle und Status. dryRun false führt die Löschung aus.',
+    inputSchema: z.object({ dryRun: z.boolean().optional() }),
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  }, async (args) => {
+    const dryRun = args.dryRun !== false;
+    const repos = getRepos();
+    const counts = planPortalCleanup(await current());
+    if (dryRun || counts.jobs === 0) {
+      await logMcpTool('cleanup_portal_jobs', portalCleanupText(counts, dryRun));
+      return jsonResult({ ok: true, ...cleanupPayload(counts, dryRun) });
+    }
+    try {
+      await dispatchEvents(repos, [{ type: 'mcpChange', change: { op: 'cleanupPortalJobs' } }], { at: realNow, provider: getActionProvider() });
+    } catch (err) {
+      const message = err instanceof Error && err.message === 'conflict' ? 'Gleichzeitige Änderung, bitte erneut versuchen' : 'Aufräumen fehlgeschlagen';
+      await logMcpTool('cleanup_portal_jobs', message);
+      return jsonResult({ error: message }, true);
+    }
+    await logMcpTool('cleanup_portal_jobs', portalCleanupText(counts, false));
+    return jsonResult({ ok: true, ...cleanupPayload(counts, false) });
   });
 
   server.registerTool('sync_mail', {

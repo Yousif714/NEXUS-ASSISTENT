@@ -132,7 +132,7 @@ export function PortalCsvUpload({ source }: { source: PortalSource }) {
       {planned && !planned.error && (
         <div className="portal-card-preview" data-testid={`portal-preview-${source}`}>
           <p className="list-row-title">{planned.rows} Vorgänge · {planned.duplicates} Dubletten · {planned.errors.length} Zeilen mit Fehler</p>
-          <p className="list-row-subtitle">{planned.contacts.created} Kunden neu · {planned.vehicles.created} Fahrzeuge neu · {planned.jobs.created} Aufträge neu, {planned.jobs.updated} aktualisiert</p>
+          <p className="list-row-subtitle">{planned.contacts.created} Kunden neu · {planned.vehicles.created} Fahrzeuge neu · {planned.jobs.created} Aufträge neu, {planned.jobs.updated} aktualisiert{planned.skipped ? ` · ${planned.skipped} übersprungen` : ''}</p>
           <div className="card-buttons">
             <button type="button" className="btn btn-primary" disabled={busy} onClick={() => { void take(); }}>Übernehmen</button>
           </div>

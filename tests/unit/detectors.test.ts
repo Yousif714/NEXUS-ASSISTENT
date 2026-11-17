@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { reconcileInsights, runDetectors, selectTop } from '@/domain/detectors';
+import { detectJobsNotInvoiced } from '@/domain/detectors/jobs';
 import { buildMatchContext } from '@/domain/detectors/payments';
 import { detectInvoiceOverdue, detectStripePaidLexwareOpen } from '@/domain/detectors/invoices';
 import { detectMemberOverdue, memberView } from '@/domain/detectors/members';
@@ -24,6 +25,20 @@ describe('Detektoren', () => {
   });
   test('Teilrechnung reicht nicht', () => {
     expect(find(run({ jobs: [{ ...muellerDone, invoiceIds: ['i40'] }], invoices: [inv('i40', 4000)] }), 'job_not_invoiced').amountCents).toBe(4900);
+  });
+  test('Portal-Aufträge bündeln sich, ein Auftrag von Hand bleibt einzeln', () => {
+    const hand = muellerDone;
+    const portal = { ...muellerDone, id: 'p1', portalSource: 'nextoz' as const, priceCents: 300 };
+    const more = { ...muellerDone, id: 'p2', portalSource: 'mydigitalcar' as const, priceCents: 500 };
+    const list = detectJobsNotInvoiced(stateWith({ jobs: [hand, portal, more] }));
+    expect(list.map((i) => i.dedupeKey)).toEqual(['job-inv:j-mueller-1', 'job-inv:portal']);
+    expect(list[1]).toMatchObject({
+      title: '2 Portal-Aufträge nicht abgerechnet',
+      amountCents: 800,
+      refs: [expect.objectContaining({ href: '/zulassung?abrechnung=portal#jobs-unbilled' })],
+    });
+    const many = Array.from({ length: 1034 }, (_, i) => ({ ...muellerDone, id: `n${i}`, portalSource: 'nextoz' as const, priceCents: 100 }));
+    expect(detectJobsNotInvoiced(stateWith({ jobs: many }))[0].title).toBe('1.034 Portal-Aufträge nicht abgerechnet');
   });
   test('voll abgerechnet → kein Hinweis', () => {
     expect(types(run({ jobs: [{ ...muellerDone, invoiceIds: ['i89'] }], invoices: [inv('i89', 8900)] }))).not.toContain('job_not_invoiced');
