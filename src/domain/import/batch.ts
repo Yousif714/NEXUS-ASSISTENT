@@ -1,4 +1,4 @@
-import type { Contact, ExternalRef, Invoice, IsoDate, OrderConfirmation, Payment, Subscription } from '@/domain/types';
+import type { ConnectionId, Contact, ExternalRef, Invoice, IsoDate, Message, OrderConfirmation, Payment, Subscription } from '@/domain/types';
 
 /** Erstimport holt nur Daten ab diesem Tag; danach inkrementell. */
 export const IMPORT_SINCE: IsoDate = '2026-06-01';
@@ -12,6 +12,10 @@ export type ImportedOrderConfirmation = Omit<OrderConfirmation, 'id' | 'contactI
 export type ImportedPayment = Omit<Payment, 'id'>;
 export type ImportedSubscription = Omit<Subscription, 'id' | 'contractId' | 'confirmedPriceCents' | 'confirmedEndDate' | 'disputes'>;
 export interface ImportedDispute { externalId: string; invoiceExternalId: string | null }
+/** Nachricht ohne lokale Identität. Kontakt und Auftrag setzt der Merge. */
+export type ImportedMessage = Omit<Message, 'id' | 'contactId' | 'jobId' | 'doneManually'>;
+/** Termin für einen späteren Kalender-Abruf. Idempotent über Quelle und externe ID. */
+export interface ImportedEvent { connectionId: ConnectionId; externalId: string; title: string; startAt: string; endAt: string; location?: string }
 
 export interface ImportBatch {
   contacts: ImportedContact[];
@@ -20,6 +24,10 @@ export interface ImportBatch {
   subscriptions: ImportedSubscription[];
   disputes: ImportedDispute[];
   orderConfirmations: ImportedOrderConfirmation[];
+  messages: ImportedMessage[];
+  events: ImportedEvent[];
 }
 
-export const emptyBatch = (): ImportBatch => ({ contacts: [], invoices: [], payments: [], subscriptions: [], disputes: [], orderConfirmations: [] });
+export const emptyBatch = (): ImportBatch => ({
+  contacts: [], invoices: [], payments: [], subscriptions: [], disputes: [], orderConfirmations: [], messages: [], events: [],
+});

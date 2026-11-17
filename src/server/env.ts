@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { readImapAccount, type ImapAccount } from './imap-config';
+
 export interface ServerEnv {
   supabaseUrl?: string;
   supabaseServiceRoleKey?: string;
@@ -22,6 +24,10 @@ export interface ServerEnv {
   anthropicApiKey?: string;
   /** Optionaler Schlüssel für den externen MCP-Connector. Fehlt er, bleibt `/api/mcp` geschlossen. */
   mcpApiKey?: string;
+  /** IMAP-Postfächer. Fehlt ein Eintrag, bleibt die Quelle `missing`. */
+  imapInfoMail?: ImapAccount;
+  imapGmail?: ImapAccount;
+  imapIcloud?: ImapAccount;
 }
 
 const SUPABASE = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const;
@@ -55,5 +61,8 @@ export function readEnv(e: Record<string, string | undefined> = process.env): Se
     qontoSecretKey: val('QONTO_SECRET_KEY'),
     anthropicApiKey: val('ANTHROPIC_API_KEY'),
     mcpApiKey: val('MCP_API_KEY'),
+    imapInfoMail: readImapAccount(e, 'info_mail', val),
+    imapGmail: readImapAccount(e, 'gmail', val),
+    imapIcloud: readImapAccount(e, 'icloud', val),
   };
 }

@@ -8,7 +8,7 @@ import { detectCommitment } from '@/domain/commitments';
 import { reconcileInsights, runDetectors } from '@/domain/detectors';
 import { buildMatchContext } from '@/domain/detectors/payments';
 import type { NewInvoiceReading, StoreEvent } from '@/domain/events';
-import { areaStale } from '@/domain/freshness';
+import { areaUnreliable } from '@/domain/freshness';
 import { normalizePhone, validPhone } from '@/domain/matching/messages';
 import { bankReturnAllocations, classifyBankTx, matchBankPayment, normalizeIban, type MatchContext } from '@/domain/matching/payments';
 import { stripeAllocations } from '@/domain/matching/stripe';
@@ -128,7 +128,7 @@ function settleCommitments(s: AppState, at: Date): AppState {
 export function refresh(s: AppState, at: Date, isDemo = true): AppState {
   const allocated = settleCommitments(allocateBankReturns(autoAllocate(allocateBankReturns(allocateStripe(s, at, isDemo), at, isDemo), at, isDemo), at, isDemo), at);
   const st = ensureTakeoverDrafts(allocated, at, isDemo);
-  const stale = areaStale(st.connections.map((c) => c.id), st.connections, at);
+  const stale = areaUnreliable(st.connections.map((c) => c.id), st.connections, at);
   return { ...st, insights: reconcileInsights(st.insights, [...runDetectors(st, at), ...runCoach(st, at)], at, stale, st.settings.suppressedCoachKeys) };
 }
 
@@ -504,15 +504,22 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
         if (e.warning) next.lastError = e.warning;
         return next;
       });
-      const { payments: p, invoices: i, subscriptions: a } = r.added;
+      const { payments: p, invoices: i, subscriptions: a, messages: m, events: ev } = r.added;
       const linked = syncTakeovers(r.state, todayBerlin(at), at);
       const state = {
         ...linked.state,
         connections,
         audit: [...linked.state.audit, ...linked.audit.map((text) => ({ at: at.toISOString(), actor: 'system' as const, text, isDemo: ctx.isDemo }))],
       };
-      return p + i + a > 0
-        ? { state, audit: { actor: 'system', text: `Abgleich ${conn.label}: ${p} neue Zahlungen, ${i} Rechnungen, ${a} Abos` } }
+      const financial = `${p} neue Zahlungen, ${i} Rechnungen, ${a} Abos`;
+      const mailBits = [m ? `${m} Nachrichten` : '', ev ? `${ev} Termine` : ''].filter(Boolean);
+      const text = mailBits.length === 0
+        ? `Abgleich ${conn.label}: ${financial}`
+        : p + i + a > 0
+          ? `Abgleich ${conn.label}: ${financial}, ${mailBits.join(', ')}`
+          : `Abgleich ${conn.label}: ${mailBits.join(', ')}`;
+      return p + i + a + m + ev > 0
+        ? { state, audit: { actor: 'system' as const, text } }
         : { state };
     }
     case 'syncFailed': {

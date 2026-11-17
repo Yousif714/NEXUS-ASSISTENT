@@ -14,7 +14,7 @@ import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing, renderBriefingText } from '@/domain/briefing';
 import { formatBerlin, formatBerlinDe, now } from '@/domain/clock';
 import { notConnected } from '@/domain/connections';
-import { areaStale } from '@/domain/freshness';
+import { areaUnreliable } from '@/domain/freshness';
 import { openReplies } from '@/domain/matching/messages';
 import type { StoredInsight } from '@/domain/types';
 
@@ -84,7 +84,7 @@ export default function HeutePage() {
       <section className="money-cards" aria-label="Geld">
         {briefing.money.map((m) => (
           <MoneyCard key={m.company} company={m.company} openCents={m.openCents} overdueCents={m.overdueCents}
-            stale={areaStale(MONEY_SOURCES[m.company], state.connections, at)} />
+            stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
         ))}
       </section>
 

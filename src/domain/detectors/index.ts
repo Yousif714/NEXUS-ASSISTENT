@@ -1,4 +1,4 @@
-import { areaStale } from '../freshness';
+import { areaUnreliable } from '../freshness';
 import type { AppState, ConnectionId, Insight, StoredInsight } from '../types';
 import { detectCallSlides } from './calls';
 import { detectCommitments } from './commitments';
@@ -34,7 +34,7 @@ export function runDetectors(s: AppState, now: Date): Insight[] {
     ...detectReadInvoiceChanged(s),
     ...detectTakeover(s, now),
   ];
-  return all.filter((i) => areaStale(i.needsSources, s.connections, now).length === 0);
+  return all.filter((i) => areaUnreliable(i.needsSources, s.connections, now).length === 0);
 }
 
 const RANK = { now: 0, today: 1, info: 2 } as const;

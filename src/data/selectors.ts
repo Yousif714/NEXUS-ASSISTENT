@@ -4,7 +4,7 @@ import { LEXWARE_OF, contractSources, notConnected } from '@/domain/connections'
 import { isMembership } from '@/domain/import/membership';
 import { todayBerlin } from '@/domain/clock';
 import { memberView } from '@/domain/detectors';
-import { areaStale } from '@/domain/freshness';
+import { areaUnreliable } from '@/domain/freshness';
 import { plateInText } from '@/domain/matching/messages';
 import { customerOpenInvoices, invoiceOpenCents, invoicePaidCents, paymentRestCents } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
@@ -128,7 +128,7 @@ export function stripeLexCases(s: AppState): { key: string; invoice: Invoice; pa
 /** Tageszahlen. `notInvoiced` ist `null`, wenn der Lexware-Datenstand des Zulassungsdienstes nicht frisch ist. */
 export function zulassungKpis(s: AppState, at: Date): { doneToday: number; open: number; waiting: number; notInvoiced: number | null } {
   const today = todayBerlin(at);
-  const stale = areaStale(MONEY_SOURCES.zulassung, s.connections, at).length > 0;
+  const stale = areaUnreliable(MONEY_SOURCES.zulassung, s.connections, at).length > 0;
   return {
     doneToday: s.jobs.filter((j) => j.doneAt && todayBerlin(new Date(j.doneAt)) === today).length,
     open: s.jobs.filter((j) => j.status === 'open').length,

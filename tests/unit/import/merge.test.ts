@@ -15,7 +15,7 @@ test('erneuter Import ist idempotent', () => {
   const once = mergeBatch(empty, stripeBatch, seq()).state;
   const twice = mergeBatch(once, stripeBatch, seq());
   expect(twice.state).toEqual(once);
-  expect(twice.added).toEqual({ contacts: 0, invoices: 0, payments: 0, subscriptions: 0 });
+  expect(twice.added).toEqual({ contacts: 0, invoices: 0, payments: 0, subscriptions: 0, messages: 0, events: 0 });
 });
 test('geändertes Abo: Felder neu, contractId und Bestätigungswerte bleiben', () => {
   const s = confirmedSub(mergeBatch(empty, stripeBatch, seq()).state, 'sub_A', 'k1');

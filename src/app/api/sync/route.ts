@@ -3,7 +3,7 @@ import { realNow } from '@/domain/clock';
 import { requireSession } from '@/server/auth/session';
 import { getRepos, getSyncDeps } from '@/server/registry';
 import { loadState } from '@/server/state-service';
-import { sanitizeError, syncConnections, syncSecrets } from '@/server/sync';
+import { imapSecrets, sanitizeError, syncConnections, syncSecrets } from '@/server/sync';
 
 // Sekunden; das Sync-Budget (40 s) liegt darunter.
 export const maxDuration = 60;
@@ -20,7 +20,7 @@ export async function POST() {
   let secrets: string[] = [];
   try {
     const deps = getSyncDeps();
-    secrets = syncSecrets(deps.keys);
+    secrets = syncSecrets(deps.keys, imapSecrets(deps.imap));
     await syncConnections(repos, deps);
     const state = await loadState(repos, realNow());
     return NextResponse.json({ state }, { headers: { 'cache-control': 'no-store' } });

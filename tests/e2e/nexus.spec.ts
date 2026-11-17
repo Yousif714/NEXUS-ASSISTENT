@@ -192,7 +192,7 @@ test('NEXUS → Offen: Summe oben, sortiert nach Überfälligkeit', async ({ pag
   await expect(contractRow).toHaveAttribute('href', /\/nexus\/mitglieder\/.+/);
 });
 
-test('NEXUS → Offen: bei veralteten Daten nur Hinweis, keine Summe, kein „Nichts offen“', async ({ page }) => {
+test('NEXUS → Offen: ohne Bank nur Hinweis, keine Summe, kein „Nichts offen“', async ({ page }) => {
   await page.goto('/nexus?reset=1');
   await expect(page.getByTestId('open-link')).toBeVisible();
   await page.evaluate(() => {
@@ -202,7 +202,7 @@ test('NEXUS → Offen: bei veralteten Daten nur Hinweis, keine Summe, kein „Ni
     localStorage.setItem(key, JSON.stringify(s));
   });
   await page.goto('/nexus/offen');
-  await expect(page.getByTestId('stale-note')).toContainText('Datenstand zu alt');
+  await expect(page.getByTestId('stale-note')).toContainText('Nicht verbunden');
   await expect(page.getByTestId('receivables-total')).toHaveCount(0);
   await expect(page.getByText('Nichts offen.')).toHaveCount(0);
 });
