@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { PORTALS_IN_APP } from '@/domain/features';
 import { realNow, todayBerlin } from '@/domain/clock';
 import { planPortalCleanup, portalCleanupFailure, portalCleanupText, type PortalCleanupCounts } from '@/domain/import/portal-cleanup';
 import { MDC_CSV_MAX_CHARS } from '@/domain/import/mydigitalcar';
@@ -346,6 +347,7 @@ export function registerNexusTools(server: McpServer): void {
     }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   }, async (args) => {
+    if (!PORTALS_IN_APP) return jsonResult({ error: 'myDigitalCar und nextOZ sind in der App ausgeschaltet' }, true);
     if (!isPortalSource(args.source)) return jsonResult({ error: 'Unbekannte Quelle' }, true);
     const source = args.source as PortalSource;
     const repos = getRepos();

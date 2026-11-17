@@ -1,3 +1,4 @@
+import { PORTALS_IN_APP, visibleState } from '@/domain/features';
 import { REJECT_REASON_DE, approve, editDraft, finishExecution, reconcileUncertain, retry, startExecution, type ActionOutput } from '@/domain/actions/machine';
 import { handleButton } from '@/domain/assistant';
 import { jobBilling } from '@/domain/billing';
@@ -131,7 +132,9 @@ export function refresh(s: AppState, at: Date, isDemo = true): AppState {
   const allocated = settleCommitments(allocateBankReturns(autoAllocate(allocateBankReturns(allocateStripe(s, at, isDemo), at, isDemo), at, isDemo), at, isDemo), at);
   const st = ensureTakeoverDrafts(allocated, at, isDemo);
   const stale = areaUnreliable(st.connections.map((c) => c.id), st.connections, at);
-  return { ...st, insights: reconcileInsights(st.insights, [...runDetectors(st, at), ...runCoach(st, at)], at, stale, st.settings.suppressedCoachKeys) };
+  // Hinweise nur aus eingeschalteten Bereichen (WhatsApp/Portale aus: src/domain/features.ts).
+  const view = visibleState(st);
+  return { ...st, insights: reconcileInsights(st.insights, [...runDetectors(view, at), ...runCoach(view, at)], at, stale, st.settings.suppressedCoachKeys) };
 }
 
 // ---------- Mutationen ----------
@@ -743,6 +746,7 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
       return { state: r.state, audit: { actor: 'assistant', source: 'mcp', text: r.text } };
     }
     case 'importPortalCsv': {
+      if (!PORTALS_IN_APP) return { state: s, audit: { actor: 'owner', text: 'Portal-Import abgelehnt: myDigitalCar und nextOZ sind ausgeschaltet' } };
       const r = applyPortalImport(s, e.source, e.csv, ctx.newId, at.toISOString());
       const label = e.source === 'nextoz' ? 'nextOZ' : 'myDigitalCar';
       if (r.error) return { state: s, audit: { actor: 'owner', text: `${label} nicht übernommen: ${r.error}` } };

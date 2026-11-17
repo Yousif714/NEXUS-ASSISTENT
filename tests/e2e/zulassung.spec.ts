@@ -215,96 +215,13 @@ test('Sparkasse: ohne Treffer → „alle offenen Rechnungen“ eines Kunden wä
   await expect(page.getByTestId('customer-invoices')).toContainText('Keine offenen Rechnungen.');
 });
 
-test('myDigitalCar und nextOZ: getrennte Quellen, Import, Status, Filter', async ({ page }) => {
+test('myDigitalCar und nextOZ sind ausgeschaltet: keine Quellen, kein Upload, keine Filter', async ({ page }) => {
   await page.goto('/verbindungen?reset=1');
-  const mdc = page.getByTestId('conn-mydigitalcar');
-  const oz = page.getByTestId('conn-nextoz');
-  await expect(mdc).toContainText('myDigitalCar');
-  await expect(oz).toContainText('nextOZ');
-  await expect(mdc.getByRole('link', { name: 'myDigitalCar hochladen' })).toHaveAttribute('href', '/zulassung#portal-mydigitalcar');
-  await expect(oz.getByRole('link', { name: 'nextOZ hochladen' })).toHaveAttribute('href', '/zulassung#portal-nextoz');
-
+  await expect(page.getByTestId('conn-mydigitalcar')).toHaveCount(0);
+  await expect(page.getByTestId('conn-nextoz')).toHaveCount(0);
   await page.goto('/zulassung');
-  await expect(page.getByTestId('portal-upload-mydigitalcar')).toBeVisible();
-  await expect(page.getByTestId('portal-upload-nextoz')).toBeVisible();
-  await page.getByTestId('portal-source-filter').selectOption('nextoz');
-  await expect(page.getByTestId('portal-filter-empty')).toBeVisible();
-  await expect(page.getByTestId('job-row-j-schmidt-1')).toHaveCount(0);
-  await page.getByTestId('portal-source-filter').selectOption('all');
-  await ensureOpen(page.getByTestId('jobs-waiting_customer'));
-  await expect(page.getByTestId('job-row-j-schmidt-1')).toBeVisible();
-
-  await page.getByLabel('nextOZ-Datei').setInputFiles({ name: 'nextoz.csv', mimeType: 'text/csv', buffer: Buffer.from('a;b\n1;2\n') });
-  await expect(page.getByTestId('portal-upload-nextoz').getByRole('alert')).toContainText('Kopfzeile');
-
-  await page.getByLabel('myDigitalCar-Datei').setInputFiles('tests/fixtures/mydigitalcar/vorgaenge.csv');
-  const preview = page.getByTestId('portal-preview-mydigitalcar');
-  await expect(preview).toContainText('3 Vorgänge · 1 Dubletten');
-  await preview.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('portal-summary-mydigitalcar')).toContainText('3 Aufträge neu');
-
-  await page.getByTestId('portal-status-filter').selectOption('problem');
-  await expect(page.getByRole('link', { name: /MD CI 200/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /MD CI 100/ })).toHaveCount(0);
-  await page.getByRole('link', { name: /MD CI 200/ }).click();
-  await ensureOpen(page.getByTestId('job-portal'));
-  await expect(page.getByTestId('job-portal-source')).toHaveText('myDigitalCar');
-  await expect(page.locator('header').getByTestId('portal-badge-mydigitalcar')).toBeVisible();
-  await expect(page.getByTestId('job-vorgang')).toHaveText('9002');
-  await expect(page.getByTestId('job-portal-status')).toHaveText('Fehler (B)');
-  await expect(page.getByTestId('job-portal-problem')).toBeVisible();
-  await expect(page.getByTestId('portal-field-ZB1_Sicherheitscode')).toHaveCount(0);
-
-  await page.goto('/zulassung');
-  await page.getByTestId('portal-status-filter').selectOption('all');
-  await ensureOpen(page.getByTestId('jobs-done'));
-  await page.getByRole('link', { name: /MD CI 100/ }).click();
-  await ensureOpen(page.getByTestId('job-portal'));
-  await expect(page.getByTestId('job-vorgang')).toHaveText('9001');
-  await expect(page.getByTestId('job-portal-status')).toHaveText('Genehmigt');
-  await expect(page.getByTestId('portal-field-ZB1_Sicherheitscode')).toContainText('ZB1-GEHEIM');
-  await expect(page.getByTestId('portal-field-Steuer_IBAN')).toContainText('DE89370400440532013000');
-  await expect(page.getByTestId('job-price')).toHaveText('–');
-
-  await page.goto('/zulassung');
-  await ensureOpen(page.getByTestId('jobs-done'));
-  await page.getByRole('link', { name: /MD CI 300/ }).click();
-  await expect(page.getByTestId('job-customer')).toHaveText('Halter unbekannt (myDigitalCar)');
-  await expect(page.getByTestId('job-vorgang')).toHaveText('9003');
-  await expect(page.getByRole('link', { name: 'Halter unbekannt (myDigitalCar)' })).toHaveCount(0);
-
-  await page.goto('/zulassung');
-  await page.getByLabel('nextOZ-Datei').setInputFiles('tests/fixtures/nextoz/antraege.csv');
-  const ozPreview = page.getByTestId('portal-preview-nextoz');
-  await expect(ozPreview).toContainText('4 Vorgänge');
-  await ozPreview.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('portal-summary-nextoz')).toContainText('2 Aufträge neu');
-  await expect(page.getByTestId('portal-summary-nextoz')).toContainText('2 übersprungen');
-
-  await page.getByTestId('portal-source-filter').selectOption('nextoz');
-  await expect(page.getByRole('link', { name: /BO JD 1003/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /MD CI 100/ })).toHaveCount(0);
-  await page.getByRole('link', { name: /BO JD 1003/ }).click();
-  await expect(page.getByRole('heading', { name: 'Wiederinbetriebsetzung' })).toBeVisible();
-  await expect(page.getByTestId('job-portal-source')).toHaveText('nextOZ');
-  await expect(page.locator('header').getByTestId('portal-badge-nextoz')).toBeVisible();
-  await expect(page.getByTestId('job-vorgang')).toHaveText('#b6867cee');
-  await expect(page.getByTestId('job-portal-status')).toHaveText('Erfolgreich');
-  await expect(page.getByTestId('job-portal-date')).toContainText('23.07.2025');
-  await expect(page.getByTestId('job-price')).toHaveText('12,40 €');
-  await expect(page.getByTestId('job-customer')).toHaveText('Halter unbekannt (nextOZ)');
-  await expect(page.getByTestId('job-vehicle')).toContainText('BO JD 1003');
-  await expect(page.getByTestId('portal-field-Antragsart')).toContainText('WG');
-  await expect(page.getByTestId('job-portal-problem')).toHaveCount(0);
-
-  await page.goto('/zulassung');
-  await page.getByTestId('portal-source-filter').selectOption('nextoz');
-  await page.getByTestId('portal-status-filter').selectOption('problem');
-  await expect(page.getByRole('link', { name: /MD CI 200/ })).toHaveCount(0);
-  await page.getByRole('link', { name: /E AB 9/ }).click();
-  await expect(page.getByTestId('job-portal-status')).toHaveText('Signaturfehler');
-  await expect(page.getByTestId('job-portal-error')).toContainText('Unterschrift fehlt');
-  await expect(page.getByTestId('job-portal-problem')).toBeVisible();
-  await expect(page.getByTestId('job-vehicle')).toContainText('E AB 9');
-  await expect(page.getByTestId('portal-field-Kennzeichen')).toContainText('E AB 9');
+  await expect(page.getByTestId('kpi-open')).toBeVisible();
+  await expect(page.getByTestId('portal-upload-mydigitalcar')).toHaveCount(0);
+  await expect(page.getByTestId('portal-upload-nextoz')).toHaveCount(0);
+  await expect(page.getByTestId('portal-filters')).toHaveCount(0);
 });

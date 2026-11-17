@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { PortalUploadLink } from '@/components/PortalImport';
 import { SetupChecklist, StatementUploadLink } from '@/components/SetupChecklist';
 import { statementStandText } from '@/components/connection-labels';
+import { showConnection } from '@/domain/features';
 import { readerSummary } from '@/domain/import/invoice-reading';
 import { useAppStore } from '@/data/store';
 import { now } from '@/domain/clock';
@@ -24,7 +25,7 @@ function SourceList() {
   const at = now();
   return (
     <ListGroup title="Quellen" testId="connections">
-      {state.connections.map((c) => {
+      {state.connections.filter((c) => showConnection(c.id)).map((c) => {
         const company = c.company ? COMPANY_LABEL[c.company] : 'Firmenübergreifend';
         const statement = c.id === 'bank_sparkasse';
         const portal = c.id === 'mydigitalcar' || c.id === 'nextoz' ? c.id : null;
@@ -72,7 +73,7 @@ export default function ConnectionsPage() {
   return (
     <>
       <PageHeader title="Verbindungen" />
-      {mode === 'real' ? <><SyncNowButton /><SetupChecklist connections={state.connections} reader={readerSummary(state, now())} /></> : <SourceList />}
+      {mode === 'real' ? <><SyncNowButton /><SetupChecklist connections={state.connections.filter((c) => showConnection(c.id))} reader={readerSummary(state, now())} /></> : <SourceList />}
     </>
   );
 }

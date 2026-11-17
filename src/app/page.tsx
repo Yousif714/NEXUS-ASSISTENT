@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { TaskRow } from '@/components/TaskRow';
 import { openInsights } from '@/data/selectors';
 import { useAppStore } from '@/data/store';
+import { showConnection } from '@/domain/features';
 import { MONEY_SOURCES, buildBriefing, renderBriefingText } from '@/domain/briefing';
 import { berlinParts, formatBerlin, formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { buildHeuteFeed } from '@/domain/heute';
@@ -41,7 +42,7 @@ function CoachTip({ tip, onTake, onLater, onNever }: { tip: StoredInsight; onTak
 }
 
 function TechStatus({ state, at }: { state: AppState; at: Date }) {
-  const problems = state.connections.flatMap((c) => {
+  const problems = state.connections.filter((c) => showConnection(c.id)).flatMap((c) => {
     const freshness = sourceFreshness(c, at);
     if (freshness === 'fresh') return [];
     const subtitle = freshness === 'error' ? (c.lastError || 'Störung') : freshness === 'missing' ? 'Nicht verbunden' : ageText(c, at);
