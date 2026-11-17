@@ -70,4 +70,17 @@ describe('unlinkedOrderMessages', () => {
     expect(list.map((e) => e.messageId)).toEqual(['x']);
     expect(list[0]).toMatchObject({ kind: 'auftrag', plates: ['HER-Q 77'], senderName: 'Max' });
   });
+  test('Auftrag ohne Fahrzeug bleibt über die Vorgangsnummer verknüpft', () => {
+    const bare: Job = {
+      ...job, id: 'j2', vehicleId: null, contactId: null, portalSource: 'nextoz',
+      portalData: { Auftragsnummer: '#9cc78db5' },
+    };
+    const messages = [
+      msg({ id: 'n', body: 'Bitte Status zur Ummeldung #9cc78db5' }),
+      msg({ id: 'x', body: 'Bitte ummelden: HER-Q 77', fromName: 'Max', from: '+491605550000' }),
+    ];
+    const base = { ...state(messages), jobs: [bare] };
+    expect(jobActivity(bare, base).map((e) => e.messageId)).toEqual(['n']);
+    expect(unlinkedOrderMessages(base).map((e) => e.messageId)).toEqual(['x']);
+  });
 });
