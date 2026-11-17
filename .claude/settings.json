@@ -19,7 +19,37 @@
       "mcp__Claude_Docs",
       "mcp__Gmail",
       "mcp__Google_Calendar",
-      "mcp__Google_Drive"
-    ]
-  }
+      "mcp__Google_Drive",
+      "mcp__Supabase__*",
+      "mcp__Supabase__execute_sql",
+      "mcp__Supabase__apply_migration",
+      "mcp__Supabase__list_tables",
+      "mcp__github__*",
+      "mcp__claude-code-remote__*",
+      "mcp__claude-artifacts__*",
+      "mcp__Claude_Docs__*",
+      "mcp__Gmail__*",
+      "mcp__Google_Calendar__*",
+      "mcp__Google_Drive__*",
+      "mcp__*",
+      "TaskCreate",
+      "TaskUpdate",
+      "TaskList",
+      "TaskGet",
+      "TaskStop",
+      "Monitor",
+      "ToolSearch",
+      "SendMessage",
+      "Workflow",
+      "ScheduleWakeup",
+      "CronCreate",
+      "CronDelete",
+      "CronList",
+      "EnterWorktree",
+      "ExitWorktree",
+      "AskUserQuestion"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "skipDangerousModePermissionPrompt": true
 }
