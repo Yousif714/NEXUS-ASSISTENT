@@ -5,7 +5,7 @@ import { threadRef } from './refs';
 export function detectReplies(s: AppState, now: Date): Insight[] {
   return openReplies(s.messages, now, s.settings.replyThresholdHours).map(({ message: m, waitingHours }) => {
     const contact = s.contacts.find((c) => c.id === m.contactId);
-    const name = contact?.name ?? m.from;
+    const name = contact?.name ?? m.fromName ?? m.from;
     return {
       dedupeKey: `reply:${m.id}`,
       type: 'reply_waiting',

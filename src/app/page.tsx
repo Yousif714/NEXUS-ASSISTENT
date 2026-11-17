@@ -16,9 +16,9 @@ import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing, renderBriefingText } from '@/domain/briefing';
 import { berlinParts, formatBerlin, formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { buildHeuteFeed } from '@/domain/heute';
+import { buildInbox, filterInbox } from '@/domain/inbox';
 import { notConnected } from '@/domain/connections';
 import { areaUnreliable } from '@/domain/freshness';
-import { openReplies } from '@/domain/matching/messages';
 import type { StoredInsight } from '@/domain/types';
 
 import './heute.css';
@@ -54,7 +54,9 @@ export default function HeutePage() {
   const overdueCount = feed.find((s) => s.id === 'ueberfaellig')?.entries.length ?? 0;
   const allOpen = openInsights(state);
   const coachTip = briefing.coach[0];
-  const replies = openReplies(state.messages, at, state.settings.replyThresholdHours);
+  // Wartende WhatsApp-Chats, genau wie unter Nachrichten → „Wartet“ (E-Mails liegen beim Zulassungsdienst).
+  const waitingChats = filterInbox(buildInbox(state, at, state.settings.replyThresholdHours, 'whatsapp'), 'waiting', '')
+    .sort((a, b) => (b.waitingHours ?? 0) - (a.waitingHours ?? 0));
   const today = todayBerlin(at);
   const todayCalls = state.calls.filter((c) => berlinParts(new Date(c.startsAt)).date === today).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const onDone = (key: string) => dispatch({ type: 'dismissInsight', key });
@@ -82,7 +84,7 @@ export default function HeutePage() {
         <div className="top-row">
         <Figures>
           <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" href="#top-insights" />
-          <CountFigure label="Kunde wartet" value={replies.length} testId="figure-replies" href="/nachrichten?filter=waiting" />
+          <CountFigure label="Kunde wartet" value={waitingChats.length} testId="figure-replies" href="/nachrichten?filter=waiting" />
           <CountFigure label="Überfällig" value={overdueCount} testId="figure-overdue" alert={overdueCount > 0} href="#feed-ueberfaellig" />
         </Figures>
 
@@ -105,13 +107,15 @@ export default function HeutePage() {
         </ListGroup>
         {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
         <ListGroup title="Nachrichten" testId="replies" sectionId="heute-nachrichten" defaultOpen>
-          {replies.length === 0
+          {waitingChats.length === 0
             ? <ListRow key="empty" title="Keine offenen Antworten." />
-            : replies.map(({ message: m, waitingHours }) => (
-              <ListRow key={m.id} href={`/nachrichten/${m.threadId}`} testId="reply-row"
-                title={state.contacts.find((c) => c.id === m.contactId)?.name ?? m.from}
-                subtitle={m.body} value={`${waitingHours} Std.`} />
+            : waitingChats.slice(0, 5).map((r) => (
+              <ListRow key={r.threadId} href={`/nachrichten/${encodeURIComponent(r.threadId)}`} testId="reply-row"
+                title={r.name} subtitle={r.preview} value={`${r.waitingHours ?? 0} Std.`} />
             ))}
+          {waitingChats.length > 5 ? (
+            <ListRow key="all" href="/nachrichten?filter=waiting" title={`Alle wartenden Chats (${waitingChats.length})`} testId="replies-all" />
+          ) : null}
         </ListGroup>
           {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater}
         defaultOpen={section.id === 'ueberfaellig' ? section.entries.length <= 5 : undefined} />)}

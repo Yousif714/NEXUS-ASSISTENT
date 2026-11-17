@@ -20,6 +20,10 @@ describe('Detektoren', () => {
     expect(r.title).toBe('Autohaus Schmidt wartet seit 3 Std. auf Antwort');
     expect(r.nextStep).toBe('Antwort senden');
   });
+  test('reply_waiting ohne Kontakt: WhatsApp-Profilname statt Nummer', () => {
+    const r = find(run({ messages: [{ ...schmidtIn, contactId: null, fromName: 'Max Muster' }] }), 'reply_waiting');
+    expect(r.title).toBe('Max Muster wartet seit 3 Std. auf Antwort');
+  });
   test('veraltete Quelle → kein Hinweis aus ihr', () => {
     expect(types(run({ jobs: [muellerDone], connections: [conn({ id: 'lexware_zulassung', status: 'error' })] }))).not.toContain('job_not_invoiced');
   });

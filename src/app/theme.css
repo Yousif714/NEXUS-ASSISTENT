@@ -861,3 +861,19 @@ button.list-row:hover {
   position: relative;
   z-index: 1;
 }
+
+/* Seitliche „sichere Bereiche“ des Geräts nur begrenzt nutzen: sonst bleibt auf manchen Geräten
+   rechts ein breiter, ungenutzter Streifen. Oben/unten bleiben vollständig berücksichtigt. */
+.shell-main {
+  padding-left: min(var(--safe-left), 12px);
+  padding-right: min(var(--safe-right), 12px);
+}
+
+.tabbar {
+  padding-left: min(var(--safe-left), 12px);
+  padding-right: min(var(--safe-right), 12px);
+}
+
+.assistant-button {
+  right: calc(min(var(--safe-right), 12px) + 14px);
+}
