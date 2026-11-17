@@ -3,6 +3,7 @@ import { NextResponse, connection } from 'next/server';
 import { realNow } from '@/domain/clock';
 import { runTick } from '@/server/cron';
 import { readEnv } from '@/server/env';
+import { ensureConfiguredMailboxes } from '@/server/mail-sync';
 import { getActionProvider, getRepos, getSyncDeps } from '@/server/registry';
 import { syncConnections } from '@/server/sync';
 
@@ -20,6 +21,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Nicht erlaubt' }, { status: 401 });
   }
   const repos = getRepos();
+  const env = readEnv();
+  // Nur die Zeilen anlegen. Der Abruf selbst läuft unter /api/cron/mail und darf den Takt nicht blockieren.
+  try {
+    await ensureConfiguredMailboxes(repos, env.imapAccounts, env.imapConfigError, realNow(), getActionProvider());
+  } catch (e) {
+    console.error('Postfächer eintragen fehlgeschlagen:', e instanceof Error ? e.name : typeof e);
+  }
   const r = await runTick({ repos, at: realNow(), provider: getActionProvider(), sync: () => syncConnections(repos, getSyncDeps()) });
   return NextResponse.json(r, { headers: { 'cache-control': 'no-store' } });
 }

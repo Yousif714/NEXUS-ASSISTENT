@@ -12,7 +12,7 @@ import { statementStandText } from '@/components/connection-labels';
 import { readerSummary } from '@/domain/import/invoice-reading';
 import { useAppStore } from '@/data/store';
 import { now } from '@/domain/clock';
-import { HOW_TO } from '@/domain/connections';
+import { howTo } from '@/domain/connections';
 import { ageText } from '@/domain/freshness';
 import type { Connection } from '@/domain/types';
 
@@ -37,7 +37,7 @@ function SourceList() {
                 : <button type="button" className="btn btn-secondary btn-small" onClick={() => dispatch({ type: 'setConnectionStatus', id: c.id, status: 'connected' })}>Wieder verbinden</button>} />
             <details className="conn-help" data-testid={`conn-help-${c.id}`}>
               <summary>So verbindest du das (Phase 2)</summary>
-              <p>{HOW_TO[c.id]}</p>
+              <p>{howTo(c.id)}</p>
             </details>
           </div>
         );
