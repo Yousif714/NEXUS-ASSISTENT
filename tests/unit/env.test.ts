@@ -56,6 +56,12 @@ describe('readEnv', () => {
   });
 });
 
+test('MCP_API_KEY optional, leer zählt als nicht gesetzt', () => {
+  expect(readEnv(FULL).mcpApiKey).toBeUndefined();
+  expect(readEnv({ ...FULL, MCP_API_KEY: ' ' }).mcpApiKey).toBeUndefined();
+  expect(readEnv({ ...FULL, MCP_API_KEY: 'mcp-test-key' }).mcpApiKey).toBe('mcp-test-key');
+});
+
 test('ANTHROPIC_API_KEY optional', () => {
   expect(readEnv(FULL).anthropicApiKey).toBeUndefined();
   expect(readEnv({ ...FULL, ANTHROPIC_API_KEY: ' ' }).anthropicApiKey).toBeUndefined();

@@ -13,7 +13,7 @@ function routes(dir: string): string[] {
 }
 
 // Eigene Prüfung bzw. bewusst offen.
-const EXEMPT = [/^auth\/session$/, /^auth\/register\//, /^auth\/login\//, /^auth\/recover$/, /^auth\/logout$/, /^cron\/tick$/, /^test\/reset$/, /^test\/import$/, /^test\/takeover$/, /^webhooks\/stripe$/];
+const EXEMPT = [/^auth\/session$/, /^auth\/register\//, /^auth\/login\//, /^auth\/recover$/, /^auth\/logout$/, /^cron\/tick$/, /^mcp$/, /^test\/reset$/, /^test\/import$/, /^test\/takeover$/, /^webhooks\/stripe$/];
 
 describe('API-Schutz', () => {
   const files = routes(API);
@@ -37,6 +37,12 @@ describe('API-Schutz', () => {
       expect(dyn, path.relative(API, f)).toBeGreaterThanOrEqual(0);
       if (env >= 0) expect(dyn, path.relative(API, f)).toBeLessThan(env);
     }
+  });
+  it('MCP prüft einen eigenen Bearer-Schlüssel und nicht die Passkey-Sitzung', () => {
+    const src = readFileSync(path.join(API, 'mcp/route.ts'), 'utf8');
+    expect(src).not.toContain('requireSession(');
+    expect(src).toContain('authorizeMcp(');
+    expect(src).toContain('await connection()');
   });
   it('Stripe-Webhook prüft die Signatur', () =>
     expect(readFileSync(path.join(API, 'webhooks/stripe/route.ts'), 'utf8')).toContain('verifyStripeSignature('));

@@ -20,6 +20,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname === '/zahlung' || url.pathname.startsWith('/zahlung/')) return; // öffentliche Zahlungsseiten nie cachen
+  if (url.pathname.startsWith('/api/')) return; // API und MCP nie cachen, auch nicht als Navigation
 
   if (req.mode === 'navigate') {
     event.respondWith(

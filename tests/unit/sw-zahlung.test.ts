@@ -32,13 +32,14 @@ describe('sw.js', () => {
     let fetchHandler: (e: unknown) => void = () => {};
     const sandbox = {
       self: { addEventListener: (t: string, h: (e: unknown) => void) => { if (t === 'fetch') fetchHandler = h; }, location: { origin: 'https://x.example.de' } },
-      caches: {},
+      caches: { match: () => Promise.resolve(undefined), open: () => Promise.resolve({ put: () => {} }) },
       fetch: () => Promise.reject(new Error('kein Netz im Test')),
       URL, Response,
     };
     vm.runInNewContext(readFileSync('public/sw.js', 'utf8'), sandbox);
     const ev = (path: string) => { const o = { responded: false, request: { method: 'GET', url: `https://x.example.de${path}`, mode: 'navigate' }, respondWith: () => { o.responded = true; } }; return o; };
     const z = ev('/zahlung/abc'); fetchHandler(z); expect(z.responded).toBe(false);
+    const mcp = ev('/api/mcp'); fetchHandler(mcp); expect(mcp.responded).toBe(false);
     const a = ev('/hinweise'); fetchHandler(a); expect(a.responded).toBe(true);
   });
 });

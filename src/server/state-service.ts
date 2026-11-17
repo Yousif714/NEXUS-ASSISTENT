@@ -7,7 +7,7 @@ import { IMPORT_SINCE } from '@/domain/import/batch';
 import { isPortalEmail } from '@/domain/import/portal-list';
 import type { StoreEvent } from '@/domain/events';
 import { newId } from '@/domain/ids';
-import type { ActionType, AppState, Call, Company, Job, Settings } from '@/domain/types';
+import type { ActionType, AppState, AuditEntry, Call, Company, Job, Settings } from '@/domain/types';
 import type { Repos, StateRepository } from './db/repository';
 import { diffState, type ChangeSet } from './db/tables';
 
@@ -137,6 +137,20 @@ export function isClientEvent(e: unknown): e is StoreEvent {
   if (!isObj(e) || typeof e.type !== 'string') return false;
   if (!CLIENT_EVENTS.has(e.type as StoreEvent['type'])) return false;
   return SHAPE[e.type]?.(e) ?? false;
+}
+
+/** Hängt einen Protokolleintrag an und speichert ihn über denselben Revisionspfad wie jede andere Änderung. */
+export async function appendAudit(
+  repos: Repos,
+  entry: Pick<AuditEntry, 'actor' | 'text'> & Partial<Pick<AuditEntry, 'source' | 'actionId'>>,
+  at: Date,
+): Promise<void> {
+  const row: AuditEntry = {
+    at: at.toISOString(), actor: entry.actor, text: entry.text.slice(0, 500), isDemo: false,
+    ...(entry.source ? { source: entry.source } : {}),
+    ...(entry.actionId ? { actionId: entry.actionId } : {}),
+  };
+  await commit(repos.state, (s) => ({ state: { ...s, audit: [...s.audit, row] }, value: undefined }));
 }
 
 export async function loadState(repos: Repos, at: Date): Promise<AppState> {

@@ -19,6 +19,7 @@ import { emptyBatch } from '@/domain/import/batch';
 import { mergeBatch } from '@/domain/import/merge';
 import { mergePortalList, normalizePortalEntries } from '@/domain/import/portal-list';
 import { deriveProposals, findContactFor, type ContractProposal } from '@/domain/import/proposals';
+import { applyMcpChange } from '@/domain/mcp-changes';
 import { portalProposal, portalViews } from '@/domain/portal';
 import { coveringContract, invoiceAllocatableCents, splitPaymentOverInvoices } from '@/domain/ledger/receivables';
 import { formatEuro } from '@/domain/money';
@@ -692,6 +693,12 @@ function mutate(s: AppState, e: StoreEvent, ctx: EngineContext): { state: AppSta
     }
     case 'assistantButton':
       return { state: s }; // wird im reducer aufgelöst
+    case 'mcpChange': {
+      const r = applyMcpChange(s, e.change, { newId: ctx.newId, at });
+      if (r.error) return { state: s, audit: { actor: 'assistant', source: 'mcp', text: `MCP abgelehnt: ${r.error}` } };
+      if (r.unchanged) return { state: s };
+      return { state: r.state, audit: { actor: 'assistant', source: 'mcp', text: r.text } };
+    }
     case 'resetDemo':
       return { state: createDemoState() };
   }

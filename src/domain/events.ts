@@ -1,6 +1,7 @@
 import type { ImportBatch, ImportedPayment } from './import/batch';
 import type { ContractDraft } from './import/contract-draft';
 import type { PortalListEntry } from './import/portal-list';
+import type { McpChange } from './mcp-changes';
 import type { Action, AssistantMessage, Call, Connection, ConnectionId, InvoiceReading, IsoDate, Job, MemberContract, Settings } from './types';
 import type { ActionOutput } from './actions/machine';
 
@@ -78,4 +79,6 @@ export type StoreEvent =
   | { type: 'takeoverCustomerMismatch'; takeoverId: string; customerId: string | null }
   /** „Als gesendet markieren“ (Link wurde von Hand verschickt); `shared: false` nimmt es zurück. Nur bei `link_sent`, idempotent. */
   | { type: 'takeoverShared'; takeoverId: string; shared?: boolean }
+  /** Nur der MCP-Connector (nie der Browser): Änderung mit Audit-Herkunft `mcp`. */
+  | { type: 'mcpChange'; change: McpChange }
   | { type: 'resetDemo' };
