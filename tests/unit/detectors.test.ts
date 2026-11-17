@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { vi, describe, expect, test } from 'vitest';
 import { reconcileInsights, runDetectors, selectTop } from '@/domain/detectors';
 import { detectJobsNotInvoiced } from '@/domain/detectors/jobs';
 import { buildMatchContext } from '@/domain/detectors/payments';
@@ -9,6 +9,9 @@ import { detectPortalAbNoInvoice, detectPortalNoInvoice } from '@/domain/detecto
 import { detectStaleSources } from '@/domain/detectors/sources';
 import type { StoredInsight, StripeTakeover } from '@/domain/types';
 import { NOW_0930, base, conn, find, inv, ins, member, muellerDone, schmidtIn, stateWith, tx, types, workshop } from './helpers';
+// WhatsApp-Verhalten bei eingeschaltetem Schalter (in der App derzeit aus, siehe src/domain/features.ts).
+vi.mock('@/domain/features', async (orig) => ({ ...(await orig<typeof import('@/domain/features')>()), WHATSAPP_IN_APP: true, showMessage: () => true, visibleState: <S,>(s: S) => s }));
+
 
 const run = (p: Parameters<typeof stateWith>[0]) => runDetectors(stateWith(p), NOW_0930);
 

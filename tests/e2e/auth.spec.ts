@@ -63,7 +63,7 @@ test('Demo-Schalter: an zeigt Demo-Daten, aus wieder leeren Echtzustand', async 
   await page.goto('/');
   await expect(page.getByTestId('mode-badge')).toHaveText('Demo');
   await expect(page.getByRole('link', { name: 'Anmelden für echte Daten' })).toHaveCount(0);
-  await expect(page.getByTestId('reply-row').first()).toBeVisible();
+  await expect(page.getByTestId('money-card-nexus')).toBeVisible();
 
   await page.goto('/einstellungen');
   await page.getByRole('switch', { name: 'Demo-Modus' }).uncheck();

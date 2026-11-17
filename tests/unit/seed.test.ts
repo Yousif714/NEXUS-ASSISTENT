@@ -1,9 +1,12 @@
-import { describe, expect, test } from 'vitest';
+import { vi, describe, expect, test } from 'vitest';
 import { createDemoState } from '@/data/seed';
 import { refresh } from '@/data/store';
 import { memberRows, openInsights } from '@/data/selectors';
 import { memberView } from '@/domain/detectors';
 import { NOW_0930 as NOW, contractOf, open, types } from './helpers';
+// WhatsApp-Verhalten bei eingeschaltetem Schalter (in der App derzeit aus, siehe src/domain/features.ts).
+vi.mock('@/domain/features', async (orig) => ({ ...(await orig<typeof import('@/domain/features')>()), WHATSAPP_IN_APP: true, showMessage: () => true, visibleState: <S,>(s: S) => s }));
+
 
 describe('Demo-Daten', () => {
   const s = refresh(createDemoState(), NOW);

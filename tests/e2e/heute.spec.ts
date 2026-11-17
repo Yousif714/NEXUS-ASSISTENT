@@ -1,16 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { ensureOpen } from './expand';
 
-test('Abnahme 1: wartender Kunde → Antwort senden → Protokoll, Hinweis zu', async ({ page }) => {
+test('Heute: WhatsApp ist aus – kein wartender WhatsApp-Kunde, höchstens 3 wichtige Punkte', async ({ page }) => {
   await page.goto('/?reset=1');
   const rows = page.getByTestId('top-insights').getByTestId('insight-row'); expect(await rows.count()).toBeLessThanOrEqual(3);
-  await page.locator('[data-key="reply:m-schmidt-in-1"]').click();
-  await expect(page).toHaveURL(/\/nachrichten\/t-schmidt/);
-  await expect(page.getByTestId('draft-text')).not.toBeEmpty();
-  await page.getByRole('button', { name: 'Senden' }).click();
-  await expect(page.getByText('Gesendet (Demo)')).toBeVisible();
-  await page.goto('/protokoll'); await expect(page.getByText(/Autohaus Schmidt/).first()).toBeVisible();
-  await page.goto('/'); await expect(page.locator('[data-key="reply:m-schmidt-in-1"]')).toHaveCount(0);
+  await expect(page.locator('[data-key="reply:m-schmidt-in-1"]')).toHaveCount(0);
+  await expect(page.getByTestId('replies-chats')).toHaveCount(0);
 });
 
 test('ActionSheet: Fokus beim Ändern und Live-Region nach dem Senden', async ({ page }) => {
@@ -29,16 +24,6 @@ test('ActionSheet: Fokus beim Ändern und Live-Region nach dem Senden', async ({
   await expect(status).toBeFocused();
 });
 
-test('Antwort-Hinweis abhaken → Kunde verschwindet auch aus „Nachrichten“', async ({ page }) => {
-  await page.goto('/?reset=1');
-  const row = page.locator('[data-key="reply:m-schmidt-in-1"]');
-  const replies = page.getByTestId('replies');
-  await expect(replies.getByRole('link', { name: /Autohaus Schmidt/ })).toBeVisible();
-  await row.getByRole('button', { name: /^Erledigt:/ }).click();
-  await expect(row).toHaveCount(0);
-  await expect(replies.getByRole('link', { name: /Autohaus Schmidt/ })).toHaveCount(0);
-});
-
 /** Wischt eine Zeile waagerecht von `from` nach `to` (Anteile der Breite). */
 async function swipe(page: import('@playwright/test').Page, row: import('@playwright/test').Locator, from: number, to: number) {
   await row.scrollIntoViewIfNeeded();
@@ -52,7 +37,9 @@ async function swipe(page: import('@playwright/test').Page, row: import('@playwr
 
 test('Hinweis wischen: nach links erledigt, nach rechts später – beides im Protokoll', async ({ page }) => {
   await page.goto('/?reset=1');
-  const done = page.locator('[data-key="reply:m-schmidt-in-1"]');
+  const first = page.getByTestId('top-insights').getByTestId('insight-row').first();
+  const doneKey = await first.getAttribute('data-key');
+  const done = page.locator(`[data-key="${doneKey}"]`);
   await swipe(page, done, 0.85, 0.15);
   await expect(done).toHaveCount(0);
   await expect(page).toHaveURL(/\/$/); // Wischen öffnet den Link nicht
@@ -63,13 +50,14 @@ test('Hinweis wischen: nach links erledigt, nach rechts später – beides im Pr
   await expect(page.locator(`[data-key="${key}"]`)).toHaveCount(0);
 
   await page.goto('/protokoll');
-  await expect(page.getByTestId('audit-row').nth(1)).toContainText('Hinweis erledigt: Autohaus Schmidt');
+  await expect(page.getByTestId('audit-row').nth(1)).toContainText('Hinweis erledigt');
   await expect(page.getByTestId('audit-row').first()).toContainText('Hinweis zurückgestellt');
 });
 
 test('Hinweis: kurzes Wischen springt zurück; „Zurückstellen“ per Tastatur', async ({ page }) => {
   await page.goto('/?reset=1');
-  const row = page.locator('[data-key="reply:m-schmidt-in-1"]');
+  const key = await page.getByTestId('top-insights').getByTestId('insight-row').first().getAttribute('data-key');
+  const row = page.locator(`[data-key="${key}"]`);
   await swipe(page, row, 0.6, 0.5);
   await expect(row).toBeVisible();
   await expect(page).toHaveURL(/\/$/);

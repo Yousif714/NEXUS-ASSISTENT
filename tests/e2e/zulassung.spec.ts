@@ -69,8 +69,8 @@ test('Auftrag: Status umschalten zählt in den Tageszahlen', async ({ page }) =>
   await expect(page.getByRole('radio', { name: 'wartet auf Kunde' })).toBeChecked();
   await page.getByRole('radio', { name: 'erledigt' }).check();
   await expect(page.getByRole('radio', { name: 'erledigt' })).toBeChecked();
-  await page.getByTestId('last-message').click();
-  await expect(page).toHaveURL(/\/nachrichten\/t-schmidt/);
+  // WhatsApp ist aus: keine WhatsApp-Nachrichten am Auftrag.
+  await expect(page.getByTestId('job-whatsapp')).toHaveCount(0);
   await page.goto('/zulassung');
   await expect(page.getByTestId('kpi-done-today')).toHaveText('1');
   await expect(page.getByTestId('kpi-waiting')).toHaveText('0');
@@ -103,9 +103,9 @@ test('Kunde: Fahrzeuge, Aufträge, offene Rechnungen, letzte Nachrichten', async
   await page.getByTestId('job-row-j-mueller-1').click();
   await expect(page).toHaveURL(/\/zulassung\/auftraege\/j-mueller-1/);
 
+  // WhatsApp ist aus: der WhatsApp-Verlauf von Schmidt erscheint nicht auf der Kundenseite.
   await page.goto('/zulassung/kunden/d-schmidt');
-  await page.getByTestId('message-row-t-schmidt').click();
-  await expect(page).toHaveURL(/\/nachrichten\/t-schmidt/);
+  await expect(page.getByTestId('message-row-t-schmidt')).toHaveCount(0);
 });
 
 test('Sparkasse: Auszug hochladen → Zusammenfassung → Vorschlag bestätigen → Kundenseite bezahlt', async ({ page }) => {

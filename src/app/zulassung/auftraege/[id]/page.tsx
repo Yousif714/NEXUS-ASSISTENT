@@ -19,6 +19,7 @@ import { jobBilling } from '@/domain/billing';
 import { formatBerlin, formatIsoDe, now } from '@/domain/clock';
 import { mdcVorgang } from '@/domain/import/mydigitalcar';
 import { jobContactLabel, PORTAL_LABEL } from '@/domain/import/portal';
+import { WHATSAPP_IN_APP, showMessage } from '@/domain/features';
 import { DOC_LABEL, jobActivity } from '@/domain/matching/job-messages';
 import { formatEuro } from '@/domain/money';
 import type { Job, JobReceipt } from '@/domain/types';
@@ -74,9 +75,11 @@ export default function JobPage() {
   const linked = job.invoiceIds.flatMap((iid) => state.invoices.filter((i) => i.id === iid));
   const candidates = invoiceCandidates(state, job.id);
   const lastMessage = [...state.messages]
+    .filter(showMessage)
     .filter((m) => m.jobId === job.id || (job.contactId !== null && m.contactId === job.contactId && !m.jobId))
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
-  const activity = jobActivity(job, state);
+  const activity = WHATSAPP_IN_APP ? jobActivity(job, state) : [];
+  const receipts = (job.receipts ?? []).filter(showMessage);
   const docsReceived = [...new Set(activity.filter((e) => e.direction === 'in').flatMap((e) => e.docs))];
 
   const draftId = jobInvoiceDraftId(job.id);
@@ -154,9 +157,9 @@ export default function JobPage() {
       </ListGroup>
       )}
 
-      {(job.receipts ?? []).length > 0 && (
+      {receipts.length > 0 && (
       <ListGroup title="Absender" testId="job-sender" sectionId="job-sender" defaultOpen>
-        {job.receipts!.map((r) => (
+        {receipts.map((r) => (
             <ListRow key={r.messageId} href={`/nachrichten/${encodeURIComponent(state.messages.find((m) => m.id === r.messageId)?.threadId ?? '')}`} testId={`job-receipt-${r.messageId}`}
               title={<>{r.senderName} · {r.kind === 'order' ? 'Auftrag' : 'Nachweis'}</>}
               subtitle={receiptLine(r)} />
