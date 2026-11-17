@@ -1,3 +1,4 @@
+import { isAutomatedMail } from '@/domain/mail-text';
 import type { Contact, Job, Message, Vehicle } from '@/domain/types';
 
 export function normalizePhone(s: string): string {
@@ -82,7 +83,7 @@ export function openReplies(
 ): { message: Message; waitingHours: number }[] {
   const result: { message: Message; waitingHours: number }[] = [];
   for (const msg of messages) {
-    if (msg.direction !== 'in' || !msg.needsReply || msg.doneManually) continue;
+    if (msg.direction !== 'in' || !msg.needsReply || msg.doneManually || isAutomatedMail(msg)) continue;
     const sent = Date.parse(msg.sentAt);
     const answered = messages.some(
       (o) => o.direction === 'out' && o.channel === msg.channel && o.threadId === msg.threadId && Date.parse(o.sentAt) > sent,

@@ -1,5 +1,6 @@
 import { addDaysIso, todayBerlin } from '@/domain/clock';
 import type { ImportedMessage } from '@/domain/import/batch';
+import { isAutomatedMail } from '@/domain/mail-text';
 import type { Contact, IsoDate } from '@/domain/types';
 
 /** Zeichen des gespeicherten Textauszugs, ohne Anhänge. */
@@ -117,23 +118,29 @@ export function toImportedMessage(input: {
   subject: string;
   text: string;
   sentAt: string;
+  /** Kopf `List-Unsubscribe`: Newsletter, keine Antwort. */
+  listUnsubscribe?: boolean;
 }): ImportedMessage | null {
   const externalId = normalizeMessageId(input.messageId);
   if (!externalId || Number.isNaN(Date.parse(input.sentAt))) return null;
   const subject = input.subject.replace(/[\r\n]+/g, ' ').trim().slice(0, 300);
   const snippet = mailSnippet(input.text);
   const bodyCore = !subject || snippet.startsWith(subject) ? snippet : `${subject}\n\n${snippet}`;
+  const from = input.from.slice(0, 500);
+  const body = bodyCore.slice(0, 2_400);
+  const automated = input.listUnsubscribe === true || isAutomatedMail({ channel: 'email', from, subject, body });
   return {
     channel: 'email',
     connectionId: input.connectionId,
     externalId,
     threadId: threadIdOf(externalId, input.inReplyTo, input.references),
     direction: input.direction,
-    from: input.from.slice(0, 500),
+    from,
     to: input.to.slice(0, 500),
     ...(subject ? { subject } : {}),
-    body: bodyCore.slice(0, 2_400),
+    body,
     sentAt: new Date(input.sentAt).toISOString(),
-    needsReply: input.direction === 'in',
+    needsReply: input.direction === 'in' && !automated,
+    ...(automated ? { automated: true } : {}),
   };
 }

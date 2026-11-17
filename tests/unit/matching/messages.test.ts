@@ -42,6 +42,9 @@ describe('Antwortpflicht', () => {
   test('Antwort davor schließt nicht', () => expect(openReplies([inMsg, msg({ id: 'b', direction: 'out', sentAt: '2026-11-12T05:00:00Z' })], NOW_0930, 2)).toHaveLength(1));
   test('unter Schwelle', () => expect(openReplies([inMsg], new Date('2026-11-12T06:30:00Z'), 2)).toEqual([]));
   test('manuell erledigt', () => expect(openReplies([{ ...inMsg, doneManually: true }], NOW_0930, 2)).toEqual([]));
+  test('automatische Mail wartet nicht', () => expect(openReplies([msg({
+    id: 'g', channel: 'email', connectionId: 'gmail', threadId: 'g', from: 'Google <no-reply@accounts.google.com>', needsReply: true, sentAt: '2026-11-12T05:30:00Z',
+  })], NOW_0930, 2)).toEqual([]));
 });
 
 test('plateInText: Trenner optional, mit Wortgrenzen', () => {

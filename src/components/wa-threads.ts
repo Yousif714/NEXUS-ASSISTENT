@@ -1,3 +1,4 @@
+import { isAutomatedMail } from '@/domain/mail-text';
 import type { Contact, Message } from '@/domain/types';
 
 export type WaFilter = 'all' | 'unanswered' | 'job' | 'unassigned';
@@ -16,7 +17,7 @@ export interface WaThread {
 }
 
 const unansweredOf = (messages: Message[]): number => messages.filter((m) => {
-  if (m.direction !== 'in' || !m.needsReply || m.doneManually) return false;
+    if (m.direction !== 'in' || !m.needsReply || m.doneManually || isAutomatedMail(m)) return false;
   const sent = Date.parse(m.sentAt);
   return !messages.some((o) => o.direction === 'out' && o.channel === m.channel && o.threadId === m.threadId && Date.parse(o.sentAt) > sent);
 }).length;
