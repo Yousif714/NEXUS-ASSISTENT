@@ -18,8 +18,8 @@ import { berlinParts, formatBerlin, formatBerlinDe, now, todayBerlin } from '@/d
 import { buildHeuteFeed } from '@/domain/heute';
 import { buildInbox, filterInbox } from '@/domain/inbox';
 import { notConnected } from '@/domain/connections';
-import { areaUnreliable } from '@/domain/freshness';
-import type { StoredInsight } from '@/domain/types';
+import { ageText, areaUnreliable, messageStand, sourceFreshness } from '@/domain/freshness';
+import type { AppState, StoredInsight } from '@/domain/types';
 
 import './heute.css';
 
@@ -38,6 +38,22 @@ function CoachTip({ tip, onTake, onLater, onNever }: { tip: StoredInsight; onTak
         </div>
       </div>
     </section>
+  );
+}
+
+function TechStatus({ state, at }: { state: AppState; at: Date }) {
+  const problems = state.connections.flatMap((c) => {
+    const freshness = sourceFreshness(c, at);
+    if (freshness === 'fresh') return [];
+    const subtitle = freshness === 'error' ? (c.lastError || 'Störung') : freshness === 'missing' ? 'Nicht verbunden' : ageText(c, at);
+    return [{ id: c.id, title: c.label, subtitle }];
+  });
+  return (
+    <ListGroup title="Technik" testId="tech-status" sectionId="heute-technik" defaultOpen={problems.length > 0}>
+      {problems.length === 0
+        ? <ListRow key="ok" title="Quellen in Ordnung" />
+        : problems.map((p) => <ListRow key={p.id} href="/verbindungen" title={p.title} subtitle={p.subtitle} />)}
+    </ListGroup>
   );
 }
 
@@ -61,7 +77,11 @@ export default function HeutePage() {
   const todayCalls = state.calls.filter((c) => berlinParts(new Date(c.startsAt)).date === today).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const onDone = (key: string) => dispatch({ type: 'dismissInsight', key });
   const onLater = (key: string) => dispatch({ type: 'snoozeInsight', key });
-  const header = <PageHeader title="Heute" subtitle={formatBerlinDe(at, 'EEEE, d. MMMM')} trailing={<MoreMenu />} />;
+  const stand = messageStand(state.connections, at);
+  const header = <PageHeader title="Heute" subtitle={[formatBerlinDe(at, 'EEEE, d. MMMM'), stand].filter(Boolean).join(' · ')} trailing={<MoreMenu />} />;
+  const replyInsights = allOpen.filter((i) => i.type === 'reply_waiting');
+  const topKeys = new Set(briefing.top.map((i) => i.dedupeKey));
+  const moreReplies = replyInsights.filter((i) => !topKeys.has(i.dedupeKey));
 
   // Echtmodus ohne eine einzige Verbindung: Weg zur Einrichtung statt leerer Karten.
   if (mode === 'real' && notConnected(state.connections.map((c) => c.id), state.connections)) {
@@ -81,7 +101,35 @@ export default function HeutePage() {
       {header}
 
       <section data-testid="feed-heute">
-        <div className="top-row">
+        <section data-testid="replies">
+        <ListGroup title="Heute zu tun" testId="top-insights" sectionId="heute-tun">
+          {briefing.top.length === 0
+            ? <ListRow key="empty" title="Nichts Dringendes." />
+            : briefing.top.map((i) => <TaskRow key={i.dedupeKey} insight={i} onDone={() => onDone(i.dedupeKey)}
+                onLater={() => onLater(i.dedupeKey)} />)}
+          <ListRow key="all" href="/hinweise" title={`Alle Hinweise (${allOpen.length})`} testId="all-insights-link" />
+        </ListGroup>
+        {moreReplies.length > 0 && (
+          <ListGroup title="Weitere Antworten" testId="more-replies" sectionId="heute-weitere-antworten">
+            {moreReplies.map((i) => <TaskRow key={i.dedupeKey} insight={i} onDone={() => onDone(i.dedupeKey)} onLater={() => onLater(i.dedupeKey)} />)}
+          </ListGroup>
+        )}
+        </section>
+
+        <ListGroup title="Nachrichten" testId="replies-chats" sectionId="heute-nachrichten" defaultOpen>
+          {waitingChats.length === 0
+            ? <ListRow key="empty" title="Keine offenen Antworten." />
+            : waitingChats.slice(0, 5).map((r) => (
+              <ListRow key={r.threadId} href={`/nachrichten/${encodeURIComponent(r.threadId)}`} testId="reply-row"
+                title={r.name} subtitle={r.preview} value={`${r.waitingHours ?? 0} Std.`} />
+            ))}
+          {waitingChats.length > 5 ? (
+            <ListRow key="all" href="/nachrichten?filter=waiting" title={`Alle wartenden Chats (${waitingChats.length})`} testId="replies-all" />
+          ) : null}
+        </ListGroup>
+
+        {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
+
         <Figures>
           <CountFigure label="Heute wichtig" value={briefing.top.length} testId="figure-top" href="#top-insights" />
           <CountFigure label="Kunde wartet" value={waitingChats.length} testId="figure-replies" href="/nachrichten?filter=waiting" />
@@ -94,31 +142,13 @@ export default function HeutePage() {
               stale={areaUnreliable(MONEY_SOURCES[m.company], state.connections, at)} />
           ))}
         </section>
-        </div>
+
+        <TechStatus state={state} at={at} />
 
         <div className="heute-cols">
         <div className="heute-main">
-        <ListGroup title="Wichtig heute" testId="top-insights">
-          {briefing.top.length === 0
-            ? <ListRow key="empty" title="Alles erledigt." />
-            : briefing.top.map((i) => <TaskRow key={i.dedupeKey} insight={i} onDone={() => onDone(i.dedupeKey)}
-                onLater={() => onLater(i.dedupeKey)} />)}
-          <ListRow key="all" href="/hinweise" title={`Alle Hinweise (${allOpen.length})`} testId="all-insights-link" />
-        </ListGroup>
-        {dueToday && <FeedList title={`Fällig heute (${dueToday.entries.length})`} testId="feed-faellig" entries={dueToday.entries} onDone={onDone} onLater={onLater} />}
-        <ListGroup title="Nachrichten" testId="replies" sectionId="heute-nachrichten" defaultOpen>
-          {waitingChats.length === 0
-            ? <ListRow key="empty" title="Keine offenen Antworten." />
-            : waitingChats.slice(0, 5).map((r) => (
-              <ListRow key={r.threadId} href={`/nachrichten/${encodeURIComponent(r.threadId)}`} testId="reply-row"
-                title={r.name} subtitle={r.preview} value={`${r.waitingHours ?? 0} Std.`} />
-            ))}
-          {waitingChats.length > 5 ? (
-            <ListRow key="all" href="/nachrichten?filter=waiting" title={`Alle wartenden Chats (${waitingChats.length})`} testId="replies-all" />
-          ) : null}
-        </ListGroup>
           {later.map((section) => <FeedSection key={section.id} section={section} onDone={onDone} onLater={onLater}
-        defaultOpen={section.id === 'ueberfaellig' ? section.entries.length <= 5 : undefined} />)}
+            defaultOpen={section.id === 'ueberfaellig' ? false : undefined} />)}
         </div>
         <aside className="heute-side">
         <ListGroup title="Termine heute" testId="events-today">

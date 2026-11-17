@@ -69,6 +69,14 @@ describe('buildInbox', () => {
     expect(filterInbox(rows, 'all', '0160 555').map((r) => r.threadId)).toEqual(['+491605550000']);
     expect(filterInbox(rows, 'all', 'bot-ab').map((r) => r.threadId)).toEqual(['+491715551234']);
   });
+  test('Mail an dieselbe Nummer beendet das Warten im WhatsApp-Chat', () => {
+    const mailOut = msg({
+      id: 'out-mail', channel: 'email', connectionId: 'gmail', threadId: 'mail-out', direction: 'out',
+      from: 'info@example.de', to: '0171 5551234', body: 'Ist erledigt', sentAt: '2026-11-17T10:00:00.000Z', needsReply: false,
+    });
+    const rows = buildInbox({ messages: [...messages, mailOut], contacts: [anna] }, at, 2);
+    expect(rows.find((r) => r.threadId === '+491715551234')?.waitingHours).toBeNull();
+  });
   test('Initialen', () => {
     expect(initialsOf('Anna Beispiel')).toBe('AB');
     expect(initialsOf('+491605550000')).toBe('#');

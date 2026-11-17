@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { slimForClient } from '@/domain/client-view';
 import { realNow } from '@/domain/clock';
 import { isFetchableMailbox } from '@/domain/connections';
 import { requireSession } from '@/server/auth/session';
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     const row = result.mailboxes.find((m) => m.id === id);
     const state = await loadState(repos, realNow());
     return NextResponse.json({
-      state,
+      state: slimForClient(state),
       id,
       added: row?.added ?? 0,
       outcome: row?.outcome ?? 'skipped',

@@ -20,6 +20,15 @@ describe('Detektoren', () => {
     expect(r.title).toBe('Autohaus Schmidt wartet seit 3 Std. auf Antwort');
     expect(r.nextStep).toBe('Antwort senden');
   });
+  test('mehrere Nachrichten derselben Nummer sind ein Hinweis, eine Mail schließt ihn', () => {
+    const second = { ...schmidtIn, id: 'm-schmidt-2', externalId: 'e2', body: 'Noch da?', sentAt: '2026-11-12T06:00:00Z' };
+    const list = run({ messages: [schmidtIn, second] }).filter((i) => i.type === 'reply_waiting');
+    expect(list).toHaveLength(1);
+    expect(list[0].dedupeKey).toBe('reply:m-schmidt-1');
+    expect(list[0].body).toContain('2 Nachrichten');
+    const replied = run({ messages: [schmidtIn, second, { ...schmidtIn, id: 'm-out', externalId: 'e3', direction: 'out' as const, channel: 'email' as const, threadId: 'mail', to: '0209 111222', from: 'info@example.de', sentAt: '2026-11-12T07:00:00Z', needsReply: false }] });
+    expect(replied.some((i) => i.type === 'reply_waiting')).toBe(false);
+  });
   test('reply_waiting ohne Kontakt: WhatsApp-Profilname statt Nummer', () => {
     const r = find(run({ messages: [{ ...schmidtIn, contactId: null, fromName: 'Max Muster' }] }), 'reply_waiting');
     expect(r.title).toBe('Max Muster wartet seit 3 Std. auf Antwort');

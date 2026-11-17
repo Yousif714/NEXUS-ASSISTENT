@@ -38,6 +38,13 @@ const validPhone = (raw: string): string | null => {
 };
 
 export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: Date, thresholdHours: number, channel?: Message['channel']): InboxRow[] {
+  const openForThread = new Map<string, ReturnType<typeof openReplies>>();
+  for (const item of openReplies(s.messages, at, 0, s.contacts)) {
+    const key = `${item.message.channel}|${item.message.threadId}`;
+    const list = openForThread.get(key);
+    if (list) list.push(item);
+    else openForThread.set(key, [item]);
+  }
   const threads = new Map<string, Message[]>();
   for (const m of s.messages) {
     if (channel && m.channel !== channel) continue;
@@ -58,7 +65,7 @@ export function buildInbox(s: { messages: Message[]; contacts: Contact[] }, at: 
     const named = incoming.findLast((m) => m.fromName || m.profileName);
     const fromName = named?.fromName || named?.profileName;
     const system = incoming.length > 0 && incoming.every((m) => isAutomatedMail(m));
-    const waiting = openReplies(list, at, 0);
+    const waiting = openForThread.get(`${last.channel}|${last.threadId}`) ?? [];
     const waitingHours = waiting.length ? Math.max(...waiting.map((w) => w.waitingHours)) : null;
     const classes = incoming.filter((m) => !isAutomatedMail(m)).map((m) => classifyJobMessage(m.body));
     const label = senderLabel(counterpart, { fromName, profileName: named?.profileName });

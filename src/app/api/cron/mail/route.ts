@@ -4,6 +4,7 @@ import { realNow } from '@/domain/clock';
 import { readEnv } from '@/server/env';
 import { syncMailboxes } from '@/server/mail-sync';
 import { getMailDeps, getRepos } from '@/server/registry';
+import { requestWhatsAppHistoryOnce } from '@/server/whatsapp-history';
 
 // Fluid Compute: der Abruf darf länger brauchen als der übrige Takt (dort 60 s).
 export const maxDuration = 300;
@@ -25,6 +26,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ skipped: true }, { headers: { 'cache-control': 'no-store' } });
   }
   try {
+    // Vor dem Postfach: ein kurzer Aufruf, der ausgehende WhatsApp-Nachrichten vom Handy nachzieht. Sendet nichts an Kunden.
+    try { await requestWhatsAppHistoryOnce(repos, readEnv(), at); } catch (e) {
+      console.error('WhatsApp-Historie:', e instanceof Error ? e.name : typeof e);
+    }
     const result = await syncMailboxes(repos, getMailDeps());
     return NextResponse.json(result, { headers: { 'cache-control': 'no-store' } });
   } catch (e) {

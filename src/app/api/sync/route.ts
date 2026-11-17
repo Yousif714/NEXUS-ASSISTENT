@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { slimForClient } from '@/domain/client-view';
 import { realNow } from '@/domain/clock';
 import { requireSession } from '@/server/auth/session';
 import { getRepos, getSyncDeps } from '@/server/registry';
@@ -23,7 +24,7 @@ export async function POST() {
     secrets = syncSecrets(deps.keys);
     await syncConnections(repos, deps);
     const state = await loadState(repos, realNow());
-    return NextResponse.json({ state }, { headers: { 'cache-control': 'no-store' } });
+    return NextResponse.json({ state: slimForClient(state) }, { headers: { 'cache-control': 'no-store' } });
   } catch (err) {
     return NextResponse.json({ error: `Abgleich fehlgeschlagen: ${sanitizeError(err, secrets)}` }, { status: 502 });
   }

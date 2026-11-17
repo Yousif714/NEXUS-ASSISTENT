@@ -1,4 +1,4 @@
-import { isAutomatedMail } from '@/domain/mail-text';
+import { pendingReplies } from '@/domain/matching/messages';
 import type { Contact, Message } from '@/domain/types';
 
 export type WaFilter = 'all' | 'unanswered' | 'job' | 'unassigned';
@@ -16,14 +16,9 @@ export interface WaThread {
   intake: Message['intake'];
 }
 
-const unansweredOf = (messages: Message[]): number => messages.filter((m) => {
-    if (m.direction !== 'in' || !m.needsReply || m.doneManually || isAutomatedMail(m)) return false;
-  const sent = Date.parse(m.sentAt);
-  return !messages.some((o) => o.direction === 'out' && o.channel === m.channel && o.threadId === m.threadId && Date.parse(o.sentAt) > sent);
-}).length;
-
 /** Eine Zeile je Unterhaltung, neueste oben. WhatsApp zuerst, E-Mail bleibt dabei, wenn der Verlauf gerade offen ist. */
 export function buildThreads(messages: Message[], contacts: Contact[], focusId?: string): WaThread[] {
+  const pending = new Set(pendingReplies(messages, contacts).map((m) => m.id));
   const byId = new Map<string, Message[]>();
   for (const m of messages) {
     if (m.channel !== 'whatsapp' && m.threadId !== focusId) continue;
@@ -45,7 +40,7 @@ export function buildThreads(messages: Message[], contacts: Contact[], focusId?:
     const intake = [...sorted].reverse().find((m) => m.intake)?.intake;
     threads.push({
       threadId, channel: last.channel, title, phone, preview: last.body, at: last.sentAt,
-      unanswered: unansweredOf(sorted), contactId, jobId, intake,
+      unanswered: sorted.filter((m) => pending.has(m.id)).length, contactId, jobId, intake,
     });
   }
   return threads.sort((a, b) => b.at.localeCompare(a.at) || a.title.localeCompare(b.title, 'de'));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import './zulassung.css';
 
@@ -17,7 +17,7 @@ import { unallocatedBankPayments, zulassungCustomers, zulassungKpis } from '@/da
 import { useAppStore } from '@/data/store';
 import { MONEY_SOURCES, buildBriefing } from '@/domain/briefing';
 import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
-import { areaUnreliable } from '@/domain/freshness';
+import { areaUnreliable, messageStand } from '@/domain/freshness';
 import { jobBilling } from '@/domain/billing';
 import { jobContactLabel, jobPortalSource } from '@/domain/import/portal';
 import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
@@ -43,6 +43,7 @@ export default function ZulassungPage() {
   const kpis = zulassungKpis(state, at);
   const money = buildBriefing(state, 'morning', at).money.find((m) => m.company === 'zulassung')!;
   const contactName = (j: Job) => jobContactLabel(j, state.contacts);
+  const vehiclesById = useMemo(() => new Map(state.vehicles.map((v) => [v.id, v])), [state.vehicles]);
   const customers = zulassungCustomers(state, today);
   const newOrders = unlinkedOrderMessages(state);
   const overdueCustomers = customers
@@ -51,7 +52,7 @@ export default function ZulassungPage() {
 
   return (
     <>
-      <PageHeader title="Zulassungsdienst" subtitle={formatBerlinDe(at, 'EEEE, d. MMMM')} />
+      <PageHeader title="Zulassungsdienst" subtitle={[formatBerlinDe(at, 'EEEE, d. MMMM'), messageStand(state.connections, at)].filter(Boolean).join(' · ')} />
 
       <div className="zl-top">
       <Figures columns={4}>
@@ -100,7 +101,7 @@ export default function ZulassungPage() {
         return (
           <ListGroup key={status} title={JOB_STATUS_LABEL[status].charAt(0).toUpperCase() + JOB_STATUS_LABEL[status].slice(1)} testId={`jobs-${status}`} sectionId={unbilled && status === 'done' ? 'jobs-unbilled' : `jobs-${status}`} defaultOpen={status === 'open' || (unbilled && status === 'done')}>
             {shown.map((j) => {
-              const v = state.vehicles.find((x) => x.id === j.vehicleId);
+              const v = j.vehicleId ? vehiclesById.get(j.vehicleId) : undefined;
               return (
                 <ListRow key={j.id} href={`/zulassung/auftraege/${j.id}`} testId={`job-row-${j.id}`}
                   title={<>{v ? portalVehicleTitle(v) : j.service} {jobPortalBadge(j)}{j.draft && <span className="draft-badge">Entwurf</span>}</>}
