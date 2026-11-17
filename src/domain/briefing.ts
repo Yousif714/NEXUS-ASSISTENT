@@ -51,7 +51,7 @@ export function buildBriefing(s: AppState, kind: 'morning' | 'evening' | 'weekly
       { company: 'nexus', openCents: nexusOpen, overdueCents: nexusOverdue, ...moneyFreshness(MONEY_SOURCES.nexus, s, now) },
       { company: 'zulassung', openCents: zOpen, overdueCents: zOverdue, ...moneyFreshness(MONEY_SOURCES.zulassung, s, now) },
     ],
-    repliesOpen: openReplies(s.messages, now, s.settings.replyThresholdHours).length,
+    repliesOpen: openReplies(s.messages, now, s.settings.replyThresholdHours, s.contacts).length,
     coach,
     dataAsOf: formatBerlin(now, 'HH:mm'),
     staleSources: areaStale(s.connections.map((c) => c.id), s.connections, now),

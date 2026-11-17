@@ -1,6 +1,7 @@
 'use server';
 
 import { stateAI, type Tone } from '@/ai/state-ai';
+import { slimForClient } from '@/domain/client-view';
 import { createStateTools } from '@/ai/tools';
 import { handleInbound } from '@/domain/assistant';
 import type { ChatAnswer } from '@/domain/ai-port';
@@ -56,5 +57,5 @@ export async function sendToAssistant(text: string): Promise<{ state: AppState }
   const s = await loadState(repos, at);
   const r = await handleInbound(s, 'App', text.trim(), at, getAI(), createStateTools(s, at), { channel: 'app', isDemo: false });
   const { state } = await dispatchEvents(repos, r.events, { at: realNow, provider: getActionProvider() });
-  return { state };
+  return { state: slimForClient(state) };
 }

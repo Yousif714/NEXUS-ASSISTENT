@@ -1,3 +1,4 @@
+import { emailsIn } from '@/domain/import/mail';
 import { isAutomatedMail } from '@/domain/mail-text';
 import type { Contact, Job, Message, Vehicle } from '@/domain/types';
 
@@ -76,20 +77,104 @@ export function matchMessage(
   return { contactId, jobId };
 }
 
+/** Kanonische Rufnummer, sonst `null`. `+49`, `0049`, `0…` und die reine Ziffernfolge von WhatsApp fallen zusammen. */
+export function phoneKey(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const t = toE164(raw.trim());
+  return /^\+\d{6,15}$/.test(t) ? t : null;
+}
+
+type PartyIndex = { byPhone: Map<string, string>; byEmail: Map<string, string> };
+
+function indexContacts(contacts: readonly Contact[]): PartyIndex {
+  const byPhone = new Map<string, string>();
+  const byEmail = new Map<string, string>();
+  for (const c of contacts) {
+    for (const p of c.phones) {
+      const k = phoneKey(p);
+      if (k && !byPhone.has(k)) byPhone.set(k, c.id);
+    }
+    for (const e of c.emails) {
+      const k = e.trim().toLowerCase();
+      if (k && !byEmail.has(k)) byEmail.set(k, c.id);
+    }
+  }
+  return { byPhone, byEmail };
+}
+
+/** Schlüssel derselben Person: normalisierte Nummer, E-Mail, Kontakt. Der Thread zählt nur im selben Kanal. */
+function partyKeys(m: Message, ix: PartyIndex): string[] {
+  const keys = new Set<string>();
+  const raw = m.direction === 'in' ? m.from : m.to;
+  const phones = new Set<string>();
+  const direct = phoneKey(raw);
+  if (direct) phones.add(direct);
+  const threadPhone = phoneKey(m.threadId);
+  if (threadPhone) phones.add(threadPhone);
+  const emails = emailsIn(raw);
+  const contactIds = new Set<string>();
+  if (m.contactId) contactIds.add(m.contactId);
+  for (const p of phones) {
+    const id = ix.byPhone.get(p);
+    if (id) contactIds.add(id);
+  }
+  for (const e of emails) {
+    const id = ix.byEmail.get(e);
+    if (id) contactIds.add(id);
+  }
+  for (const id of contactIds) keys.add(`c:${id}`);
+  for (const p of phones) keys.add(`tel:${p}`);
+  for (const e of emails) keys.add(`mail:${e}`);
+  keys.add(`th:${m.channel}:${m.threadId}`);
+  return [...keys];
+}
+
+/**
+ * Dieselbe Person, unabhängig von Kanal, Gerät und Thread.
+ * Telefon und E-Mail werden normalisiert; ein Kontakt verbindet beide Kanäle.
+ */
+export function sameParty(a: Message, b: Message, contacts: readonly Contact[] = []): boolean {
+  const ix = indexContacts(contacts);
+  const right = new Set(partyKeys(b, ix));
+  return partyKeys(a, ix).some((k) => right.has(k));
+}
+
+function pushTime(map: Map<string, number[]>, key: string, at: number) {
+  const list = map.get(key);
+  if (list) list.push(at);
+  else map.set(key, [at]);
+}
+
+/** Eingehende Nachrichten, auf die noch keine spätere Ausgangsnachricht an dieselbe Person folgt. */
+export function pendingReplies(messages: Message[], contacts: readonly Contact[] = []): Message[] {
+  const ix = indexContacts(contacts);
+  const times = new Map<string, number[]>();
+  for (const m of messages) {
+    if (m.direction !== 'out') continue;
+    const at = Date.parse(m.sentAt);
+    if (!Number.isFinite(at)) continue;
+    for (const key of partyKeys(m, ix)) pushTime(times, key, at);
+  }
+  const result: Message[] = [];
+  for (const msg of messages) {
+    if (msg.direction !== 'in' || !msg.needsReply || msg.doneManually || isAutomatedMail(msg)) continue;
+    const sent = Date.parse(msg.sentAt);
+    if (!Number.isFinite(sent)) continue;
+    const answered = partyKeys(msg, ix).some((key) => times.get(key)?.some((t) => t > sent));
+    if (!answered) result.push(msg);
+  }
+  return result;
+}
+
 export function openReplies(
   messages: Message[],
   now: Date,
   thresholdHours: number,
+  contacts: readonly Contact[] = [],
 ): { message: Message; waitingHours: number }[] {
   const result: { message: Message; waitingHours: number }[] = [];
-  for (const msg of messages) {
-    if (msg.direction !== 'in' || !msg.needsReply || msg.doneManually || isAutomatedMail(msg)) continue;
-    const sent = Date.parse(msg.sentAt);
-    const answered = messages.some(
-      (o) => o.direction === 'out' && o.channel === msg.channel && o.threadId === msg.threadId && Date.parse(o.sentAt) > sent,
-    );
-    if (answered) continue;
-    const waitingHours = Math.floor((now.getTime() - sent) / 3_600_000);
+  for (const msg of pendingReplies(messages, contacts)) {
+    const waitingHours = Math.floor((now.getTime() - Date.parse(msg.sentAt)) / 3_600_000);
     if (waitingHours >= thresholdHours) result.push({ message: msg, waitingHours });
   }
   return result;

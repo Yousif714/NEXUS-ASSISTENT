@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { buildThreads, filterThreads } from '@/components/wa-threads';
+import { pendingReplies, phoneKey } from '@/domain/matching/messages';
 import type { Message } from '@/domain/types';
 import { msg } from './helpers';
 
@@ -18,5 +19,16 @@ describe('WhatsApp-Unterhaltungen', () => {
     expect(filterThreads(threads, 'unanswered', '').map((t) => t.threadId)).toEqual(['+49111']);
     expect(filterThreads(threads, 'unassigned', 'lea').map((t) => t.title)).toEqual(['Lea Beispiel']);
     expect(filterThreads(threads, 'job', '')).toEqual([]);
+  });
+
+  test('spätere Mail an die Nummer löscht das Badge', () => {
+    const list = [
+      m({ id: 'a1', threadId: '+491511111000', from: '+491511111000', body: 'Frage', sentAt: '2026-11-01T10:00:00Z', needsReply: true }),
+      m({ id: 'a2', channel: 'email', threadId: 'mail', direction: 'out', to: '0151 1111000', body: 'Antwort', sentAt: '2026-11-01T12:00:00Z' }),
+    ];
+    expect(phoneKey('0151 1111000')).toBe('+491511111000');
+    expect(pendingReplies(list).map((x) => x.id)).toEqual([]);
+    const threads = buildThreads(list, []);
+    expect(threads[0].unanswered).toBe(0);
   });
 });

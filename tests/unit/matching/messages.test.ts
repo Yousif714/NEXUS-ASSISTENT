@@ -37,8 +37,26 @@ describe('Antwortpflicht', () => {
   const inMsg = msg({ id: 'a', threadId: 't1', direction: 'in', needsReply: true, sentAt: '2026-11-12T05:30:00Z' });
   test('offen', () => expect(openReplies([inMsg], NOW_0930, 2)).toEqual([{ message: inMsg, waitingHours: 3 }]));
   test('beantwortet', () => expect(openReplies([inMsg, msg({ id: 'b', threadId: 't1', direction: 'out', sentAt: '2026-11-12T06:00:00Z' })], NOW_0930, 2)).toEqual([]));
-  test('anderer Thread schließt nicht', () => expect(openReplies([inMsg, msg({ id: 'b', threadId: 't2', direction: 'out', sentAt: '2026-11-12T06:00:00Z', to: inMsg.from })], NOW_0930, 2)).toHaveLength(1));
-  test('anderer Kanal schließt nicht', () => expect(openReplies([inMsg, msg({ id: 'b', channel: 'email', direction: 'out', sentAt: '2026-11-12T06:00:00Z' })], NOW_0930, 2)).toHaveLength(1));
+  test('spätere Nachricht an dieselbe Nummer schließt, auch in anderem Thread', () => expect(openReplies([
+    inMsg,
+    msg({ id: 'b', threadId: 't2', direction: 'out', sentAt: '2026-11-12T06:00:00Z', to: '0049 151000' }),
+  ], NOW_0930, 2)).toEqual([]));
+  test('Mail an dieselbe Nummer schließt die WhatsApp-Frage', () => expect(openReplies([
+    inMsg,
+    msg({ id: 'b', channel: 'email', threadId: 'mail-1', direction: 'out', sentAt: '2026-11-12T06:00:00Z', to: '0151 000' }),
+  ], NOW_0930, 2)).toEqual([]));
+  test('andere Person schließt nicht', () => expect(openReplies([
+    inMsg,
+    msg({ id: 'b', threadId: 't2', channel: 'email', direction: 'out', sentAt: '2026-11-12T06:00:00Z', to: 'andere@example.de' }),
+  ], NOW_0930, 2)).toHaveLength(1));
+  test('Kontakt verbindet WhatsApp-Nummer und Mailadresse', () => {
+    const contact = { id: 'c-anna', company: 'zulassung' as const, kind: 'private' as const, name: 'Anna Beispiel', phones: ['0151 000'], emails: ['anna@example.de'] };
+    const waiting = openReplies([
+      inMsg,
+      msg({ id: 'b', channel: 'email', threadId: 'mail-9', direction: 'out', from: 'info@example.de', to: 'Anna <anna@example.de>', sentAt: '2026-11-12T06:00:00Z', contactId: null }),
+    ], NOW_0930, 2, [contact]);
+    expect(waiting).toEqual([]);
+  });
   test('Antwort davor schließt nicht', () => expect(openReplies([inMsg, msg({ id: 'b', direction: 'out', sentAt: '2026-11-12T05:00:00Z' })], NOW_0930, 2)).toHaveLength(1));
   test('unter Schwelle', () => expect(openReplies([inMsg], new Date('2026-11-12T06:30:00Z'), 2)).toEqual([]));
   test('manuell erledigt', () => expect(openReplies([{ ...inMsg, doneManually: true }], NOW_0930, 2)).toEqual([]));

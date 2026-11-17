@@ -3,6 +3,7 @@ import { createEmptyState } from '@/data/empty-state';
 import { HOW_TO } from '@/domain/connections';
 import { emptyBatch } from '@/domain/import/batch';
 import { parseWhatsAppWebhook } from '@/domain/import/whatsapp';
+import { openReplies } from '@/domain/matching/messages';
 import { mergeBatch } from '@/domain/import/merge';
 import type { Contact } from '@/domain/types';
 
@@ -168,6 +169,46 @@ describe('parseWhatsAppWebhook', () => {
       },
     }]));
     expect(parsed.batch.messages[0]).toMatchObject({ profileName: 'Lea Beispiel', threadId: '+491715551234' });
+  });
+
+  test('from_me vom Handy ist ausgehend, auch wenn from die Kundennummer ist', () => {
+    const parsed = parseWhatsAppWebhook(payload([{
+      field: 'messages',
+      value: {
+        metadata: meta,
+        messages: [{
+          from: CUSTOMER, to: { wa_id: '0049 151 1111111' }, id: 'wamid.me', timestamp: TS, type: 'text',
+          text: { body: 'Ist raus.' }, from_me: true,
+        }],
+      },
+    }]));
+    expect(parsed.batch.messages[0]).toMatchObject({
+      direction: 'out', needsReply: false, from: '+491511111111', to: '+491715551234', threadId: '+491715551234', body: 'Ist raus.',
+    });
+  });
+
+  test('Historie mit from_me schließt später den Hinweis, 0171 und +49 sind dieselbe Nummer', () => {
+    const parsed = parseWhatsAppWebhook(payload([{
+      field: 'history',
+      value: {
+        metadata: meta,
+        history: [{
+          metadata: { progress: 100 },
+          threads: [{
+            id: '0171 5551234',
+            messages: [
+              { from: '00491715551234', id: 'wamid.in', timestamp: '1731700000', type: 'text', text: { body: 'Frage' } },
+              { from: CUSTOMER, id: 'wamid.out', timestamp: '1731700005', type: 'text', text: { body: 'Antwort' }, history_context: { status: 'read', from_me: true } },
+            ],
+          }],
+        }],
+      },
+    }]));
+    const [incoming, outgoing] = parsed.batch.messages;
+    expect(incoming).toMatchObject({ direction: 'in', threadId: '+491715551234', needsReply: true });
+    expect(outgoing).toMatchObject({ direction: 'out', threadId: '+491715551234', needsReply: false, from: '+491511111111', to: '+491715551234' });
+    const asMessages = parsed.batch.messages.map((m) => ({ ...m, id: m.externalId, contactId: null, jobId: null }));
+    expect(openReplies(asMessages, new Date('2026-11-17T12:00:00Z'), 0)).toEqual([]);
   });
 
   test('Gruppenchat wird nicht übernommen', () => {

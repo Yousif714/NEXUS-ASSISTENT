@@ -8,7 +8,7 @@ export interface ListedBox {
 export interface MailboxChoice {
   /** Ordner, aus dem neue Eingänge kommen. Bei Gmail „Alle Nachrichten“, sonst INBOX. */
   incoming: string;
-  /** Gesendet. Bei Gmail leer: der Ausgang steckt schon in „Alle Nachrichten“. */
+  /** Gesendet. Bei Gmail zusätzlich zu „Alle Nachrichten“, weil das Label am Ausgang oft fehlt. */
   sent: string | null;
   source: 'all' | 'inbox';
 }
@@ -34,9 +34,10 @@ function isSentPath(path: string): boolean {
  */
 export function pickImapMailboxes(boxes: ListedBox[]): MailboxChoice {
   const byFlag = (name: string) => boxes.find((b) => flag(b) === name)?.path;
-  const all = byFlag('\\all') ?? boxes.find((b) => isAll(b.path))?.path;
-  if (all) return { incoming: all, sent: null, source: 'all' };
   const sent = byFlag('\\sent') ?? boxes.find((b) => isSentPath(b.path))?.path ?? null;
+  const all = byFlag('\\all') ?? boxes.find((b) => isAll(b.path))?.path;
+  // Gmail: Alle Nachrichten enthält den Ausgang, das Label fehlt aber oft. Gesendet wird zusätzlich gelesen.
+  if (all) return { incoming: all, sent, source: 'all' };
   const inbox = byFlag('\\inbox') ?? boxes.find((b) => b.path.toLowerCase() === 'inbox')?.path ?? 'INBOX';
   return { incoming: inbox, sent, source: 'inbox' };
 }

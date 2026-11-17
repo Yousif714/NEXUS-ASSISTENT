@@ -29,6 +29,23 @@ export function ageMinutes(c: Connection, now: Date): number | null {
   return Math.floor((now.getTime() - Date.parse(c.lastSuccessAt)) / 60_000);
 }
 
+/** Postfächer und WhatsApp: der älteste erfolgreiche Abruf, dezent als „Stand: vor X Min.“. */
+const MESSAGE_SOURCES: ConnectionId[] = ['whatsapp_kunden', 'info_mail', 'gmail', 'icloud'];
+
+export function messageStand(connections: Connection[], at: Date): string | null {
+  let oldest: { age: number; at: string } | null = null;
+  for (const id of MESSAGE_SOURCES) {
+    const c = connections.find((x) => x.id === id);
+    if (!c || c.status === 'missing' || !c.lastSuccessAt) continue;
+    const age = ageMinutes(c, at);
+    if (age === null) continue;
+    if (!oldest || age > oldest.age) oldest = { age, at: c.lastSuccessAt };
+  }
+  if (!oldest) return null;
+  if (oldest.age < 60) return `Stand: vor ${oldest.age} Min.`;
+  return `Stand: ${formatBerlin(new Date(oldest.at), 'dd.MM. HH:mm')}`;
+}
+
 /** Altersanzeige: Minuten bis zur ersten Stunde, danach Datum und Uhrzeit (Europe/Berlin). */
 export function ageText(c: Connection, at: Date): string {
   const age = ageMinutes(c, at);

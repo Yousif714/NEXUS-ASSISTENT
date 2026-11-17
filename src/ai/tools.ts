@@ -73,7 +73,7 @@ export function createStateTools(s: AppState, now: Date): AITools {
         .filter((m) => m.jobId === job.id || m.contactId === contact.id)
         .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
       const last = msgs[msgs.length - 1];
-      const waiting = last ? openReplies(s.messages, now, s.settings.replyThresholdHours).find((r) => r.message.threadId === last.threadId) : undefined;
+      const waiting = last ? openReplies(s.messages, now, s.settings.replyThresholdHours, s.contacts).find((r) => r.message.threadId === last.threadId && r.message.channel === last.channel) : undefined;
       return {
         ...base,
         job: { id: job.id, service: job.service, status: job.status },

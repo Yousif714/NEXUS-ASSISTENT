@@ -39,6 +39,13 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined);
 const idOf = (v: unknown): string | undefined => str(v) ?? (typeof v === 'number' && Number.isFinite(v) ? String(v) : undefined);
 
+/** Nummer als Text oder als `{ wa_id }` (so kommen manche Echos). */
+function partyRaw(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number') return String(v).trim();
+  if (isObj(v)) return idOf(v.wa_id) ?? idOf(v.phone) ?? idOf(v.id) ?? '';
+  return '';
+}
+
 const e164 = (raw: string): string => {
   const t = toE164(raw.trim());
   return /^\+\d{6,15}$/.test(t) ? t : '';
@@ -190,15 +197,20 @@ export function parseWhatsAppWebhook(payload: unknown, opts: WhatsAppParseOption
     const externalId = (str(m.id) ?? '').slice(0, 500);
     const sentAt = sentAtOf(m.timestamp);
     if (!externalId || !sentAt) return null;
-    const fromRaw = str(m.from) ?? '';
-    const toRaw = str(m.to) ?? '';
+    const fromRaw = partyRaw(m.from);
+    const toRaw = partyRaw(m.to);
     const fromBusiness = samePhone(fromRaw, business);
-    const direction: 'in' | 'out' = mode === 'auto' ? (fromBusiness ? 'out' : 'in') : mode;
-    const customerRaw = threadHint || (direction === 'in' ? fromRaw : toRaw);
+    // Vom Handy gesendet: `from_me` (auch in der Historie), nicht nur das Echo-Feld.
+    const fromMe = m.from_me === true || (isObj(m.history_context) && m.history_context.from_me === true);
+    const direction: 'in' | 'out' = mode === 'out' || fromMe ? 'out' : mode === 'in' ? 'in' : (fromBusiness ? 'out' : 'in');
+    const customerRaw = threadHint || (direction === 'out'
+      ? (toRaw && !samePhone(toRaw, business) ? toRaw : (!fromBusiness && fromRaw ? fromRaw : toRaw))
+      : fromRaw);
     const customer = e164(customerRaw);
     const biz = e164(business);
-    const from = e164(direction === 'out' ? fromRaw || business : fromRaw) || (direction === 'out' ? biz : '');
-    const to = e164(direction === 'out' ? toRaw || customerRaw : toRaw || business) || (direction === 'in' ? biz : '');
+    // Ausgang immer: von der Geschäftsnummer an den Kunden. `from_me` dreht die Felder sonst um.
+    const from = direction === 'out' ? (biz || e164(fromRaw)) : (e164(fromRaw) || customer);
+    const to = direction === 'out' ? (customer || e164(toRaw)) : (biz || e164(toRaw));
     if (!from && !to) return null;
     const bodyRaw = readBody(m);
     if (bodyRaw === null || bodyRaw.trim() === '') return null;

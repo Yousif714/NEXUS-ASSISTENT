@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { Sidebar } from '@/components/Sidebar';
+import { TabBar } from '@/components/TabBar';
 import { DemoProvider } from '@/domain/actions/demo-provider';
 import { REJECT_REASON_DE } from '@/domain/actions/machine';
 import { now } from '@/domain/clock';
@@ -214,7 +216,19 @@ function RealStoreProvider({ mode, children }: { mode: 'real' | 'offline'; child
     setNotice('');
   }, [writes]);
 
-  if (!state) return null;
+  if (!state) {
+    return (
+      <>
+        <Sidebar />
+        <main className="shell-main">
+          <div className="shell-content">
+            <p className="note-card" data-testid="app-loading">Wird geladen …</p>
+          </div>
+        </main>
+        <TabBar />
+      </>
+    );
+  }
   return (
     <StoreContext.Provider value={{ state, dispatch, mode, reload, syncNow }}>
       <AdoptContext.Provider value={adopt}>

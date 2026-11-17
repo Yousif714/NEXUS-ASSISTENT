@@ -135,9 +135,10 @@ export async function pullImap(connectionId: ConnectionId, cursor: string | null
     }
   };
 
-  if (boxes.source === 'all' || !boxes.sent) {
+  if (!boxes.sent) {
     await run('inbox', 'inboxUid', limit);
   } else {
+    // Auch bei „Alle Nachrichten“: Gesendet nachziehen. Dort steht die Antwort, wenn das Label fehlt.
     const inboxMax = Math.min(limit, Math.max(1, Math.ceil(limit * 0.75)));
     const got = await run('inbox', 'inboxUid', inboxMax);
     const left = limit - got;

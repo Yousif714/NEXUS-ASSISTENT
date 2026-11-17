@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { BackLink } from '@/components/BackLink';
 import { DemoBadge } from '@/components/DemoBadge';
@@ -43,6 +44,17 @@ export default function JobPage() {
   const at = now();
   const back = <BackLink href="/zulassung" label="Zulassungsdienst" />;
   const job = state.jobs.find((j) => j.id === id);
+  const [portalData, setPortalData] = useState(job?.portalData);
+  useEffect(() => {
+    if (!job?.portalDetail) return;
+    let cancel = false;
+    void fetch(`/api/jobs/${encodeURIComponent(job.id)}`).then(async (res) => {
+      if (!res.ok || cancel) return;
+      const body = await res.json() as { portalData?: Job['portalData'] };
+      if (!cancel && body.portalData) setPortalData(body.portalData);
+    }).catch(() => {});
+    return () => { cancel = true; };
+  }, [job?.id, job?.portalDetail]);
 
   if (!job) {
     return (
@@ -53,6 +65,8 @@ export default function JobPage() {
     );
   }
 
+  const columns = portalData ?? job.portalData;
+  const withColumns = columns ? { ...job, portalData: columns } : job;
   const contact = job.contactId ? state.contacts.find((c) => c.id === job.contactId) : undefined;
   const name = jobContactLabel(job, state.contacts);
   const vehicle = state.vehicles.find((v) => v.id === job.vehicleId);
@@ -93,20 +107,20 @@ export default function JobPage() {
         <ListRow key="service" title="Leistung" value={job.service} />
         <ListRow key="location" title="Standort" value={LOCATION_LABEL[job.location]} />
         <ListRow key="customer" href={contact ? `/zulassung/kunden/${contact.id}` : undefined} title="Kunde" value={<span data-testid="job-customer">{name}</span>} />
-        <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{job.portalData && job.priceCents === 0 ? '–' : formatEuro(job.priceCents)}</span>} />
+        <ListRow key="price" title="Preis" value={<span className="amount" data-testid="job-price">{columns && job.priceCents === 0 ? '–' : formatEuro(job.priceCents)}</span>} />
         {job.notes ? <ListRow key="notes" title="Notiz" subtitle={job.notes} /> : null}
       </ListGroup>
 
       {job.portalSource && (
         <ListGroup title={PORTAL_LABEL[job.portalSource]} testId="job-portal" sectionId="job-portal" defaultOpen={false}>
           <ListRow key="source" title="Portal" value={<span data-testid="job-portal-source">{PORTAL_LABEL[job.portalSource]}</span>} />
-          <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(job) ?? '–'}</span>} />
+          <ListRow key="vorgang" title="Vorgangsnummer" value={<span data-testid="job-vorgang">{mdcVorgang(withColumns) ?? '–'}</span>} />
           <ListRow key="pstatus" title="Portalstatus" value={<span data-testid="job-portal-status" className={job.portalProblem ? 'arrears-value' : undefined}>{job.portalStatus || '–'}</span>} />
           {job.requestedOn ? <ListRow key="datum" title="Vorgangsdatum" testId="job-portal-date" value={formatIsoDe(job.requestedOn)} /> : null}
-          {job.portalData?.Fehler ? <ListRow key="fehler" title="Fehlertext" testId="job-portal-error" value={job.portalData.Fehler} /> : null}
+          {columns?.Fehler ? <ListRow key="fehler" title="Fehlertext" testId="job-portal-error" value={columns.Fehler} /> : null}
           {job.portalProblem ? <ListRow key="problem" title="Problem" testId="job-portal-problem" value="Portal meldet Fehler oder Ablehnung" /> : null}
-          {Object.entries(job.portalData ?? {})
-            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status' && k !== 'Auftragsnummer' && !(k === 'Datum' && job.requestedOn) && !(k === 'Fehler' && job.portalData?.Fehler))
+          {Object.entries(columns ?? {})
+            .filter(([k, v]) => v && k !== 'Ex_Vorgangsnummer' && k !== 'Status' && k !== 'Auftragsnummer' && !(k === 'Datum' && job.requestedOn) && !(k === 'Fehler' && columns?.Fehler))
             .map(([k, v]) => <ListRow key={k} title={k.replace(/_/g, ' ')} value={v} testId={`portal-field-${k}`} />)}
         </ListGroup>
       )}

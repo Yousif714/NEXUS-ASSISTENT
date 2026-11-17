@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { useAppStore } from '@/data/store';
 import { formatBerlin, now, todayBerlin } from '@/domain/clock';
+import { messageStand } from '@/domain/freshness';
 import { buildInbox, filterInbox, initialsOf, type InboxFilter, type InboxRow } from '@/domain/inbox';
 
 const FILTERS: { id: InboxFilter; label: string }[] = [
@@ -41,7 +42,7 @@ export default function InboxPage() {
 
   return (
     <>
-      <PageHeader title="WhatsApp" subtitle={waiting > 0 ? `${waiting} warten auf Antwort` : 'Alles beantwortet'} />
+      <PageHeader title="WhatsApp" subtitle={[waiting > 0 ? `${waiting} warten auf Antwort` : 'Alles beantwortet', messageStand(state.connections, at)].filter(Boolean).join(' · ')} />
 
       <div className="inbox-tools">
         <label className="field inbox-search">Suche

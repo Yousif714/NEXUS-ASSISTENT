@@ -10,7 +10,7 @@ describe('pickImapMailboxes', () => {
       { path: '[Gmail]/Alle Nachrichten', specialUse: '\\All' },
       { path: '[Gmail]/Papierkorb', specialUse: '\\Trash' },
     ]);
-    expect(choice).toEqual({ incoming: '[Gmail]/Alle Nachrichten', sent: null, source: 'all' });
+    expect(choice).toEqual({ incoming: '[Gmail]/Alle Nachrichten', sent: '[Gmail]/Gesendet', source: 'all' });
   });
 
   test('englisches Gmail erkennt All Mail auch ohne SPECIAL-USE', () => {
@@ -18,7 +18,7 @@ describe('pickImapMailboxes', () => {
       { path: 'INBOX' },
       { path: '[Gmail]/All Mail' },
       { path: '[Gmail]/Sent Mail' },
-    ])).toEqual({ incoming: '[Gmail]/All Mail', sent: null, source: 'all' });
+    ])).toEqual({ incoming: '[Gmail]/All Mail', sent: '[Gmail]/Sent Mail', source: 'all' });
   });
 
   test('iCloud bleibt bei INBOX und Gesendet', () => {
