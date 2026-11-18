@@ -1,3 +1,4 @@
+import { PORTALS_IN_APP, WHATSAPP_IN_APP } from '@/domain/features';
 import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { realNow } from '@/domain/clock';
@@ -41,6 +42,21 @@ async function selectAll<T>(what: string, page: (from: number, to: number) => Pr
   }
 }
 
+/**
+ * Ausgeschaltete Bereiche gar nicht erst laden (schnellerer Start, weniger Last).
+ * Sicher, weil gespeichert wird nur der Unterschied zwischen Geladenem und Neuem (diffState):
+ * nicht geladene Zeilen bleiben unberührt in der Datenbank.
+ */
+// Bewusst locker typisiert: die postgrest-Builder-Typen sprengen sonst die Typprüfung (TS2589).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hideOff<Q>(t: TableName, query: Q): Q {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const q = query as any;
+  if (t === 'jobs' && !PORTALS_IN_APP) return q.is('data->>portalSource', null);
+  if (t === 'messages' && !WHATSAPP_IN_APP) return q.neq('data->>channel', 'whatsapp');
+  return q;
+}
+
 /** Server-Repository auf Supabase. Nur mit Service-Role-Key und nur serverseitig verwenden. */
 export function createSupabaseRepos(url: string, serviceRoleKey: string): Repos {
   return createSupabaseReposFromClient(createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } }));
@@ -61,7 +77,7 @@ export function createSupabaseReposFromClient(db: SupabaseClient): Repos {
         TABLE_NAMES.map(async (t) => {
           try {
             const rows = await selectAll<Row>(`load ${t}`, (from, to) =>
-              db.from(t).select(columns(t)).order('ord').order('id').range(from, to).overrideTypes<Row[], { merge: false }>(),
+              hideOff(t, db.from(t).select(columns(t))).order('ord').order('id').range(from, to).overrideTypes<Row[], { merge: false }>(),
             );
             return [t, rows] as const;
           } catch (e) {
