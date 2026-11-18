@@ -20,7 +20,7 @@ import { formatBerlinDe, now, todayBerlin } from '@/domain/clock';
 import { areaUnreliable, messageStand } from '@/domain/freshness';
 import { jobBilling } from '@/domain/billing';
 import { jobContactLabel, jobPortalSource } from '@/domain/import/portal';
-import { PORTALS_IN_APP, WHATSAPP_IN_APP } from '@/domain/features';
+import { PORTALS_IN_APP, SPARKASSE_IN_APP, WHATSAPP_IN_APP } from '@/domain/features';
 import { DOC_LABEL, unlinkedOrderMessages } from '@/domain/matching/job-messages';
 import { formatBerlin } from '@/domain/clock';
 import { formatEuro } from '@/domain/money';
@@ -124,10 +124,10 @@ export default function ZulassungPage() {
           value={customers.length} />
       </ListGroup>
 
-      <ListGroup title="Zahlungen" testId="zulassung-payments" sectionId="zulassung-zahlungen">
+      {SPARKASSE_IN_APP && <ListGroup title="Zahlungen" testId="zulassung-payments" sectionId="zulassung-zahlungen">
         <ListRow href="/zulassung/zuordnen" testId="zulassung-match-row" title="Zahlungen zuordnen" subtitle="Sparkassen-Auszug hochladen und zuordnen"
           value={unallocatedBankPayments(state, 'zulassung').length} />
-      </ListGroup>
+      </ListGroup>}
       </div>
 
       <aside className="zl-side">

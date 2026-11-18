@@ -39,11 +39,11 @@ test('Einrichtung: Passkey anlegen, 10 Codes, danach leerer Echtmodus', async ()
   await expect(page.getByTestId('reply-row')).toHaveCount(0);
 });
 
-test('Verbindungen: Einrichtungs-Liste mit 12 offenen Einträgen (ohne WhatsApp, myDigitalCar, nextOZ)', async () => {
+test('Verbindungen: Einrichtungs-Liste mit 11 offenen Einträgen (ohne WhatsApp, myDigitalCar, nextOZ, Sparkasse)', async () => {
   await page.goto('/verbindungen');
   const list = page.getByTestId('setup-checklist');
   await expect(list.getByRole('heading', { name: 'Einrichtung' })).toBeVisible();
-  await expect(list.locator('li')).toHaveCount(12);
+  await expect(list.locator('li')).toHaveCount(11);
   await expect(list.getByTestId('setup-check')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /simulieren|Wieder verbinden/ })).toHaveCount(0);
 });
@@ -125,9 +125,8 @@ test('Echtmodus: Qonto-Import → Vorschlag → Ja → zweite Zahlung derselben 
   expect(r.ok()).toBe(true);
   await page.goto('/verbindungen');
   await expect(page.getByTestId('setup-bank_qonto')).toContainText(/Verbunden · Stand vor \d+ Min/);
-  await expect(page.getByText('Sparkasse (Zulassung)')).toBeVisible();
-  await expect(page.getByTestId('setup-bank_sparkasse')).toContainText('Noch kein Auszug');
-  await expect(page.getByTestId('setup-bank_sparkasse').getByRole('link', { name: 'Auszug hochladen' })).toHaveAttribute('href', '/zulassung/zuordnen');
+  // Sparkasse ist in der App ausgeschaltet (offene Beträge des Zulassungsdienstes kommen aus Lexware).
+  await expect(page.getByTestId('setup-bank_sparkasse')).toHaveCount(0);
   await page.goto('/nexus/zuordnen');
   const cards = page.locator('[data-testid^="match-"]').filter({ has: page.getByRole('button', { name: /Ja, gehört zu Murat Demir/ }) }); // Vorschlag-Karten (Auswahllisten anderer Karten nennen den Namen auch)
   await expect(cards).toHaveCount(2);

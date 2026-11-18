@@ -142,32 +142,13 @@ test('Sparkasse: gleicher Auszug als CAMT → nichts neu; falsche Datei → Fehl
   await expect(page.getByTestId('statement-preview')).toHaveCount(0);
 });
 
-test('Sparkasse: Übersicht zeigt Zeile „Zahlungen zuordnen“ mit Anzahl offener Zahlungen', async ({ page }) => {
+test('Sparkasse ist ausgeschaltet: kein „Zahlungen zuordnen“ beim Zulassungsdienst, keine Sparkasse unter Verbindungen', async ({ page }) => {
   await page.goto('/zulassung?reset=1');
-  await expect(page.getByTestId('zulassung-match-row')).toContainText('Zahlungen zuordnen');
-  await expect(page.getByTestId('zulassung-match-row')).toContainText('0');
-  await page.getByTestId('zulassung-match-row').click();
-  await expect(page).toHaveURL(/\/zulassung\/zuordnen$/);
-  await expect(page.getByText('Keine offenen Zahlungen.')).toBeVisible();
-  await page.getByLabel('Kontoauszug-Datei').setInputFiles('tests/fixtures/sparkasse/umsaetze-beispiel.csv');
-  await page.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('statement-summary')).toContainText('4 neu');
-  await page.goto('/zulassung');
-  await expect(page.getByTestId('zulassung-match-row')).toContainText('2');
-});
-
-test('Verbindungen: Sparkasse zeigt Auszugsstand und Upload-Knopf', async ({ page }) => {
-  await page.goto('/verbindungen?reset=1');
-  const conn = page.getByTestId('conn-bank_sparkasse');
-  await expect(conn).toContainText('Zulassungsdienst · Noch kein Auszug');
-  await expect(conn.getByRole('button', { name: 'Störung simulieren' })).toHaveCount(0);
-  await conn.getByRole('link', { name: 'Auszug hochladen' }).click();
-  await expect(page).toHaveURL(/\/zulassung\/zuordnen$/);
-  await page.getByLabel('Kontoauszug-Datei').setInputFiles('tests/fixtures/sparkasse/umsaetze-beispiel.csv');
-  await page.getByRole('button', { name: 'Übernehmen' }).click();
-  await expect(page.getByTestId('statement-summary')).toContainText('4 neu');
+  await expect(page.getByTestId('kpi-open')).toBeVisible();
+  await expect(page.getByTestId('zulassung-match-row')).toHaveCount(0);
   await page.goto('/verbindungen');
-  await expect(page.getByTestId('conn-bank_sparkasse')).toContainText('Auszug bis 11.11. · hochgeladen heute');
+  await expect(page.getByTestId('conn-bank_qonto')).toBeVisible();
+  await expect(page.getByTestId('conn-bank_sparkasse')).toHaveCount(0);
 });
 
 const SPK_HEADER = '"Auftragskonto";"Buchungstag";"Valutadatum";"Buchungstext";"Verwendungszweck";"Glaeubiger ID";"Mandatsreferenz";"Kundenreferenz (End-to-End)";"Sammlerreferenz";"Lastschrift Ursprungsbetrag";"Auslagenersatz Ruecklastschrift";"Beguenstigter/Zahlungspflichtiger";"Kontonummer/IBAN";"BIC (SWIFT-Code)";"Betrag";"Waehrung";"Info"';

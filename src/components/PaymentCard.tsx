@@ -46,12 +46,57 @@ function SplitPreview({ payment, invoiceIds }: { payment: Payment; invoiceIds: s
   );
 }
 
+const MAX_PICK = 50;
+
+/** Mehrere Rechnungen frei ankreuzen (Suche nach Nummer oder Name), Aufteilung ansehen, bestätigen. */
+function MultiInvoicePick({ payment, options, onConfirm }: {
+  payment: Payment;
+  options: { value: string; label: string }[];
+  onConfirm: (invoiceIds: string[]) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+  const invoices = options.filter((o) => o.value.startsWith('invoice:'));
+  const q = query.trim().toLowerCase();
+  const shown = invoices.filter((o) => picked.includes(splitValue(o.value)[1]) || (q.length > 0 && o.label.toLowerCase().includes(q))).slice(0, 40);
+  const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < MAX_PICK ? [...p, id] : p));
+  return (
+    <div className="multi-pick" data-testid={`multi-pick-${payment.id}`}>
+      <label className="field">Rechnung suchen (Nummer oder Name)
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="z. B. RE-Z-2026 oder Müller" autoComplete="off" />
+      </label>
+      {q.length === 0 && picked.length === 0 && <p className="card-note">Suchbegriff eingeben, dann die passenden Rechnungen ankreuzen.</p>}
+      {shown.length > 0 && (
+        <ul className="multi-pick-list">
+          {shown.map((o) => {
+            const id = splitValue(o.value)[1];
+            return (
+              <li key={o.value}>
+                <label className="multi-pick-row">
+                  <input type="checkbox" checked={picked.includes(id)} onChange={() => toggle(id)} />
+                  <span>{o.label}</span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {picked.length > 0 && <SplitPreview payment={payment} invoiceIds={picked} />}
+      <div className="card-buttons">
+        <button type="button" className="btn btn-primary" disabled={picked.length === 0}
+          onClick={() => onConfirm(picked)}>{picked.length > 1 ? `Auf ${picked.length} Rechnungen aufteilen` : 'Zuordnen'}</button>
+      </div>
+    </div>
+  );
+}
+
 /** Karte einer offenen Bankzahlung: Vorschlag bestätigen, anderes Ziel wählen oder ausblenden. */
 export function PaymentCard({ payment, match, company }: { payment: Payment; match: MatchResult; company: Company }) {
   const { state, dispatch } = useAppStore();
   const selectId = useId();
   const [chosen, setChosen] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [multi, setMulti] = useState(false);
   const payer = payment.payerName ?? 'Unbekannt';
   const options = company === 'zulassung'
     ? [...matchOptions(state, company), ...allOpenInvoiceOptions(state)].sort((a, b) => a.label.localeCompare(b.label, 'de'))
@@ -118,6 +163,15 @@ export function PaymentCard({ payment, match, company }: { payment: Payment; mat
           </div>
           {chosenInvoiceIds && <SplitPreview payment={payment} invoiceIds={chosenInvoiceIds} />}
         </>
+      )}
+      {multi ? (
+        <MultiInvoicePick payment={payment} options={options}
+          onConfirm={(ids) => dispatch({ type: 'confirmPaymentMatch', paymentId: payment.id, invoiceIds: ids })} />
+      ) : (
+        <div className="card-buttons">
+          <button type="button" className="btn btn-secondary" aria-label={`Auf mehrere Rechnungen aufteilen (Zahlung von ${payer})`}
+            onClick={() => setMulti(true)}>Auf mehrere Rechnungen aufteilen …</button>
+        </div>
       )}
       {!showAll && (target || match.candidates.length > 0) && (
         <div className="card-buttons">

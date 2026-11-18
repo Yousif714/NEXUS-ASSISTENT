@@ -6,9 +6,9 @@ vi.mock('next/server', async (orig) => ({ ...(await orig<typeof import('next/ser
 import { POST } from '@/app/api/webhooks/whatsapp/route';
 import { createEmptyState } from '@/data/empty-state';
 import { detectReplies } from '@/domain/detectors/replies';
-import { PORTALS_IN_APP, WHATSAPP_IN_APP, visibleState } from '@/domain/features';
+import { PORTALS_IN_APP, SPARKASSE_IN_APP, WHATSAPP_IN_APP, visibleState } from '@/domain/features';
 import { getRepos, resetTestRepos } from '@/server/registry';
-import type { Message } from '@/domain/types';
+import type { AppState, Message } from '@/domain/types';
 import { seed } from './takeover/setup';
 
 const SECRET = 'app-secret-test';
@@ -58,6 +58,16 @@ describe('WhatsApp aus der App entfernt', () => {
     expect(v.connections.map((c) => c.id)).not.toContain('nextoz');
     expect(v.connections.map((c) => c.id)).not.toContain('whatsapp_kunden');
     expect(v.connections.map((c) => c.id)).toContain('lexware_zulassung');
+  });
+
+  test('Sparkasse aus: nicht zugeordnete Sparkassen-Zahlungen verschwinden, zugeordnete und Qonto bleiben', () => {
+    expect(SPARKASSE_IN_APP).toBe(false);
+    const pay = (id: string, connectionId: 'bank_sparkasse' | 'bank_qonto') => ({ id, connectionId, source: 'bank' as const, company: (connectionId === 'bank_qonto' ? 'nexus' : 'zulassung') as 'nexus' | 'zulassung', amountCents: 10000, bookedOn: '2026-11-10', externalId: id }) as unknown as AppState['payments'][number];
+    const s = { ...createEmptyState(), payments: [pay('sp-offen', 'bank_sparkasse'), pay('sp-zu', 'bank_sparkasse'), pay('q-offen', 'bank_qonto')],
+      allocations: [{ id: 'a1', paymentId: 'sp-zu', invoiceId: 'i1', amountCents: 10000, method: 'manual' }] as unknown as AppState['allocations'] };
+    const v = visibleState(s);
+    expect(v.payments.map((p) => p.id)).toEqual(['sp-zu', 'q-offen']);
+    expect(v.connections.map((c) => c.id)).not.toContain('bank_sparkasse');
   });
 
   describe('Webhook', () => {
