@@ -12,6 +12,8 @@ function fakeClient(log: string[], pageRows: (table: string, from: number) => un
     const b: Record<string, unknown> = {};
     for (const m of ['select', 'order', 'eq', 'overrideTypes']) b[m] = () => b;
     b.gte = (col: string, v: string) => { log.push(`gte ${table}.${col} ${v}`); return b; };
+    b.is = (col: string, v: unknown) => { log.push(`is ${table}.${col} ${String(v)}`); return b; };
+    b.neq = (col: string, v: unknown) => { log.push(`neq ${table}.${col} ${String(v)}`); return b; };
     b.range = (f: number) => { from = f; return b; };
     b.single = () => { single = true; return b; };
     b.then = (resolve: (r: Res) => void) => {
@@ -38,6 +40,14 @@ describe('Supabase-Repository (ohne Netz)', () => {
     expect(metaEnd).toBeGreaterThanOrEqual(0);
     expect(firstTable).toBeGreaterThan(metaEnd);
     expect(log).not.toContain('start job_runs');
+  });
+
+  it('ausgeschaltete Bereiche (Portale, WhatsApp) werden gar nicht erst geladen', async () => {
+    const log: string[] = [];
+    await createSupabaseReposFromClient(fakeClient(log, () => [])).state.load();
+    expect(log).toContain('is jobs.data->>portalSource null');
+    expect(log).toContain('neq messages.data->>channel whatsapp');
+    expect(log.some((x) => x.startsWith('is contacts') || x.startsWith('neq contacts'))).toBe(false);
   });
 
   it('recentJobRuns liest nur job_runs ab dem Stichtag', async () => {

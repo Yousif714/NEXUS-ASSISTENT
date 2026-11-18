@@ -1,5 +1,5 @@
 /* Minimaler Offline-Cache der App-Shell. Seiten: Netz zuerst, sonst Cache (Fallback „/“). Statische Dateien: Cache zuerst. */
-const CACHE = 'nexus-shell-v1';
+const CACHE = 'nexus-shell-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
