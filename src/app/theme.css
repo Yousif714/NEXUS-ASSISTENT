@@ -877,3 +877,42 @@ button.list-row:hover {
 .assistant-button {
   right: calc(min(var(--safe-right), 12px) + 14px);
 }
+
+/* Zahlung auf mehrere Rechnungen: Suchliste mit Häkchen */
+.multi-pick {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.multi-pick-list {
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  background: var(--surface);
+}
+
+.multi-pick-list > li + li {
+  border-top: 1px solid var(--separator);
+}
+
+.multi-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.multi-pick-row input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--primary);
+}
